@@ -1,0 +1,366 @@
+/* ==================== 安全设置页面 ==================== */
+
+/* 配置区块 */
+.config-section {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.config-section-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* 安全状态卡片 */
+.security-status-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--accent);
+}
+
+.security-status-icon {
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.security-status-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.security-status-info {
+  flex: 1;
+}
+
+.security-status-text {
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.security-status-desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+/* 安全表单 */
+.security-form {
+  max-width: 400px;
+}
+
+.form-group {
+  margin-bottom: var(--space-md);
+}
+
+.form-label {
+  display: block;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+}
+
+.form-input {
+  width: 100%;
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.form-hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  margin-top: var(--space-xs);
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.form-message {
+  font-size: var(--font-size-sm);
+}
+
+.form-message.success {
+  color: var(--success);
+}
+
+.form-message.error {
+  color: var(--error);
+}
+
+/* 密码强度指示器 */
+.password-strength {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  min-height: 20px;
+}
+
+.strength-bar {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-primary);
+  transition: background 0.2s ease;
+}
+
+.strength-bar.active {
+  background: var(--strength-color, var(--accent));
+}
+
+.strength-text {
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+}
+
+/* 无视风险模式卡片 */
+.ignore-risk-card {
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-primary);
+  transition: all 0.2s ease;
+}
+
+.ignore-risk-card.enabled {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.ignore-risk-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+}
+
+.ignore-risk-info {
+  flex: 1;
+}
+
+.ignore-risk-title {
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.ignore-risk-desc {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* 无视风险确认框 */
+.ignore-risk-confirm {
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.ignore-risk-warning {
+  font-size: var(--font-size-sm);
+  color: var(--error);
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+}
+
+.ignore-risk-detail {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+  line-height: 1.5;
+}
+
+.ignore-risk-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+/* 密码验证表单 */
+.password-verify-form {
+  padding: var(--space-sm) 0;
+}
+
+/* 加载占位 */
+.loading-placeholder {
+  background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shine 1.4s ease infinite;
+  border-radius: var(--radius-md);
+}
+
+@keyframes skeleton-shine {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 开关样式 */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+  cursor: pointer;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--border-primary);
+  border-radius: 24px;
+  transition: background 0.3s ease;
+}
+
+.toggle-slider::before {
+  content: '';
+  position: absolute;
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background: var(--accent);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(24px);
+}
+
+.toggle-switch input:focus + .toggle-slider {
+  box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+/* ==================== 登录验证页面 ==================== */
+
+.login-verify-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-lg) 0;
+}
+
+.login-icon {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-muted);
+  border-radius: 50%;
+  margin-bottom: var(--space-lg);
+}
+
+.login-icon svg {
+  width: 32px;
+  height: 32px;
+  color: var(--accent);
+}
+
+.login-title {
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: var(--space-xs);
+}
+
+.login-desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-xl);
+  text-align: center;
+}
+
+.login-input {
+  width: 100%;
+  padding: var(--space-md);
+  font-size: var(--font-size-md);
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.login-error {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--error-muted);
+  border-radius: var(--radius-md);
+  color: var(--error);
+  font-size: var(--font-size-sm);
+}
+
+.login-error svg {
+  flex-shrink: 0;
+}
+
+.login-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-lg);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.login-hint svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* 抖动动画 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+  border-color: var(--error) !important;
+}

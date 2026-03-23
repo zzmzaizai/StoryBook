@@ -1,0 +1,503 @@
+/* Markdown 编辑器样式覆盖 */
+.markdown-editor-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-editor-container .vditor {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  background: var(--bg-primary);
+  flex: 1;
+  text-align: left;
+}
+
+.markdown-editor-container .vditor--dark {
+  --border-primary: var(--border-primary);
+}
+
+.markdown-editor-container .vditor-toolbar {
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--space-xs) var(--space-sm) !important;
+  justify-content: flex-start !important;
+  text-align: left;
+  padding-left: var(--space-sm) !important;
+}
+
+.markdown-editor-container .vditor-toolbar--pin {
+  padding-left: var(--space-sm) !important;
+}
+
+.markdown-editor-container .vditor-toolbar__item {
+  color: var(--text-secondary);
+}
+
+.markdown-editor-container .vditor-toolbar__item:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.markdown-editor-container .vditor-toolbar__item--current,
+.markdown-editor-container .vditor-toolbar__item--active {
+  color: var(--accent);
+  background: var(--accent-alpha);
+}
+
+.markdown-editor-container .vditor-ir pre.vditor-reset,
+.markdown-editor-container .vditor-sv pre.vditor-reset,
+.markdown-editor-container .vditor-wysiwyg pre.vditor-reset {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: var(--font-size-md);
+  line-height: 1.8;
+  text-align: left;
+  padding: var(--space-md) !important;
+}
+
+.markdown-editor-container .vditor-reset {
+  padding: var(--space-md) !important;
+}
+
+.markdown-editor-container .vditor-ir pre.vditor-reset:focus,
+.markdown-editor-container .vditor-sv pre.vditor-reset:focus,
+.markdown-editor-container .vditor-wysiwyg pre.vditor-reset:focus {
+  outline: none;
+}
+
+.markdown-editor-container .vditor-ir pre.vditor-reset::selection,
+.markdown-editor-container .vditor-sv pre.vditor-reset::selection,
+.markdown-editor-container .vditor-wysiwyg pre.vditor-reset::selection {
+  background: var(--accent-alpha);
+}
+
+.markdown-editor-container .vditor-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.markdown-editor-container .vditor-hint button {
+  color: var(--text-primary);
+}
+
+.markdown-editor-container .vditor-hint button:hover,
+.markdown-editor-container .vditor-hint button--current {
+  background: var(--bg-tertiary);
+  color: var(--accent);
+}
+
+.markdown-editor-container .vditor-counter {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.markdown-editor-container .vditor-resize {
+  background: var(--bg-tertiary);
+  border-top: 1px solid var(--border-primary);
+}
+
+.markdown-editor-container .vditor-resize:hover {
+  background: var(--accent-alpha);
+}
+
+.markdown-editor-container .vditor-preview {
+  background: var(--bg-primary);
+  border-left: 1px solid var(--border-primary);
+  text-align: left;
+  padding: var(--space-md);
+}
+
+.markdown-editor-container .vditor-preview::-webkit-scrollbar {
+  width: 6px;
+}
+
+.markdown-editor-container .vditor-preview::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 3px;
+}
+
+.markdown-editor-container .vditor-preview::-webkit-scrollbar-thumb:hover {
+  background: var(--text-tertiary);
+}
+
+.markdown-editor-container .vditor-outline {
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-primary);
+}
+
+.markdown-editor-container .vditor-outline__item {
+  color: var(--text-secondary);
+}
+
+.markdown-editor-container .vditor-outline__item:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.markdown-editor-container .vditor-outline__item--current {
+  color: var(--accent);
+  background: var(--accent-alpha);
+}
+
+.markdown-editor-container .vditor-tooltipped::after {
+  background: var(--bg-card);
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+}
+
+.markdown-editor-container .vditor-tooltipped::before {
+  border-top-color: var(--border-primary);
+}
+
+/* 行号样式 */
+.markdown-editor-container .vditor-sv .cm-gutters {
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-primary);
+  color: var(--text-tertiary);
+}
+
+.markdown-editor-container .vditor-sv .cm-activeLineGutter {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+/* 代码块样式 */
+.markdown-editor-container .vditor-wysiwyg pre,
+.markdown-editor-container .vditor-ir pre,
+.markdown-editor-container .vditor-sv pre {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+}
+
+.markdown-editor-container .vditor-wysiwyg code:not(.hljs),
+.markdown-editor-container .vditor-ir code:not(.hljs),
+.markdown-editor-container .vditor-sv code:not(.hljs) {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  font-size: 0.9em;
+}
+
+/* 引用样式 */
+.markdown-editor-container .vditor-wysiwyg blockquote,
+.markdown-editor-container .vditor-ir blockquote {
+  border-left: 4px solid var(--accent);
+  background: var(--bg-secondary);
+  padding: var(--space-md);
+  margin: var(--space-md) 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+/* 表格样式 */
+.markdown-editor-container .vditor-wysiwyg table,
+.markdown-editor-container .vditor-ir table {
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.markdown-editor-container .vditor-wysiwyg th,
+.markdown-editor-container .vditor-ir th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.markdown-editor-container .vditor-wysiwyg td,
+.markdown-editor-container .vditor-ir td,
+.markdown-editor-container .vditor-wysiwyg th,
+.markdown-editor-container .vditor-ir th {
+  border: 1px solid var(--border-primary);
+  padding: var(--space-sm) var(--space-md);
+}
+
+/* 标题样式 */
+.markdown-editor-container .vditor-wysiwyg h1,
+.markdown-editor-container .vditor-ir h1,
+.markdown-editor-container .vditor-wysiwyg h2,
+.markdown-editor-container .vditor-ir h2,
+.markdown-editor-container .vditor-wysiwyg h3,
+.markdown-editor-container .vditor-ir h3,
+.markdown-editor-container .vditor-wysiwyg h4,
+.markdown-editor-container .vditor-ir h4,
+.markdown-editor-container .vditor-wysiwyg h5,
+.markdown-editor-container .vditor-ir h5,
+.markdown-editor-container .vditor-wysiwyg h6,
+.markdown-editor-container .vditor-ir h6 {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-primary);
+  padding-bottom: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+/* 链接样式 */
+.markdown-editor-container .vditor-wysiwyg a,
+.markdown-editor-container .vditor-ir a {
+  color: var(--accent);
+}
+
+.markdown-editor-container .vditor-wysiwyg a:hover,
+.markdown-editor-container .vditor-ir a:hover {
+  text-decoration: underline;
+}
+
+/* 列表样式 */
+.markdown-editor-container .vditor-wysiwyg ul,
+.markdown-editor-container .vditor-ir ul,
+.markdown-editor-container .vditor-wysiwyg ol,
+.markdown-editor-container .vditor-ir ol {
+  padding-left: var(--space-lg);
+}
+
+.markdown-editor-container .vditor-wysiwyg li,
+.markdown-editor-container .vditor-ir li {
+  margin-bottom: var(--space-xs);
+}
+
+/* 分割线样式 */
+.markdown-editor-container .vditor-wysiwyg hr,
+.markdown-editor-container .vditor-ir hr {
+  border: none;
+  border-top: 1px solid var(--border-primary);
+  margin: var(--space-lg) 0;
+}
+
+/* 图片样式 */
+.markdown-editor-container .vditor-wysiwyg img,
+.markdown-editor-container .vditor-ir img {
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  margin: var(--space-md) 0;
+}
+
+/* 编辑器模式切换按钮组 */
+.editor-mode-switch {
+  display: flex;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-sm);
+}
+
+.editor-mode-btn {
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--font-size-sm);
+  transition: all 0.2s ease;
+}
+
+.editor-mode-btn:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.editor-mode-btn.active {
+  background: var(--accent);
+  color: var(--text-inverse);
+  border-color: var(--accent);
+}
+
+/* 全屏编辑器样式 */
+.markdown-editor-container .vditor--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+  border-radius: 0;
+  height: 100vh !important;
+  max-height: 100vh !important;
+}
+
+.markdown-editor-container .vditor--fullscreen .vditor-content {
+  height: calc(100vh - 41px) !important;
+}
+
+.markdown-editor-container .vditor--fullscreen .vditor-wysiwyg,
+.markdown-editor-container .vditor--fullscreen .vditor-preview {
+  height: 100% !important;
+}
+
+/* 简洁模式编辑器 */
+.editor-simple .vditor-toolbar {
+  padding: var(--space-xs);
+}
+
+.editor-simple .vditor-toolbar .vditor-toolbar__item {
+  padding: 4px 8px;
+}
+
+/* ==================== Markdown 预览组件样式 ==================== */
+
+.markdown-preview-container {
+  width: 100%;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-lg);
+  overflow: auto;
+}
+
+.markdown-preview-content {
+  padding: var(--space-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  line-height: 1.8;
+}
+
+.markdown-preview-content h1,
+.markdown-preview-content h2,
+.markdown-preview-content h3,
+.markdown-preview-content h4,
+.markdown-preview-content h5,
+.markdown-preview-content h6 {
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-primary);
+  padding-bottom: var(--space-sm);
+  margin-top: var(--space-lg);
+  margin-bottom: var(--space-md);
+}
+
+.markdown-preview-content h1 {
+  font-size: var(--font-size-2xl);
+}
+
+.markdown-preview-content h2 {
+  font-size: var(--font-size-xl);
+}
+
+.markdown-preview-content h3 {
+  font-size: var(--font-size-lg);
+}
+
+.markdown-preview-content p {
+  margin-bottom: var(--space-md);
+}
+
+.markdown-preview-content a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.markdown-preview-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-preview-content blockquote {
+  border-left: 4px solid var(--accent);
+  background: var(--bg-secondary);
+  padding: var(--space-md);
+  margin: var(--space-md) 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.markdown-preview-content pre {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  overflow-x: auto;
+  margin: var(--space-md) 0;
+}
+
+.markdown-preview-content code {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.9em;
+}
+
+.markdown-preview-content code:not(.hljs) {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+}
+
+.markdown-preview-content ul,
+.markdown-preview-content ol {
+  padding-left: var(--space-lg);
+  margin-bottom: var(--space-md);
+}
+
+.markdown-preview-content li {
+  margin-bottom: var(--space-xs);
+}
+
+.markdown-preview-content table {
+  width: 100%;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: var(--space-md) 0;
+  border-collapse: collapse;
+}
+
+.markdown-preview-content th {
+  background: var(--bg-secondary);
+  font-weight: 600;
+}
+
+.markdown-preview-content td,
+.markdown-preview-content th {
+  border: 1px solid var(--border-primary);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.markdown-preview-content img {
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  margin: var(--space-md) 0;
+}
+
+.markdown-preview-content hr {
+  border: none;
+  border-top: 1px solid var(--border-primary);
+  margin: var(--space-lg) 0;
+}
+
+.markdown-preview-content .vditor-outline {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.markdown-preview-content .vditor-outline__item {
+  color: var(--text-secondary);
+  padding: var(--space-xs) 0;
+}
+
+.markdown-preview-content .vditor-outline__item:hover {
+  color: var(--accent);
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .markdown-editor-container .vditor-toolbar {
+    flex-wrap: wrap;
+    padding: var(--space-xs);
+  }
+
+  .markdown-editor-container .vditor-toolbar__item {
+    padding: 6px;
+  }
+
+  .markdown-editor-container .vditor-toolbar__item svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .markdown-preview-content {
+    padding: var(--space-sm);
+  }
+}
