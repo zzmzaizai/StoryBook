@@ -1,19 +1,41 @@
 {
   "name": "storybook",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "private": true,
-  "description": "StoryBook - 小说编辑器，基于 Tauri v2 的跨平台桌面应用",
+  "description": "StoryBook - AI 小说编辑器，基于 Tauri v2 的跨平台桌面应用",
   "type": "module",
+  "author": "zzmzaizai",
+  "license": "MIT",
+  "homepage": "https://github.com/zzmzaizai/storybook",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zzmzaizai/storybook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zzmzaizai/storybook/issues"
+  },
+  "keywords": [
+    "novel-editor",
+    "ai-writing",
+    "tauri",
+    "desktop-app",
+    "markdown"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "version:sync": "node scripts/sync-version.js",
+    "version:set": "node scripts/sync-version.js"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",
     "@tauri-apps/plugin-shell": "^2.2.1",
     "@tauri-apps/plugin-store": "^2.4.2",
+    "@tauri-apps/plugin-updater": "^2.7.1",
     "vditor": "^3.11.2"
   },
   "devDependencies": {

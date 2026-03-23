@@ -1,0 +1,181 @@
+# StoryBook 发布构建工作流
+# 推送 v* 标签时自动构建跨平台产物并创建 GitHub Release
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: '发布版本号 (例如: v1.0.0)'
+        required: true
+        type: string
+        default: 'v1.0.0'
+
+jobs:
+  build:
+    name: 构建 (${{ matrix.platform.name }})
+    runs-on: ${{ matrix.platform.os }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - name: macOS (Apple Silicon)
+            os: macos-latest
+            args: --target aarch64-apple-darwin
+            rust_target: aarch64-apple-darwin
+          - name: macOS (Intel)
+            os: macos-latest
+            args: --target x86_64-apple-darwin
+            rust_target: x86_64-apple-darwin
+          - name: Linux (x64)
+            os: ubuntu-latest
+            args: ""
+            rust_target: ""
+          - name: Windows (x64)
+            os: windows-latest
+            args: ""
+            rust_target: ""
+
+    steps:
+      - name: 签出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 设置版本标签
+        id: vars
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG_NAME=${{ github.event.inputs.tag_name }}" >> "$GITHUB_ENV"
+          else
+            echo "TAG_NAME=${{ github.ref_name }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 安装前端依赖
+        run: npm ci
+
+      - name: 同步版本号
+        run: node scripts/sync-version.js
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform.rust_target }}
+
+      - name: Rust 编译缓存
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          key: ${{ matrix.platform.name }}
+
+      - name: 安装 Linux 系统依赖
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
+
+      - name: 构建 Tauri 应用
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS 代码签名（需要在 GitHub Secrets 中配置）
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows 代码签名（需要在 GitHub Secrets 中配置）
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ env.TAG_NAME }}
+          releaseName: "StoryBook ${{ env.TAG_NAME }}"
+          releaseBody: "正在构建所有平台安装包，请稍候..."
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.platform.args }}
+
+  update-release-notes:
+    name: 更新 Release Notes
+    needs: build
+    runs-on: ubuntu-latest
+    if: always() && needs.build.result != 'cancelled'
+    permissions:
+      contents: write
+
+    steps:
+      - name: 签出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 设置版本标签
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "TAG_NAME=${{ github.event.inputs.tag_name }}" >> "$GITHUB_ENV"
+          else
+            echo "TAG_NAME=${{ github.ref_name }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: 获取 Release 信息
+        id: release_info
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ env.TAG_NAME }}"
+          VERSION_NUM="${VERSION#v}"
+          
+          cat << EOF > release_notes.md
+          ## StoryBook ${VERSION}
+          
+          ### 📦 下载安装包
+          
+          | 平台 | 安装包 |
+          |------|--------|
+          | **Windows** | \`StoryBook_${VERSION_NUM}_x64-setup.exe\` 或 \`StoryBook_${VERSION_NUM}_x64_en-US.msi\` |
+          | **macOS (Apple Silicon)** | \`StoryBook_${VERSION_NUM}_aarch64.dmg\` |
+          | **macOS (Intel)** | \`StoryBook_${VERSION_NUM}_x64.dmg\` |
+          | **Linux** | \`StoryBook_${VERSION_NUM}_amd64.deb\` 或 \`StoryBook_${VERSION_NUM}_x86_64.AppImage\` |
+          
+          ### 🔄 自动更新
+          
+          已安装 StoryBook 的用户将自动收到更新通知。
+          
+          ### 📝 更新日志
+          
+          请查看 [CHANGELOG.md](https://github.com/zzmzaizai/storybook/blob/main/CHANGELOG.md) 获取详细更新内容。
+          
+          ---
+          
+          > 完整发布资产请查看页面底部的 Assets 区域。
+          EOF
+          
+          echo "release_notes_file=release_notes.md" >> "$GITHUB_OUTPUT"
+
+      - name: 更新 Release Notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release edit "${{ env.TAG_NAME }}" \
+            --notes-file release_notes.md \
+            --repo zzmzaizai/storybook

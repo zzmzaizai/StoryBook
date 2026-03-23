@@ -28,7 +28,7 @@ Whether you're writing a short story, a full-length novel, a screenplay, or even
 - **🚀 Lightning Fast** - Built with Tauri v2 and Rust for native-level performance
 - **🔒 Privacy First** - All data stored locally, your stories stay with you
 - **🤖 AI-Powered** - Leverage multiple LLM providers to boost your creativity
-- **🎨 15+ Novel Styles** - From urban romance to xianxia cultivation fantasy
+- **🎨 10+ Novel Styles** - From urban romance to xianxia cultivation fantasy
 - **📝 Professional Editor** - WYSIWYG Markdown editor with live preview
 - **📊 Smart Organization** - Chapters, characters, timelines, and metadata all in one place
 - **🌙 Dark/Light Themes** - Comfortable writing experience day or night

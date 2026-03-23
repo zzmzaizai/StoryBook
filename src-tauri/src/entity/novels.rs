@@ -57,11 +57,6 @@ impl Model {
             8 => NovelStyle::Historical,
             9 => NovelStyle::Wuxia,
             10 => NovelStyle::Xianxia,
-            11 => NovelStyle::Script,
-            12 => NovelStyle::Thesis,
-            13 => NovelStyle::Essay,
-            14 => NovelStyle::Poetry,
-            15 => NovelStyle::Report,
             _ => NovelStyle::Urban,
         }
     }

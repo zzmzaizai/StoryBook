@@ -45,3 +45,24 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+
+# Build artifacts
+*.msi
+*.exe
+*.dmg
+*.deb
+*.rpm
+*.AppImage
+*.snap
+
+# Signing
+*.pfx
+*.p12
+*.key
+*.pem
+*.cer
+*.cert
+
+# Test coverage
+coverage/
+.nyc_output/
