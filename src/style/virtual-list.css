@@ -1,0 +1,296 @@
+/**
+ * 虚拟滚动列表样式
+ */
+
+/* ========== 虚拟滚动列表 ========== */
+
+.virtual-list-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  position: relative;
+}
+
+.virtual-list-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.virtual-list-content {
+  position: relative;
+}
+
+.virtual-list-phantom {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: -1;
+}
+
+.virtual-list-items {
+  position: relative;
+}
+
+.virtual-list-item {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-md);
+  border-bottom: 1px solid var(--border-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  overflow: hidden;
+}
+
+.virtual-list-item:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.virtual-list-item:active {
+  background-color: var(--bg-card-hover);
+}
+
+.virtual-list-item.selected {
+  background-color: var(--accent-muted);
+  border-left: 3px solid var(--accent);
+}
+
+/* 加载中提示 */
+.virtual-list-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+/* 空数据提示 */
+.virtual-list-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+/* 加载动画 */
+.loading-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-primary);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ========== 分页列表 ========== */
+
+.paged-list-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.paged-list-content {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.paged-list-item {
+  display: flex;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border-secondary);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.paged-list-item:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.paged-list-item:active {
+  background-color: var(--bg-card-hover);
+}
+
+.paged-list-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.paged-list-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  color: var(--text-tertiary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
+
+.paged-list-loadmore {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-md);
+}
+
+/* ========== 元数据列表项样式 ========== */
+
+.meta-list-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.meta-item-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.meta-item-preview {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ========== 时间线列表项样式 ========== */
+
+.timeline-list-item {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.timeline-item-title {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.timeline-item-range {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+/* ========== 章节列表项样式 ========== */
+
+.chapter-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.chapter-item-number {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.chapter-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chapter-item-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chapter-item-status {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+/* ========== 角色列表项样式 ========== */
+
+.character-list-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.character-item-avatar {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-muted);
+  border-radius: 50%;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.character-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.character-item-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.character-item-role {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+/* ========== 响应式 ========== */
+
+@media (max-width: 640px) {
+  .virtual-list-item,
+  .paged-list-item {
+    padding: var(--space-sm);
+  }
+}

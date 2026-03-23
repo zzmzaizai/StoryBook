@@ -22,6 +22,33 @@ pub async fn list_timelines(
 }
 
 #[tauri::command]
+pub async fn list_timelines_paged(
+    state: State<'_, AppState>,
+    novel_id: i32,
+    page: u64,
+    page_size: u64,
+) -> Result<serde_json::Value, String> {
+    let (items, total_pages) = state.timelines()
+        .find_by_novel_paged(novel_id, page, page_size)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let total_count = state.timelines()
+        .count_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(serde_json::json!({
+        "items": items,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "total_count": total_count,
+        "has_more": page + 1 < total_pages
+    }))
+}
+
+#[tauri::command]
 pub async fn get_timeline(state: State<'_, AppState>, id: i32) -> Result<Option<novel_chapter_timeline::Model>, String> {
     state.timelines().find_by_id(id).await.map_err(|e| e.to_string())
 }

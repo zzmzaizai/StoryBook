@@ -1,6 +1,6 @@
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait,
-    QueryFilter, Set,
+    QueryFilter, Set, QueryOrder, PaginatorTrait,
 };
 use std::sync::Arc;
 use chrono::Utc;
@@ -38,7 +38,27 @@ impl MetaRepository {
     pub async fn find_by_novel(&self, novel_id: i32) -> Result<Vec<novel_meta::Model>, sea_orm::DbErr> {
         MetaEntity::find()
             .filter(novel_meta::Column::NovelId.eq(novel_id))
+            .order_by_asc(novel_meta::Column::Id)
             .all(&*self.db)
+            .await
+    }
+
+    pub async fn find_by_novel_paged(&self, novel_id: i32, page: u64, page_size: u64) -> Result<(Vec<novel_meta::Model>, u64), sea_orm::DbErr> {
+        let paginator = MetaEntity::find()
+            .filter(novel_meta::Column::NovelId.eq(novel_id))
+            .order_by_asc(novel_meta::Column::Id)
+            .paginate(&*self.db, page_size);
+
+        let items = paginator.fetch_page(page).await?;
+        let total = paginator.num_pages().await?;
+
+        Ok((items, total))
+    }
+
+    pub async fn count_by_novel(&self, novel_id: i32) -> Result<u64, sea_orm::DbErr> {
+        MetaEntity::find()
+            .filter(novel_meta::Column::NovelId.eq(novel_id))
+            .count(&*self.db)
             .await
     }
 

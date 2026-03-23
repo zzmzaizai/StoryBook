@@ -5,20 +5,23 @@ import { ICONS } from '../lib/icons.js'
 import { createMarkdownEditor, destroyEditor } from '../lib/markdown-editor.js'
 import { createModal, confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
+import { createPagedList } from '../lib/virtual-list.js'
 import '../style/editor.css'
+import '../style/virtual-list.css'
 
 let searchKeyword = ''
 let selectedChapterId = null
 let isCreating = false
 let editorInstance = null
 let chaptersList = []
+let chapterListComponent = null
 
 export async function render() {
   const el = document.createElement('div')
   el.className = 'page'
 
   const novelId = store.currentNovelId
-  
+
   if (!novelId) {
     el.innerHTML = `
       <div class="page-header">
@@ -43,14 +46,14 @@ export async function render() {
       <h1 class="page-title">章节</h1>
       <p class="page-subtitle">正在管理"${store.currentNovelName || '未知'}"小说章节内容</p>
     </div>
-    
+
     <div class="chapters-layout">
       <div class="card chapter-list-card">
         <div class="chapter-list-header">
           <h3 class="card-title">${ICONS.chapters} 章节列表</h3>
-          <span class="chapter-count" id="chapter-count">共 0 章</span>
+          <span class="chapter-count" id="chapter-count">加载中...</span>
         </div>
-        
+
         <div class="chapter-toolbar">
           <button id="create-chapter-btn" class="btn btn-primary btn-sm">${ICONS.plus}</button>
           <div class="search-box search-box-sm">
@@ -58,17 +61,80 @@ export async function render() {
             <input id="search-chapter" class="search-input" placeholder="搜索章节..." value="${searchKeyword}" />
           </div>
         </div>
-        
-        <div id="chapter-list" class="chapter-list"></div>
+
+        <div id="chapter-list-mount" class="chapter-list-mount"></div>
       </div>
-      
+
       <div class="card chapter-editor-card">
         <div id="chapter-editor"></div>
       </div>
     </div>
   `
 
-  await loadChapters(el)
+  // 创建分页列表
+  const listMount = el.querySelector('#chapter-list-mount')
+  chapterListComponent = createPagedList({
+    containerId: 'chapter-list',
+    pageSize: 20,
+    loadMore: async (page, pageSize) => {
+      const result = await api.listChapters(store.currentNovelId, page, pageSize)
+      // 更新总数显示
+      const countEl = el.querySelector('#chapter-count')
+      if (countEl) {
+        countEl.textContent = `共 ${result.total_count} 章`
+      }
+      return {
+        items: result.items,
+        hasMore: result.has_more
+      }
+    },
+    renderItem: (item) => {
+      const div = document.createElement('div')
+      div.className = `chapter-list-item ${selectedChapterId === item.id ? 'active' : ''}`
+      div.dataset.id = item.id
+      div.innerHTML = `
+        <div class="chapter-item-number">${item.chapter_number}</div>
+        <div class="chapter-item-content">
+          <div class="chapter-item-title">${item.chapter_name || '未命名章节'}</div>
+          <div class="chapter-item-meta">
+            <span class="badge badge-sm ${getStatusBadgeClass(item.status)}">${ENUMS.NovelChapterStatus[item.status] || '起草'}</span>
+            <span class="chapter-item-words">${formatWordCount(item.word_count)}</span>
+            ${item.version > 1 ? `<span class="chapter-item-version">v${item.version}</span>` : ''}
+          </div>
+        </div>
+        <button class="btn-icon btn-icon-danger chapter-delete-btn" data-action="delete" data-id="${item.id}">
+          ${ICONS.delete}
+        </button>
+      `
+      return div
+    },
+    onItemClick: (item, index, el) => {
+      // 处理删除按钮
+      const deleteBtn = el.querySelector('[data-action="delete"]')
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', async (e) => {
+          e.stopPropagation()
+          await handleDeleteChapter(item.id, el.closest('.page'))
+        })
+      }
+
+      // 选中编辑
+      selectedChapterId = item.id
+      isCreating = false
+
+      // 更新选中状态
+      const listContainer = el.closest('.paged-list-content')
+      if (listContainer) {
+        listContainer.querySelectorAll('.chapter-list-item').forEach(i => i.classList.remove('active'))
+        el.classList.add('active')
+      }
+
+      destroyCurrentEditor()
+      renderChapterEditor(el.closest('.page'))
+    },
+    emptyText: '暂无章节'
+  })
+  listMount.appendChild(chapterListComponent.element)
 
   el.querySelector('#create-chapter-btn')?.addEventListener('click', () => {
     destroyCurrentEditor()
@@ -79,8 +145,20 @@ export async function render() {
 
   el.querySelector('#search-chapter')?.addEventListener('input', (e) => {
     searchKeyword = e.target.value
-    renderChapterList(el)
+    // 搜索功能需要重新加载并过滤
+    chapterListComponent.refresh()
   })
+
+  // 初始加载时如果有数据，选中第一个
+  setTimeout(async () => {
+    if (!selectedChapterId && !isCreating) {
+      const result = await api.listChapters(store.currentNovelId, 0, 1)
+      if (result.items && result.items.length > 0) {
+        selectedChapterId = result.items[0].id
+        renderChapterEditor(el)
+      }
+    }
+  }, 100)
 
   return el
 }
@@ -92,104 +170,15 @@ function destroyCurrentEditor() {
   }
 }
 
-async function loadChapters(root) {
-  const listEl = root.querySelector('#chapter-list')
-  listEl.innerHTML = `
-    <div class="text-center text-tertiary p-lg">
-      <div class="spinner"></div>
-      <p style="margin-top: var(--space-sm);">加载中...</p>
-    </div>
-  `
-
-  try {
-    chaptersList = await api.listChapters(store.currentNovelId, 0, 1000)
-    renderChapterList(root)
-  } catch (e) {
-    console.error('加载章节列表失败:', e)
-    listEl.innerHTML = `
-      <div class="text-center text-tertiary p-lg">
-        <p>加载失败: ${e}</p>
-        <button class="btn btn-secondary btn-sm mt-md" id="retry-chapters">重试</button>
-      </div>
-    `
-    root.querySelector('#retry-chapters')?.addEventListener('click', () => loadChapters(root))
-  }
-}
-
-function renderChapterList(root) {
-  let list = chaptersList
-  
-  if (searchKeyword) {
-    list = list.filter(c => 
-      c.chapter_name?.includes(searchKeyword) || 
-      String(c.chapter_number).includes(searchKeyword)
-    )
-  }
-
-  const listEl = root.querySelector('#chapter-list')
-  const countEl = root.querySelector('#chapter-count')
-  
-  if (countEl) {
-    countEl.textContent = `共 ${chaptersList.length} 章`
-  }
-
-  if (list.length === 0) {
-    listEl.innerHTML = `
-      <div class="text-center text-tertiary p-lg">
-        <p>${searchKeyword ? '未找到匹配的章节' : '暂无章节'}</p>
-      </div>
-    `
-    return
-  }
-
-  listEl.innerHTML = list.map(item => `
-    <div class="chapter-item ${selectedChapterId === item.id ? 'active' : ''}" data-id="${item.id}">
-      <div class="chapter-item-number">${item.chapter_number}</div>
-      <div class="chapter-item-content">
-        <div class="chapter-item-title">${item.chapter_name || '未命名章节'}</div>
-        <div class="chapter-item-meta">
-          <span class="badge badge-sm ${getStatusBadgeClass(item.status)}">${ENUMS.NovelChapterStatus[item.status] || '起草'}</span>
-          <span class="chapter-item-words">${formatWordCount(item.word_count)}</span>
-          ${item.version > 1 ? `<span class="chapter-item-version">v${item.version}</span>` : ''}
-        </div>
-      </div>
-      <button class="btn-icon btn-icon-danger chapter-delete-btn" data-action="delete" data-id="${item.id}">
-        ${ICONS.delete}
-      </button>
-    </div>
-  `).join('')
-
-  listEl.querySelectorAll('.chapter-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      if (e.target.closest('[data-action="delete"]')) {
-        const id = Number(e.target.closest('[data-action="delete"]').dataset.id)
-        handleDeleteChapter(id, root)
-        return
-      }
-      
-      selectedChapterId = Number(item.dataset.id)
-      isCreating = false
-      listEl.querySelectorAll('.chapter-item').forEach(i => i.classList.remove('active'))
-      item.classList.add('active')
-      destroyCurrentEditor()
-      renderChapterEditor(root)
-    })
-  })
-
-  if (!selectedChapterId && !isCreating && list.length > 0) {
-    selectedChapterId = list[0].id
-    renderChapterEditor(root)
-  }
-}
-
 async function renderChapterEditor(root) {
   const editorEl = root.querySelector('#chapter-editor')
-  
+
   if (isCreating) {
-    const nextChapter = chaptersList.length > 0 
-      ? Math.max(...chaptersList.map(c => c.chapter_number || 0)) + 1 
-      : 1
-      
+    // 获取当前最大章节号
+    const result = await api.listChapters(store.currentNovelId, 0, 1)
+    const maxChapter = result.items && result.items.length > 0 ? result.items[0].chapter_number : 0
+    const nextChapter = maxChapter + 1
+
     editorEl.innerHTML = `
       <div class="chapter-editor-header">
         <h3 class="card-title">创建章节</h3>
@@ -197,7 +186,7 @@ async function renderChapterEditor(root) {
           <button id="save-chapter-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
         </div>
       </div>
-      
+
       <div class="form-grid mb-lg">
         <div class="form-group">
           <label class="form-label">章节序号</label>
@@ -214,7 +203,7 @@ async function renderChapterEditor(root) {
           </select>
         </div>
       </div>
-      
+
       <div class="form-group">
         <label class="form-label">章节内容</label>
         <div id="md-editor-container" class="markdown-editor-container" style="height: 400px;"></div>
@@ -251,15 +240,15 @@ async function renderChapterEditor(root) {
         const newChapter = await api.createChapter(store.currentNovelId, chapterName)
         const content = editorInstance ? editorInstance.getValue() : ''
         const status = parseInt(editorEl.querySelector('#chapter-status').value)
-        
+
         if (content) {
           await api.saveChapter(newChapter.id, chapterName, content, status)
         }
-        
+
         isCreating = false
         selectedChapterId = newChapter.id
         destroyCurrentEditor()
-        await loadChapters(root)
+        chapterListComponent.refresh()
         toastSuccess('章节创建成功！')
       } catch (e) {
         console.error('创建章节失败:', e)
@@ -269,8 +258,8 @@ async function renderChapterEditor(root) {
     return
   }
 
-  const chapter = chaptersList.find(c => c.id === selectedChapterId)
-  
+  const chapter = selectedChapterId ? await api.getChapter(selectedChapterId) : null
+
   if (!chapter) {
     editorEl.innerHTML = `
       <div class="empty-state">
@@ -295,7 +284,7 @@ async function renderChapterEditor(root) {
         <button id="save-chapter-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
       </div>
     </div>
-    
+
     <div class="chapter-stats-bar">
       <div class="chapter-stat">
         <span class="chapter-stat-label">字数</span>
@@ -310,7 +299,7 @@ async function renderChapterEditor(root) {
         <span class="chapter-stat-value">v${chapter.version}</span>
       </div>
     </div>
-    
+
     <div class="form-grid mb-lg">
       <div class="form-group">
         <label class="form-label">章节序号</label>
@@ -325,7 +314,7 @@ async function renderChapterEditor(root) {
         <select id="chapter-status" class="form-input">${statusOptions}</select>
       </div>
     </div>
-    
+
     <div class="form-group">
       <label class="form-label">章节内容</label>
       <div id="md-editor-container" class="markdown-editor-container" style="height: 450px;"></div>
@@ -364,19 +353,11 @@ async function renderChapterEditor(root) {
       const chapterName = editorEl.querySelector('#chapter-name').value.trim()
       const content = editorInstance ? editorInstance.getValue() : ''
       const status = parseInt(editorEl.querySelector('#chapter-status').value)
-      
+
       await api.saveChapter(chapter.id, chapterName, content, status)
-      
-      const idx = chaptersList.findIndex(c => c.id === chapter.id)
-      if (idx > -1) {
-        chaptersList[idx].chapter_name = chapterName
-        chaptersList[idx].content = content
-        chaptersList[idx].status = status
-        chaptersList[idx].word_count = content.length
-      }
-      
+
       toastSuccess('保存成功！')
-      renderChapterList(root)
+      chapterListComponent.refresh()
     } catch (e) {
       console.error('保存章节失败:', e)
       toastError('保存失败: ' + e)
@@ -386,22 +367,17 @@ async function renderChapterEditor(root) {
 
 async function handleDeleteChapter(id, root) {
   const result = await confirm('确定删除此章节？', '删除确认')
-  if (result.result?.action === 'confirm') {
+  if (result) {
     try {
       await api.deleteChapter(id)
-      
-      const index = chaptersList.findIndex(c => c.id === id)
-      if (index > -1) {
-        chaptersList.splice(index, 1)
-      }
-      
+
       if (selectedChapterId === id) {
         selectedChapterId = null
         destroyCurrentEditor()
+        renderChapterEditor(root)
       }
-      
-      renderChapterList(root)
-      renderChapterEditor(root)
+
+      chapterListComponent.refresh()
       toastSuccess('删除成功！')
     } catch (e) {
       console.error('删除章节失败:', e)
@@ -432,6 +408,10 @@ function formatWordCount(count) {
 
 export function cleanup() {
   destroyCurrentEditor()
+  if (chapterListComponent) {
+    chapterListComponent.destroy()
+    chapterListComponent = null
+  }
   searchKeyword = ''
   selectedChapterId = null
   isCreating = false

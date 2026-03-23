@@ -18,8 +18,27 @@ pub async fn list_characters(
     novel_id: i32,
     page: u64,
     page_size: u64,
-) -> Result<Vec<characters::Model>, String> {
-    state.characters().find_by_novel(novel_id, page, page_size).await.map_err(|e| e.to_string())
+) -> Result<serde_json::Value, String> {
+    let items = state.characters()
+        .find_by_novel(novel_id, page, page_size)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let total_count = state.characters()
+        .count_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let total_pages = (total_count + page_size - 1) / page_size;
+
+    Ok(serde_json::json!({
+        "items": items,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "total_count": total_count,
+        "has_more": page + 1 < total_pages
+    }))
 }
 
 #[tauri::command]

@@ -58,6 +58,13 @@ impl CharacterRepository {
             .await
     }
 
+    pub async fn count_by_novel(&self, novel_id: i32) -> Result<u64, sea_orm::DbErr> {
+        CharacterEntity::find()
+            .filter(characters::Column::NovelId.eq(novel_id))
+            .count(&*self.db)
+            .await
+    }
+
     pub async fn update(&self, id: i32, params: CharacterUpdateParams) -> Result<characters::Model, sea_orm::DbErr> {
         let character = CharacterEntity::find_by_id(id)
             .one(&*self.db)
@@ -98,13 +105,6 @@ impl CharacterRepository {
     pub async fn delete(&self, id: i32) -> Result<(), sea_orm::DbErr> {
         CharacterEntity::delete_by_id(id).exec(&*self.db).await?;
         Ok(())
-    }
-
-    pub async fn count_by_novel(&self, novel_id: i32) -> Result<u64, sea_orm::DbErr> {
-        CharacterEntity::find()
-            .filter(characters::Column::NovelId.eq(novel_id))
-            .count(&*self.db)
-            .await
     }
 }
 

@@ -293,6 +293,8 @@ textarea.form-input {
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .meta-tabs {
@@ -322,9 +324,11 @@ textarea.form-input {
   color: white;
 }
 
-.meta-list-content {
+.meta-list-mount {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
+  margin-top: var(--space-md);
 }
 
 .meta-item {
@@ -638,6 +642,8 @@ textarea.form-input {
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chapter-list-header {
@@ -713,9 +719,10 @@ textarea.form-input {
   left: 8px;
 }
 
-.chapter-list {
+.chapter-list-mount {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chapter-item {
@@ -984,6 +991,8 @@ textarea.form-input {
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .character-list-header {
@@ -1004,9 +1013,10 @@ textarea.form-input {
   margin-bottom: var(--space-md);
 }
 
-.character-list {
+.character-list-mount {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .character-item {

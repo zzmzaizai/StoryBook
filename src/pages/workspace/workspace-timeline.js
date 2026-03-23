@@ -3,20 +3,17 @@ import { ICONS } from '../../lib/icons.js'
 import { toastSuccess, toastError } from '../../lib/toast.js'
 import { confirm } from '../../lib/modal.js'
 import { createMarkdownEditor } from '../../lib/markdown-editor.js'
+import { createPagedList } from '../../lib/virtual-list.js'
+import '../../style/virtual-list.css'
 
 let timelineList = []
 let editingTimeline = null
 let timelineOutlineEditor = null
 let timelineCharactersEditor = null
+let timelineListComponent = null
 
 export async function loadTimelines(novelId) {
-  try {
-    timelineList = await api.listTimelines(novelId)
-  } catch (e) {
-    console.error('加载时间线失败:', e)
-    timelineList = []
-  }
-  return timelineList
+  return { timelineList: [] }
 }
 
 export function getTimelineList() {
@@ -24,8 +21,6 @@ export function getTimelineList() {
 }
 
 export async function render(content, novelInfo) {
-  const timelines = timelineList
-
   content.innerHTML = `
     <div class="meta-layout">
       <div class="card meta-list-card">
@@ -33,29 +28,9 @@ export async function render(content, novelInfo) {
           <h3 class="card-title">${ICONS.timeline} 时间线列表</h3>
           <button id="add-timeline-btn" class="btn btn-primary btn-sm">${ICONS.plus}<span>添加</span></button>
         </div>
-        
-        <div id="timeline-list-content" class="meta-list-content">
-          ${timelines.length === 0 ? `
-            <div class="text-center text-tertiary p-lg">暂无时间线</div>
-          ` : timelines.map(tl => `
-            <div class="timeline-item" data-timeline-id="${tl.id}">
-              <div class="timeline-item-header">
-                <span class="timeline-item-name">${tl.title || '未命名时间线'}</span>
-                <div class="timeline-item-badges">
-                  <span class="timeline-chapter-badge-small">${tl.start_chapter_number || 1}</span>
-                  <span class="timeline-arrow-small">→</span>
-                  <span class="timeline-chapter-badge-small">${tl.end_chapter_number || 10}</span>
-                </div>
-                <button class="btn-icon btn-icon-danger" data-action="delete-timeline" data-timeline-id="${tl.id}">
-                  ${ICONS.delete}
-                </button>
-              </div>
-              <p class="timeline-item-preview">${(tl.description || '暂无描述').substring(0, 60)}...</p>
-            </div>
-          `).join('')}
-        </div>
+        <div id="timeline-list-mount" class="meta-list-mount"></div>
       </div>
-      
+
       <div class="card meta-editor-card">
         <div id="timeline-editor-content">
           <div class="empty-state">
@@ -68,20 +43,86 @@ export async function render(content, novelInfo) {
     </div>
   `
 
+  // 创建分页列表
+  const listMount = content.querySelector('#timeline-list-mount')
+  timelineListComponent = createPagedList({
+    containerId: 'timeline-list',
+    pageSize: 20,
+    loadMore: async (page, pageSize) => {
+      const result = await api.listTimelinesPaged(novelInfo.id, page, pageSize)
+      return {
+        items: result.items,
+        hasMore: result.has_more
+      }
+    },
+    renderItem: (tl) => {
+      const div = document.createElement('div')
+      div.className = 'timeline-list-item'
+      div.innerHTML = `
+        <div class="timeline-item-header">
+          <span class="timeline-item-name">${tl.title || '未命名时间线'}</span>
+          <div class="timeline-item-badges">
+            <span class="timeline-chapter-badge-small">${tl.start_chapter_number || 1}</span>
+            <span class="timeline-arrow-small">→</span>
+            <span class="timeline-chapter-badge-small">${tl.end_chapter_number || 10}</span>
+          </div>
+          <button class="btn-icon btn-icon-danger" data-action="delete-timeline" data-timeline-id="${tl.id}">
+            ${ICONS.delete}
+          </button>
+        </div>
+        <p class="timeline-item-preview">${(tl.description || '暂无描述').substring(0, 60)}${(tl.description || '').length > 60 ? '...' : ''}</p>
+      `
+      return div
+    },
+    onItemClick: (tl, index, el) => {
+      // 处理删除按钮
+      const deleteBtn = el.querySelector('[data-action="delete-timeline"]')
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', async (e) => {
+          e.stopPropagation()
+          const confirmed = await confirm('确定要删除这个时间线吗？', '删除确认')
+          if (confirmed) {
+            try {
+              await api.deleteTimeline(tl.id)
+              timelineList = timelineList.filter(t => t.id !== tl.id)
+              if (editingTimeline && editingTimeline.id === tl.id) {
+                editingTimeline = null
+                renderEditor(content, novelInfo)
+              }
+              toastSuccess('删除成功')
+              timelineListComponent.refresh()
+            } catch (err) {
+              toastError('删除失败: ' + err.message)
+            }
+          }
+        })
+      }
+
+      // 选中编辑
+      editingTimeline = tl
+      renderEditor(content, novelInfo)
+    },
+    emptyText: '暂无时间线'
+  })
+  listMount.appendChild(timelineListComponent.element)
+
+  // 添加按钮
   content.querySelector('#add-timeline-btn')?.addEventListener('click', async () => {
     try {
       let startChapter = 1
       let endChapter = 10
-      
-      if (timelineList.length > 0) {
-        const maxEndChapter = Math.max(...timelineList.map(t => t.end_chapter_number || 0))
+
+      // 获取当前列表中的最大章节
+      const allTimelines = await api.listTimelines(novelInfo.id)
+      if (allTimelines.length > 0) {
+        const maxEndChapter = Math.max(...allTimelines.map(t => t.end_chapter_number || 0))
         startChapter = maxEndChapter + 1
         endChapter = startChapter + 9
       }
-      
+
       const title = `第${startChapter}-${endChapter}章大纲`
       const newTimeline = await api.createTimeline(novelInfo.id, title)
-      
+
       if (newTimeline && newTimeline.id) {
         await api.updateTimeline(
           newTimeline.id,
@@ -96,49 +137,15 @@ export async function render(content, novelInfo) {
         timelineList = await api.listTimelines(novelInfo.id)
         editingTimeline = timelineList.find(t => t.id === newTimeline.id)
       }
-      
+
       toastSuccess('创建成功')
-      render(content, novelInfo)
+      timelineListComponent.refresh()
       if (editingTimeline) {
         renderEditor(content, novelInfo)
       }
     } catch (err) {
       toastError('创建失败: ' + err.message)
     }
-  })
-
-  content.querySelectorAll('[data-action="delete-timeline"]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation()
-      const timelineId = Number(btn.dataset.timelineId)
-      const confirmed = await confirm('确定要删除这个时间线吗？', '删除确认')
-      if (confirmed) {
-        try {
-          await api.deleteTimeline(timelineId)
-          timelineList = timelineList.filter(t => t.id !== timelineId)
-          if (editingTimeline && editingTimeline.id === timelineId) {
-            editingTimeline = null
-          }
-          toastSuccess('删除成功')
-          render(content, novelInfo)
-        } catch (err) {
-          toastError('删除失败: ' + err.message)
-        }
-      }
-    })
-  })
-
-  content.querySelectorAll('.timeline-item').forEach(item => {
-    item.addEventListener('click', (e) => {
-      if (e.target.closest('[data-action="delete-timeline"]')) {
-        return
-      }
-      const timelineId = Number(item.dataset.timelineId)
-      editingTimeline = timelines.find(t => t.id === timelineId)
-      if (editingTimeline) {
-        renderEditor(content, novelInfo)
-      }
-    })
   })
 
   if (editingTimeline) {
@@ -148,7 +155,7 @@ export async function render(content, novelInfo) {
 
 function renderEditor(content, novelInfo) {
   const editorContent = content.querySelector('#timeline-editor-content')
-  
+
   if (timelineOutlineEditor) {
     timelineOutlineEditor.destroy()
     timelineOutlineEditor = null
@@ -157,7 +164,7 @@ function renderEditor(content, novelInfo) {
     timelineCharactersEditor.destroy()
     timelineCharactersEditor = null
   }
-  
+
   editorContent.innerHTML = `
     <div class="meta-editor">
       <div class="meta-editor-header">
@@ -208,17 +215,10 @@ function renderEditor(content, novelInfo) {
         height: 200,
         minHeight: 150,
         value: editingTimeline.timeline_outline || '',
-        toolbar: [
-          'headings', 'bold', 'italic', 'strike', '|',
-          'list', 'ordered-list', 'check', '|',
-          'quote', 'code', 'inline-code', '|',
-          'table', 'line', '|',
-          'undo', 'redo', '|',
-          'edit-mode', 'preview', 'fullscreen',
-        ],
+        toolbar: ['headings', 'bold', 'italic', '|', 'list', 'ordered-list', '|', 'quote', 'code', '|', 'undo', 'redo'],
       })
     }
-    
+
     const charactersContainer = editorContent.querySelector('#timeline-characters-editor')
     if (charactersContainer) {
       timelineCharactersEditor = createMarkdownEditor(charactersContainer, {
@@ -226,23 +226,16 @@ function renderEditor(content, novelInfo) {
         height: 200,
         minHeight: 150,
         value: editingTimeline.characters_description || '',
-        toolbar: [
-          'headings', 'bold', 'italic', 'strike', '|',
-          'list', 'ordered-list', 'check', '|',
-          'quote', 'code', 'inline-code', '|',
-          'table', 'line', '|',
-          'undo', 'redo', '|',
-          'edit-mode', 'preview', 'fullscreen',
-        ],
+        toolbar: ['headings', 'bold', 'italic', '|', 'list', 'ordered-list', '|', 'quote', 'code', '|', 'undo', 'redo'],
       })
     }
   }, 50)
 
   editorContent.querySelector('#save-timeline-btn')?.addEventListener('click', async () => {
-    const title = editorContent.querySelector('#timeline-title').value
-    const description = editorContent.querySelector('#timeline-desc').value
-    const startChapterNumber = parseInt(editorContent.querySelector('#timeline-start').value) || 1
-    const endChapterNumber = parseInt(editorContent.querySelector('#timeline-end').value) || 10
+    const title = editorContent.querySelector('#timeline-title')?.value || ''
+    const startChapter = parseInt(editorContent.querySelector('#timeline-start')?.value || '1')
+    const endChapter = parseInt(editorContent.querySelector('#timeline-end')?.value || '10')
+    const description = editorContent.querySelector('#timeline-desc')?.value || ''
     const timelineOutline = timelineOutlineEditor ? timelineOutlineEditor.getValue() : ''
     const charactersDescription = timelineCharactersEditor ? timelineCharactersEditor.getValue() : ''
 
@@ -252,34 +245,29 @@ function renderEditor(content, novelInfo) {
         title,
         description,
         timelineOutline,
-        startChapterNumber,
-        endChapterNumber,
+        startChapter,
+        endChapter,
         charactersDescription,
         null
       )
+
+      editingTimeline.title = title
+      editingTimeline.start_chapter_number = startChapter
+      editingTimeline.end_chapter_number = endChapter
+      editingTimeline.description = description
+      editingTimeline.timeline_outline = timelineOutline
+      editingTimeline.characters_description = charactersDescription
+
       const tl = timelineList.find(t => t.id === editingTimeline.id)
       if (tl) {
         tl.title = title
+        tl.start_chapter_number = startChapter
+        tl.end_chapter_number = endChapter
         tl.description = description
-        tl.start_chapter_number = startChapterNumber
-        tl.end_chapter_number = endChapterNumber
-        tl.timeline_outline = timelineOutline
-        tl.characters_description = charactersDescription
-        editingTimeline = { ...tl }
       }
+
       toastSuccess('保存成功')
-      
-      if (timelineOutlineEditor) {
-        timelineOutlineEditor.destroy()
-        timelineOutlineEditor = null
-      }
-      if (timelineCharactersEditor) {
-        timelineCharactersEditor.destroy()
-        timelineCharactersEditor = null
-      }
-      
-      render(content, novelInfo)
-      renderEditor(content, novelInfo)
+      timelineListComponent.refresh()
     } catch (err) {
       toastError('保存失败: ' + err.message)
     }
@@ -295,6 +283,10 @@ export function cleanup() {
     timelineCharactersEditor.destroy()
     timelineCharactersEditor = null
   }
-  timelineList = []
+  if (timelineListComponent) {
+    timelineListComponent.destroy()
+    timelineListComponent = null
+  }
   editingTimeline = null
+  timelineList = []
 }

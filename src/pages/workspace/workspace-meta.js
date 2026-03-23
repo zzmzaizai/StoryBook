@@ -4,6 +4,8 @@ import { toastSuccess, toastError } from '../../lib/toast.js'
 import { confirm } from '../../lib/modal.js'
 import { createMarkdownEditor } from '../../lib/markdown-editor.js'
 import { createTabs } from '../../lib/tabs.js'
+import { createPagedList } from '../../lib/virtual-list.js'
+import '../../style/virtual-list.css'
 
 let activeMetaTab = 'added'
 let editingMeta = null
@@ -11,21 +13,16 @@ let metaDataList = []
 let metaProperties = []
 let metaEditorInstance = null
 let metaTabsComponent = null
+let metaListComponent = null
 
 export async function loadMeta(novelId) {
-  try {
-    metaDataList = await api.listMeta(novelId)
-  } catch (e) {
-    console.error('加载元数据失败:', e)
-    metaDataList = []
-  }
   try {
     metaProperties = await api.getNovelMetaProperties()
   } catch (e) {
     console.error('加载元数据属性失败:', e)
     metaProperties = []
   }
-  return { metaDataList, metaProperties }
+  return { metaProperties }
 }
 
 export function getMetaDataList() {
@@ -33,15 +30,13 @@ export function getMetaDataList() {
 }
 
 export async function render(content, novelInfo) {
-  const metas = metaDataList
-  const unaddedProps = metaProperties.filter(p => !metas.find(m => m.property_name === p.property_name))
+  const unaddedProps = metaProperties.filter(p => !metaDataList.find(m => m.property_name === p.property_name))
 
   content.innerHTML = `
     <div class="meta-layout">
       <div class="card meta-list-card">
         <div id="meta-tabs-mount"></div>
-
-        <div id="meta-list-content" class="meta-list-content"></div>
+        <div id="meta-list-mount" class="meta-list-mount"></div>
       </div>
 
       <div class="card meta-editor-card">
@@ -61,98 +56,145 @@ export async function render(content, novelInfo) {
   metaTabsComponent = createTabs({
     containerId: 'meta-tabs',
     tabs: [
-      { key: 'added', label: `已添加 (${metas.length})`, color: '#10b981' },
-      { key: 'available', label: `可添加 (${unaddedProps.length})`, color: '#6366f1' }
+      { key: 'added', label: `已添加`, color: '#10b981' },
+      { key: 'available', label: `可添加`, color: '#6366f1' }
     ],
     activeKey: activeMetaTab,
     onChange: (key) => {
       activeMetaTab = key
-      renderMetaList(content, novelInfo, metas, unaddedProps)
+      renderMetaList(content, novelInfo)
     }
   })
   tabsMount.appendChild(metaTabsComponent.element)
 
-  // 渲染列表内容
-  renderMetaList(content, novelInfo, metas, unaddedProps)
+  // 渲染列表
+  renderMetaList(content, novelInfo)
 
   if (editingMeta) {
     renderEditor(content, novelInfo)
   }
 }
 
-function renderMetaList(content, novelInfo, metas, unaddedProps) {
-  const listContent = content.querySelector('#meta-list-content')
+function renderMetaList(content, novelInfo) {
+  const listMount = content.querySelector('#meta-list-mount')
 
-  if (activeMetaTab === 'added') {
-    listContent.innerHTML = metas.length === 0 ? `
-      <div class="text-center text-tertiary p-lg">暂无元数据</div>
-    ` : metas.map(meta => `
-      <div class="meta-item" data-meta-id="${meta.id}">
-        <div class="meta-item-header">
-          <span class="meta-item-name">${meta.property_name}</span>
-          <button class="btn-icon btn-icon-danger" data-action="delete-meta" data-meta-id="${meta.id}">
-            ${ICONS.delete}
-          </button>
-        </div>
-        <p class="meta-item-preview">${(meta.property_value || '').substring(0, 50)}...</p>
-      </div>
-    `).join('')
-  } else {
-    listContent.innerHTML = unaddedProps.length === 0 ? `
-      <div class="text-center text-tertiary p-lg">所有元数据已添加</div>
-    ` : unaddedProps.map(prop => `
-      <div class="meta-item meta-item-addable" data-prop-name="${prop.property_name}">
-        <div class="meta-item-header">
-          <span class="meta-item-name">${prop.property_name}</span>
-          <button class="btn-icon" data-action="add-meta">${ICONS.plus}</button>
-        </div>
-        <p class="meta-item-desc">${prop.property_description}</p>
-      </div>
-    `).join('')
+  // 销毁旧组件
+  if (metaListComponent) {
+    metaListComponent.destroy()
+    metaListComponent = null
   }
 
-  listContent.querySelectorAll('.meta-item').forEach(item => {
-    item.addEventListener('click', async (e) => {
-      if (e.target.closest('[data-action="delete-meta"]')) {
-        const metaId = Number(e.target.closest('[data-action="delete-meta"]').dataset.metaId)
-        const confirmed = await confirm('确定要删除这个元数据吗？', '删除确认')
-        if (confirmed) {
-          try {
-            await api.deleteMeta(metaId)
-            metaDataList = metaDataList.filter(m => m.id !== metaId)
-            toastSuccess('删除成功')
-            render(content, novelInfo)
-          } catch (err) {
-            toastError('删除失败: ' + err.message)
-          }
+  if (activeMetaTab === 'added') {
+    // 已添加的元数据 - 使用分页加载
+    metaListComponent = createPagedList({
+      containerId: 'meta-added-list',
+      pageSize: 20,
+      loadMore: async (page, pageSize) => {
+        const result = await api.listMetaPaged(novelInfo.id, page, pageSize)
+        return {
+          items: result.items,
+          hasMore: result.has_more
         }
-        return
-      }
-
-      if (e.target.closest('[data-action="add-meta"]')) {
-        const propName = item.dataset.propName
-        try {
-          await api.createMeta(novelInfo.id, propName, '')
-          metaDataList = await api.listMeta(novelInfo.id)
-          activeMetaTab = 'added'
-          editingMeta = metaDataList.find(m => m.property_name === propName)
-          render(content, novelInfo)
-          if (editingMeta) {
-            renderEditor(content, novelInfo)
-          }
-        } catch (err) {
-          toastError('添加失败: ' + err.message)
+      },
+      renderItem: (meta) => {
+        const div = document.createElement('div')
+        div.className = 'meta-list-item'
+        div.innerHTML = `
+          <div class="meta-item-header">
+            <span class="meta-item-name">${meta.property_name}</span>
+            <button class="btn-icon btn-icon-danger" data-action="delete-meta" data-meta-id="${meta.id}">
+              ${ICONS.delete}
+            </button>
+          </div>
+          <p class="meta-item-preview">${(meta.property_value || '').substring(0, 50)}${(meta.property_value || '').length > 50 ? '...' : ''}</p>
+        `
+        return div
+      },
+      onItemClick: (meta, index, el) => {
+        // 处理删除按钮点击
+        const deleteBtn = el.querySelector('[data-action="delete-meta"]')
+        if (deleteBtn) {
+          deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation()
+            const confirmed = await confirm('确定要删除这个元数据吗？', '删除确认')
+            if (confirmed) {
+              try {
+                await api.deleteMeta(meta.id)
+                metaDataList = metaDataList.filter(m => m.id !== meta.id)
+                toastSuccess('删除成功')
+                // 刷新列表
+                metaListComponent.refresh()
+              } catch (err) {
+                toastError('删除失败: ' + err.message)
+              }
+            }
+          })
         }
-        return
-      }
 
-      const metaId = Number(item.dataset.metaId)
-      editingMeta = metas.find(m => m.id === metaId)
-      if (editingMeta) {
+        // 选中编辑
+        editingMeta = meta
         renderEditor(content, novelInfo)
-      }
+      },
+      emptyText: '暂无元数据'
     })
-  })
+  } else {
+    // 可添加的元数据 - 一次性加载（数量通常较少）
+    const unaddedProps = metaProperties.filter(p => !metaDataList.find(m => m.property_name === p.property_name))
+
+    metaListComponent = createPagedList({
+      containerId: 'meta-available-list',
+      pageSize: 50,
+      loadMore: async (page, pageSize) => {
+        const start = page * pageSize
+        const end = start + pageSize
+        const items = unaddedProps.slice(start, end)
+        return {
+          items: items,
+          hasMore: end < unaddedProps.length
+        }
+      },
+      renderItem: (prop) => {
+        const div = document.createElement('div')
+        div.className = 'meta-list-item'
+        div.innerHTML = `
+          <div class="meta-item-header">
+            <span class="meta-item-name">${prop.property_name}</span>
+            <button class="btn-icon" data-action="add-meta">${ICONS.plus}</button>
+          </div>
+          <p class="meta-item-preview">${prop.property_description || ''}</p>
+        `
+        return div
+      },
+      onItemClick: (prop, index, el) => {
+        // 处理添加按钮点击
+        const addBtn = el.querySelector('[data-action="add-meta"]')
+        if (addBtn) {
+          addBtn.addEventListener('click', async (e) => {
+            e.stopPropagation()
+            try {
+              await api.createMeta(novelInfo.id, prop.property_name, '')
+              const newMetaList = await api.listMeta(novelInfo.id)
+              metaDataList = newMetaList
+              activeMetaTab = 'added'
+              editingMeta = metaDataList.find(m => m.property_name === prop.property_name)
+
+              // 重新渲染整个页面
+              render(content, novelInfo)
+              if (editingMeta) {
+                renderEditor(content, novelInfo)
+              }
+              toastSuccess('添加成功')
+            } catch (err) {
+              toastError('添加失败: ' + err.message)
+            }
+          })
+        }
+      },
+      emptyText: '所有元数据已添加'
+    })
+  }
+
+  listMount.appendChild(metaListComponent.element)
 }
 
 function renderEditor(content, novelInfo) {
@@ -237,6 +279,10 @@ export function cleanup() {
   if (metaTabsComponent) {
     metaTabsComponent.destroy()
     metaTabsComponent = null
+  }
+  if (metaListComponent) {
+    metaListComponent.destroy()
+    metaListComponent = null
   }
   activeMetaTab = 'added'
   editingMeta = null

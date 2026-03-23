@@ -67,6 +67,13 @@ impl ChapterRepository {
             .await
     }
 
+    pub async fn count_by_novel(&self, novel_id: i32) -> Result<u64, sea_orm::DbErr> {
+        ChapterEntity::find()
+            .filter(chapters::Column::NovelId.eq(novel_id))
+            .count(&*self.db)
+            .await
+    }
+
     pub async fn update(&self, id: i32, params: ChapterUpdateParams) -> Result<chapters::Model, sea_orm::DbErr> {
         let chapter = ChapterEntity::find_by_id(id)
             .one(&*self.db)
@@ -99,13 +106,6 @@ impl ChapterRepository {
     pub async fn delete(&self, id: i32) -> Result<(), sea_orm::DbErr> {
         ChapterEntity::delete_by_id(id).exec(&*self.db).await?;
         Ok(())
-    }
-
-    pub async fn count_by_novel(&self, novel_id: i32) -> Result<u64, sea_orm::DbErr> {
-        ChapterEntity::find()
-            .filter(chapters::Column::NovelId.eq(novel_id))
-            .count(&*self.db)
-            .await
     }
 
     pub async fn sum_word_count_by_novel(&self, novel_id: i32) -> Result<i64, sea_orm::DbErr> {

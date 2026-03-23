@@ -1,6 +1,6 @@
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait,
-    QueryFilter, QueryOrder, Set,
+    QueryFilter, QueryOrder, Set, PaginatorTrait,
 };
 use std::sync::Arc;
 use chrono::Utc;
@@ -44,6 +44,25 @@ impl TimelineRepository {
             .filter(novel_chapter_timeline::Column::NovelId.eq(novel_id))
             .order_by_asc(novel_chapter_timeline::Column::StartChapterNumber)
             .all(&*self.db)
+            .await
+    }
+
+    pub async fn find_by_novel_paged(&self, novel_id: i32, page: u64, page_size: u64) -> Result<(Vec<novel_chapter_timeline::Model>, u64), sea_orm::DbErr> {
+        let paginator = TimelineEntity::find()
+            .filter(novel_chapter_timeline::Column::NovelId.eq(novel_id))
+            .order_by_asc(novel_chapter_timeline::Column::StartChapterNumber)
+            .paginate(&*self.db, page_size);
+
+        let items = paginator.fetch_page(page).await?;
+        let total = paginator.num_pages().await?;
+
+        Ok((items, total))
+    }
+
+    pub async fn count_by_novel(&self, novel_id: i32) -> Result<u64, sea_orm::DbErr> {
+        TimelineEntity::find()
+            .filter(novel_chapter_timeline::Column::NovelId.eq(novel_id))
+            .count(&*self.db)
             .await
     }
 

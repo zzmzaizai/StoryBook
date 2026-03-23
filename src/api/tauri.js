@@ -64,6 +64,8 @@ export const api = {
 
   createTimeline: (novelId, title) => invoke('create_timeline', { novelId, title }),
   listTimelines: (novelId) => invoke('list_timelines', { novelId }),
+  listTimelinesPaged: (novelId, page = 0, pageSize = 20) =>
+    invoke('list_timelines_paged', { novelId, page, pageSize }),
   getTimeline: (id) => invoke('get_timeline', { id }),
   updateTimeline: (id, title, description, timelineOutline, startChapterNumber, endChapterNumber, charactersDescription, chapterMetas) =>
     invoke('update_timeline', { id, title, description, timelineOutline, startChapterNumber, endChapterNumber, charactersDescription, chapterMetas }),
@@ -73,6 +75,8 @@ export const api = {
   createMeta: (novelId, propertyName, propertyValue) =>
     invoke('create_meta', { novelId, propertyName, propertyValue }),
   listMeta: (novelId) => invoke('list_meta', { novelId }),
+  listMetaPaged: (novelId, page = 0, pageSize = 20) =>
+    invoke('list_meta_paged', { novelId, page, pageSize }),
   getMeta: (id) => invoke('get_meta', { id }),
   getMetaByName: (novelId, propertyName) =>
     invoke('get_meta_by_name', { novelId, propertyName }),
