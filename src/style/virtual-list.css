@@ -109,7 +109,21 @@
 .paged-list-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
+}
+
+.paged-list-content::-webkit-scrollbar {
+  width: 1px;
+}
+
+.paged-list-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.paged-list-content::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 1px;
 }
 
 .paged-list-item {
@@ -127,6 +141,10 @@
 
 .paged-list-item:active {
   background-color: var(--bg-card-hover);
+}
+
+.paged-list-item:hover .list-item-delete-btn {
+  opacity: 1;
 }
 
 .paged-list-loading {
@@ -202,8 +220,43 @@
 
 .chapter-list-item {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  position: relative;
+}
+
+.chapter-list-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.chapter-list-item:hover .list-item-delete-btn {
+  opacity: 1;
+}
+
+.chapter-list-item.active {
+  background: var(--accent-muted);
+}
+
+.chapter-list-item.active .list-item-delete-btn {
+  opacity: 1;
+}
+
+.chapter-item-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.chapter-item-number-wrap {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .chapter-item-number {
@@ -212,33 +265,47 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--text-secondary);
   flex-shrink: 0;
 }
 
-.chapter-item-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.chapter-list-item.active .chapter-item-number {
+  background: var(--accent);
+  color: white;
 }
 
-.chapter-item-name {
+.chapter-item-version {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  line-height: 1;
+}
+
+.chapter-item-title {
+  flex: 1;
+  min-width: 0;
   font-weight: 500;
   color: var(--text-primary);
   font-size: var(--font-size-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 28px;
 }
 
-.chapter-item-status {
+.chapter-item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-left: 36px;
   font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.chapter-item-words {
   color: var(--text-tertiary);
 }
 
@@ -246,33 +313,53 @@
 
 .character-list-item {
   display: flex;
-  align-items: center;
-  gap: var(--space-sm);
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  position: relative;
 }
 
-.character-item-avatar {
-  width: 32px;
-  height: 32px;
+.character-list-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.character-list-item:hover .list-item-delete-btn {
+  opacity: 1;
+}
+
+.character-list-item.active {
+  background: var(--accent-muted);
+}
+
+.character-list-item.active .list-item-delete-btn {
+  opacity: 1;
+}
+
+.character-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.character-avatar {
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent-muted);
   border-radius: 50%;
   font-size: var(--font-size-sm);
   font-weight: 600;
-  color: var(--accent);
+  color: white;
   flex-shrink: 0;
 }
 
-.character-item-info {
+.character-item-name {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.character-item-name {
   font-weight: 500;
   color: var(--text-primary);
   font-size: var(--font-size-sm);
@@ -281,9 +368,54 @@
   text-overflow: ellipsis;
 }
 
-.character-item-role {
+.character-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--font-size-xs);
   color: var(--text-tertiary);
+  flex-wrap: wrap;
+}
+
+.character-item-meta .badge {
+  font-size: 10px;
+}
+
+/* ========== 列表项间隔器 ========== */
+
+.chapter-item-spacer,
+.character-item-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+
+/* ========== 列表项删除按钮样式 ========== */
+
+.list-item-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  opacity: 0;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.list-item-delete-btn:hover {
+  background: var(--error-muted);
+  color: var(--error);
+}
+
+.list-item-delete-btn svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* ========== 响应式 ========== */

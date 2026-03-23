@@ -89,45 +89,46 @@ export async function render() {
       const div = document.createElement('div')
       div.className = `character-list-item ${selectedCharacterId === item.id ? 'active' : ''}`
       div.dataset.id = item.id
+      const displayName = item.nickname 
+        ? `${item.name || '未命名'}（${item.nickname}）` 
+        : (item.name || '未命名')
       div.innerHTML = `
-        <div class="character-avatar" style="background-color: ${getAvatarColor(item.id)}">
-          ${(item.name || 'N').charAt(0)}
+        <div class="character-item-header">
+          <div class="character-item-name">${displayName}</div>
         </div>
-        <div class="character-item-content">
-          <div class="character-item-name">${item.name || '未命名'}</div>
-          <div class="character-item-meta">
-            <span class="badge badge-sm">${ENUMS.CharacterRoleAttribute[item.role_attribute] || '角色'}</span>
-            <span class="character-item-gender">${ENUMS.CharacterGender[item.gender] || '未知'}</span>
-          </div>
+        <div class="character-item-meta">
+          <span class="badge badge-sm">${ENUMS.CharacterRoleAttribute[item.role_attribute] || '角色'}</span>
+          <span class="badge badge-sm badge-secondary">${ENUMS.CharacterGender[item.gender] || '未知'}</span>
+          <span class="badge badge-sm badge-secondary">${ENUMS.CharacterType[item.character_type] || '人类'}</span>
+          ${item.age ? `<span class="badge badge-sm badge-secondary">${item.age}岁</span>` : ''}
+          <span class="character-item-spacer"></span>
+          <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
+            ${ICONS.delete}
+          </button>
         </div>
-        <button class="btn-icon btn-icon-danger character-delete-btn" data-action="delete" data-id="${item.id}">
-          ${ICONS.delete}
-        </button>
       `
-      return div
-    },
-    onItemClick: (item, index, el) => {
-      // 处理删除按钮
-      const deleteBtn = el.querySelector('[data-action="delete"]')
+      
+      const deleteBtn = div.querySelector('[data-action="delete"]')
       if (deleteBtn) {
         deleteBtn.addEventListener('click', async (e) => {
           e.stopPropagation()
-          await handleDeleteCharacter(item.id, el.closest('.page'))
+          await handleDeleteCharacter(item.id, document.querySelector('.page'))
         })
       }
-
-      // 选中编辑
+      
+      return div
+    },
+    onItemClick: (item, index, el) => {
       selectedCharacterId = item.id
       isCreating = false
 
-      // 更新选中状态
       const listContainer = el.closest('.paged-list-content')
       if (listContainer) {
         listContainer.querySelectorAll('.character-list-item').forEach(i => i.classList.remove('active'))
-        el.classList.add('active')
+        el.querySelector('.character-list-item')?.classList.add('active')
       }
 
-      renderCharacterEditor(el.closest('.page'))
+      renderCharacterEditor(document.querySelector('.page'))
     },
     emptyText: '暂无角色'
   })

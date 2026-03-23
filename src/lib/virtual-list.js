@@ -118,7 +118,7 @@ export function createVirtualList(options) {
     }
 
     el.addEventListener('click', () => {
-      onItemClick?.(item, index)
+      onItemClick?.(item, index, el)
     })
 
     return el
@@ -346,7 +346,7 @@ export function createPagedList(options) {
     }
 
     el.addEventListener('click', () => {
-      onItemClick?.(item, index)
+      onItemClick?.(item, index, el)
     })
 
     return el

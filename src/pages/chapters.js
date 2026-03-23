@@ -93,44 +93,45 @@ export async function render() {
       div.className = `chapter-list-item ${selectedChapterId === item.id ? 'active' : ''}`
       div.dataset.id = item.id
       div.innerHTML = `
-        <div class="chapter-item-number">${item.chapter_number}</div>
-        <div class="chapter-item-content">
-          <div class="chapter-item-title">${item.chapter_name || '未命名章节'}</div>
-          <div class="chapter-item-meta">
-            <span class="badge badge-sm ${getStatusBadgeClass(item.status)}">${ENUMS.NovelChapterStatus[item.status] || '起草'}</span>
-            <span class="chapter-item-words">${formatWordCount(item.word_count)}</span>
-            ${item.version > 1 ? `<span class="chapter-item-version">v${item.version}</span>` : ''}
+        <div class="chapter-item-header">
+          <div class="chapter-item-number-wrap">
+            <div class="chapter-item-number">${item.chapter_number}</div>
+            ${item.version > 1 ? `<div class="chapter-item-version">v${item.version}</div>` : ''}
           </div>
+          <div class="chapter-item-title">${item.chapter_name || '未命名章节'}</div>
         </div>
-        <button class="btn-icon btn-icon-danger chapter-delete-btn" data-action="delete" data-id="${item.id}">
-          ${ICONS.delete}
-        </button>
+        <div class="chapter-item-meta">
+          <span class="badge badge-sm ${getStatusBadgeClass(item.status)}">${ENUMS.NovelChapterStatus[item.status] || '起草'}</span>
+          <span class="chapter-item-words">${formatWordCount(item.word_count)}</span>
+          <span class="chapter-item-spacer"></span>
+          <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
+            ${ICONS.delete}
+          </button>
+        </div>
       `
-      return div
-    },
-    onItemClick: (item, index, el) => {
-      // 处理删除按钮
-      const deleteBtn = el.querySelector('[data-action="delete"]')
+      
+      const deleteBtn = div.querySelector('[data-action="delete"]')
       if (deleteBtn) {
         deleteBtn.addEventListener('click', async (e) => {
           e.stopPropagation()
-          await handleDeleteChapter(item.id, el.closest('.page'))
+          await handleDeleteChapter(item.id, document.querySelector('.page'))
         })
       }
-
-      // 选中编辑
+      
+      return div
+    },
+    onItemClick: (item, index, el) => {
       selectedChapterId = item.id
       isCreating = false
 
-      // 更新选中状态
       const listContainer = el.closest('.paged-list-content')
       if (listContainer) {
         listContainer.querySelectorAll('.chapter-list-item').forEach(i => i.classList.remove('active'))
-        el.classList.add('active')
+        el.querySelector('.chapter-list-item')?.classList.add('active')
       }
 
       destroyCurrentEditor()
-      renderChapterEditor(el.closest('.page'))
+      renderChapterEditor(document.querySelector('.page'))
     },
     emptyText: '暂无章节'
   })
