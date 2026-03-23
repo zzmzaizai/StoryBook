@@ -181,45 +181,7 @@
   color: var(--text-tertiary);
 }
 
-/* 工作台页面 */
-.workspace-tabs {
-  display: flex;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-lg);
-  border-bottom: 1px solid var(--border-primary);
-  padding-bottom: var(--space-sm);
-}
-
-.workspace-tab {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-sm) var(--space-md);
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  transition: all 0.2s ease;
-}
-
-.workspace-tab svg {
-  width: 16px;
-  height: 16px;
-}
-
-.workspace-tab:hover {
-  color: var(--text-primary);
-  background: var(--bg-tertiary);
-}
-
-.workspace-tab.active {
-  color: var(--accent);
-  background: var(--bg-tertiary);
-  border-bottom: 2px solid var(--accent);
-  margin-bottom: -1px;
-}
+/* 工作台页面 - 使用 tabs.css 组件样式 */
 
 .workspace-content {
   animation: fadeIn 0.2s ease;

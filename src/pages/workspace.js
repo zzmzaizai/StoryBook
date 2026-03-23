@@ -5,7 +5,9 @@ import { store } from '../state/store.js'
 import { api } from '../api/tauri.js'
 import { navigate } from '../router.js'
 import { ICONS } from '../lib/icons.js'
+import { createTabs } from '../lib/tabs.js'
 import '../style/editor.css'
+import '../style/tabs.css'
 
 import * as basicTab from './workspace/workspace-basic.js'
 import * as metaTab from './workspace/workspace-meta.js'
@@ -13,6 +15,7 @@ import * as timelineTab from './workspace/workspace-timeline.js'
 import * as workflowTab from './workspace/workspace-workflow.js'
 
 let activeTab = 'basic'
+let tabsComponent = null
 
 export async function render() {
   const el = document.createElement('div')
@@ -20,7 +23,7 @@ export async function render() {
 
   const novelId = store.currentNovelId
   let novelInfo = null
-  
+
   if (novelId) {
     try {
       novelInfo = await api.getNovel(novelId)
@@ -37,23 +40,10 @@ export async function render() {
       <h1 class="page-title">工作台</h1>
       <p class="page-subtitle">正在管理"${novelInfo ? novelInfo.title : '未知'}"小说</p>
     </div>
-    
+
     ${novelInfo ? `
-      <div class="workspace-tabs">
-        <button class="workspace-tab ${activeTab === 'basic' ? 'active' : ''}" data-tab="basic">
-          ${ICONS.edit}<span>基础</span>
-        </button>
-        <button class="workspace-tab ${activeTab === 'meta' ? 'active' : ''}" data-tab="meta">
-          ${ICONS.meta}<span>元数据</span>
-        </button>
-        <button class="workspace-tab ${activeTab === 'timeline' ? 'active' : ''}" data-tab="timeline">
-          ${ICONS.timeline}<span>时间线</span>
-        </button>
-        <button class="workspace-tab ${activeTab === 'workflow' ? 'active' : ''}" data-tab="workflow">
-          ${ICONS.workflow}<span>流程</span>
-        </button>
-      </div>
-      
+      <div id="workspace-tabs-mount"></div>
+
       <div id="tab-content" class="workspace-content"></div>
     ` : `
       <div class="empty-state">
@@ -72,15 +62,25 @@ export async function render() {
     return el
   }
 
-  el.querySelectorAll('.workspace-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      activeTab = tab.dataset.tab
-      el.querySelectorAll('.workspace-tab').forEach(t => t.classList.remove('active'))
-      tab.classList.add('active')
+  // 创建 Tabs 组件
+  const tabsMount = el.querySelector('#workspace-tabs-mount')
+  tabsComponent = createTabs({
+    containerId: 'workspace-tabs',
+    tabs: [
+      { key: 'basic', label: '基础', icon: ICONS.edit, color: '#6366f1' },
+      { key: 'meta', label: '元数据', icon: ICONS.meta, color: '#8b5cf6' },
+      { key: 'timeline', label: '时间线', icon: ICONS.timeline, color: '#3b82f6' },
+      { key: 'workflow', label: '流程', icon: ICONS.workflow, color: '#f59e0b' }
+    ],
+    activeKey: activeTab,
+    onChange: (key) => {
+      activeTab = key
       renderTabContent(el, novelInfo)
-    })
+    }
   })
+  tabsMount.appendChild(tabsComponent.element)
 
+  // 初始渲染内容
   renderTabContent(el, novelInfo)
 
   return el
@@ -88,7 +88,7 @@ export async function render() {
 
 function renderTabContent(el, novelInfo) {
   const content = el.querySelector('#tab-content')
-  
+
   switch (activeTab) {
     case 'basic':
       basicTab.render(content, novelInfo)
@@ -107,6 +107,10 @@ function renderTabContent(el, novelInfo) {
 
 export function cleanup() {
   activeTab = 'basic'
+  if (tabsComponent) {
+    tabsComponent.destroy()
+    tabsComponent = null
+  }
   basicTab.cleanup()
   metaTab.cleanup()
   timelineTab.cleanup()

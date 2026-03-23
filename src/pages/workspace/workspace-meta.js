@@ -3,12 +3,14 @@ import { ICONS } from '../../lib/icons.js'
 import { toastSuccess, toastError } from '../../lib/toast.js'
 import { confirm } from '../../lib/modal.js'
 import { createMarkdownEditor } from '../../lib/markdown-editor.js'
+import { createTabs } from '../../lib/tabs.js'
 
 let activeMetaTab = 'added'
 let editingMeta = null
 let metaDataList = []
 let metaProperties = []
 let metaEditorInstance = null
+let metaTabsComponent = null
 
 export async function loadMeta(novelId) {
   try {
@@ -37,14 +39,11 @@ export async function render(content, novelInfo) {
   content.innerHTML = `
     <div class="meta-layout">
       <div class="card meta-list-card">
-        <div class="meta-tabs">
-          <button class="meta-tab ${activeMetaTab === 'added' ? 'active' : ''}" data-meta-tab="added">已添加 (${metas.length})</button>
-          <button class="meta-tab ${activeMetaTab === 'available' ? 'active' : ''}" data-meta-tab="available">可添加 (${unaddedProps.length})</button>
-        </div>
-        
+        <div id="meta-tabs-mount"></div>
+
         <div id="meta-list-content" class="meta-list-content"></div>
       </div>
-      
+
       <div class="card meta-editor-card">
         <div id="meta-editor-content">
           <div class="empty-state">
@@ -57,8 +56,33 @@ export async function render(content, novelInfo) {
     </div>
   `
 
+  // 创建 Tabs 组件
+  const tabsMount = content.querySelector('#meta-tabs-mount')
+  metaTabsComponent = createTabs({
+    containerId: 'meta-tabs',
+    tabs: [
+      { key: 'added', label: `已添加 (${metas.length})`, color: '#10b981' },
+      { key: 'available', label: `可添加 (${unaddedProps.length})`, color: '#6366f1' }
+    ],
+    activeKey: activeMetaTab,
+    onChange: (key) => {
+      activeMetaTab = key
+      renderMetaList(content, novelInfo, metas, unaddedProps)
+    }
+  })
+  tabsMount.appendChild(metaTabsComponent.element)
+
+  // 渲染列表内容
+  renderMetaList(content, novelInfo, metas, unaddedProps)
+
+  if (editingMeta) {
+    renderEditor(content, novelInfo)
+  }
+}
+
+function renderMetaList(content, novelInfo, metas, unaddedProps) {
   const listContent = content.querySelector('#meta-list-content')
-  
+
   if (activeMetaTab === 'added') {
     listContent.innerHTML = metas.length === 0 ? `
       <div class="text-center text-tertiary p-lg">暂无元数据</div>
@@ -87,15 +111,6 @@ export async function render(content, novelInfo) {
     `).join('')
   }
 
-  content.querySelectorAll('.meta-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      activeMetaTab = tab.dataset.metaTab
-      content.querySelectorAll('.meta-tab').forEach(t => t.classList.remove('active'))
-      tab.classList.add('active')
-      render(content, novelInfo)
-    })
-  })
-
   listContent.querySelectorAll('.meta-item').forEach(item => {
     item.addEventListener('click', async (e) => {
       if (e.target.closest('[data-action="delete-meta"]')) {
@@ -113,7 +128,7 @@ export async function render(content, novelInfo) {
         }
         return
       }
-      
+
       if (e.target.closest('[data-action="add-meta"]')) {
         const propName = item.dataset.propName
         try {
@@ -130,7 +145,7 @@ export async function render(content, novelInfo) {
         }
         return
       }
-      
+
       const metaId = Number(item.dataset.metaId)
       editingMeta = metas.find(m => m.id === metaId)
       if (editingMeta) {
@@ -138,22 +153,18 @@ export async function render(content, novelInfo) {
       }
     })
   })
-
-  if (editingMeta) {
-    renderEditor(content, novelInfo)
-  }
 }
 
 function renderEditor(content, novelInfo) {
   const editorContent = content.querySelector('#meta-editor-content')
   const propDef = metaProperties.find(p => p.property_name === editingMeta.property_name)
   const propDesc = propDef ? propDef.property_description : ''
-  
+
   if (metaEditorInstance) {
     metaEditorInstance.destroy()
     metaEditorInstance = null
   }
-  
+
   editorContent.innerHTML = `
     <div class="meta-editor">
       <div class="meta-editor-header">
@@ -200,12 +211,12 @@ function renderEditor(content, novelInfo) {
         meta.property_value = value
       }
       toastSuccess('保存成功')
-      
+
       if (metaEditorInstance) {
         metaEditorInstance.destroy()
         metaEditorInstance = null
       }
-      
+
       render(content, novelInfo)
       renderEditor(content, novelInfo)
     } catch (err) {
@@ -222,6 +233,10 @@ export function cleanup() {
   if (metaEditorInstance) {
     metaEditorInstance.destroy()
     metaEditorInstance = null
+  }
+  if (metaTabsComponent) {
+    metaTabsComponent.destroy()
+    metaTabsComponent = null
   }
   activeMetaTab = 'added'
   editingMeta = null
