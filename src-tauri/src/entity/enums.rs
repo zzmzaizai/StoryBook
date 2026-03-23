@@ -26,16 +26,6 @@ pub enum NovelStyle {
     Wuxia = 9,
     /// 仙侠
     Xianxia = 10,
-    /// 剧本
-    Script = 11,
-    /// 论文
-    Thesis = 12,
-    /// 散文
-    Essay = 13,
-    /// 诗歌
-    Poetry = 14,
-    /// 报告
-    Report = 15,
 }
 
 impl NovelStyle {
@@ -52,11 +42,6 @@ impl NovelStyle {
             NovelStyle::Historical => "历史",
             NovelStyle::Wuxia => "武侠",
             NovelStyle::Xianxia => "仙侠",
-            NovelStyle::Script => "剧本",
-            NovelStyle::Thesis => "论文",
-            NovelStyle::Essay => "散文",
-            NovelStyle::Poetry => "诗歌",
-            NovelStyle::Report => "报告",
         }
     }
 }

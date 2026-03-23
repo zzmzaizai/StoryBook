@@ -123,11 +123,6 @@ StoryBook 是一款**功能强大**、**轻量高效**、**特性丰富**的跨�
 | 历史 | 历史题材 |
 | 武侠 | 武侠江湖 |
 | 仙侠 | 修仙玄幻 |
-| 剧本 | 影视剧本 |
-| 论文 | 学术写作 |
-| 散文 | 散文随笔 |
-| 诗歌 | 诗词歌赋 |
-| 报告 | 报告文档 |
 
 ## 技术栈
 
@@ -309,6 +304,10 @@ npm run tauri build
 
 - Gitee: https://gitee.com/zzmzaizai/storybook
 - GitHub: https://github.com/zzmzaizai/storybook
+
+## Star 历史
+
+[![Star History Chart](https://api.star-history.com/svg?repos=zzmzaizai/storybook&type=Date)](https://star-history.com/#zzmzaizai/storybook&Date)
 
 ---
 

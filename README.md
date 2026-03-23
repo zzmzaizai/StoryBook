@@ -123,11 +123,6 @@ Whether you're writing a short story, a full-length novel, a screenplay, or even
 | Historical | Historical themes |
 | Wuxia | Martial arts |
 | Xianxia | Cultivation fantasy |
-| Script | Screenplays |
-| Thesis | Academic writing |
-| Essay | Essays |
-| Poetry | Poems |
-| Report | Reports |
 
 ## Tech Stack
 
@@ -309,6 +304,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Gitee: https://gitee.com/zzmzaizai/storybook
 - GitHub: https://github.com/zzmzaizai/storybook
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=zzmzaizai/storybook&type=Date)](https://star-history.com/#zzmzaizai/storybook&Date)
 
 ---
 
