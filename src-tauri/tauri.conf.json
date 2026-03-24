@@ -43,10 +43,12 @@
   },
   "plugins": {
     "updater": {
+      "active": true,
       "endpoints": [
         "https://github.com/zzmzaizai/storybook/releases/latest/download/latest.json"
       ],
-      "pubkey": ""
+      "dialog": true,
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJERjM4QjBDQjRBNkU3NjMKUldUa3dLZWJrU3V5ZHN4Z3lBcHZrQlBLU2d4a2h6eXl4Z3lBcHZrQlBLU2c9Cg=="
     }
   }
 }

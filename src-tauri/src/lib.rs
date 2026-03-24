@@ -6,11 +6,13 @@ mod entity;
 mod seeds;
 mod constants;
 mod tray;
+mod storage;
 
 use std::sync::Arc;
 use tauri::Manager;
 use commands::AppState;
 use db::init_db;
+use storage::StorageManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,8 +25,12 @@ pub fn run() {
             let handle = app.handle().clone();
             
             tauri::async_runtime::block_on(async {
-                let db = init_db().await.expect("数据库初始化失败");
+                let storage = StorageManager::new().expect("存储目录初始化失败");
+                storage.init_directories().expect("目录结构创建失败");
+                
+                let db = init_db(&storage).await.expect("数据库初始化失败");
                 handle.manage(AppState { db: Arc::new(db) });
+                handle.manage(storage);
             });
             
             tray::setup_tray(app.handle())?;

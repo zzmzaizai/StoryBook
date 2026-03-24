@@ -1,8 +1,11 @@
 use sea_orm::{Database, DatabaseConnection, Statement, ConnectionTrait, EntityTrait, Set, ActiveModelTrait, PaginatorTrait};
 use chrono::Utc;
+use crate::storage::StorageManager;
 
-pub async fn init_db() -> Result<DatabaseConnection, sea_orm::DbErr> {
-    let db = Database::connect("sqlite:novel_editor.db?mode=rwc").await?;
+pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea_orm::DbErr> {
+    let db_path = storage.get_db_path();
+    let db_url = format!("sqlite:{}?mode=rwc", db_path.display());
+    let db = Database::connect(&db_url).await?;
 
     db.execute(Statement::from_string(
         db.get_database_backend(),
