@@ -3,16 +3,20 @@ pub mod chapters;
 pub mod characters;
 pub mod timeline;
 pub mod meta;
+pub mod llm_config;
+pub mod agent_config;
 
 pub use novels::*;
 pub use chapters::*;
 pub use characters::*;
 pub use timeline::*;
 pub use meta::*;
+pub use llm_config::*;
+pub use agent_config::*;
 
 use std::sync::Arc;
 use sea_orm::DatabaseConnection;
-use crate::repository::{NovelRepository, ChapterRepository, CharacterRepository, TimelineRepository, MetaRepository};
+use crate::repository::{NovelRepository, ChapterRepository, CharacterRepository, TimelineRepository, MetaRepository, LlmConfigRepository, AgentConfigRepository};
 
 pub struct AppState {
     pub db: Arc<DatabaseConnection>,
@@ -37,5 +41,13 @@ impl AppState {
 
     pub fn meta(&self) -> MetaRepository {
         MetaRepository::new(self.db.clone())
+    }
+
+    pub fn llm_configs(&self) -> LlmConfigRepository {
+        LlmConfigRepository::new(self.db.clone())
+    }
+
+    pub fn agent_configs(&self) -> AgentConfigRepository {
+        AgentConfigRepository::new(self.db.clone())
     }
 }

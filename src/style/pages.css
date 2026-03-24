@@ -1352,13 +1352,38 @@ textarea.form-input {
   gap: var(--space-sm);
 }
 
-.api-key-item {
+.api-key-list {
   display: flex;
+  flex-direction: column;
   gap: var(--space-sm);
 }
 
-.api-key-input {
+.api-key-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.api-key-item .api-key-input {
   flex: 1;
+  padding-right: 40px;
+}
+
+.api-key-item .btn-icon {
+  flex-shrink: 0;
+}
+
+.api-key-item .api-key-toggle {
+  margin-left: -36px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--space-xs);
+}
+
+.api-key-item .api-key-toggle:hover {
+  color: var(--text-secondary);
 }
 
 .capability-options {

@@ -12,5 +12,7 @@ pub mod novel_chapter_meta;
 pub mod novel_chapter_history;
 pub mod novel_chapter_version;
 pub mod novel_chapter_timeline;
+pub mod llm_config;
+pub mod agent_config;
 
 pub use enums::*;

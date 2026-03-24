@@ -1,67 +1,22 @@
 /**
- * LLM配置页面
+ * LLM 配置页面
+ * 
+ * 管理大语言模型配置，支持多个 Provider 和 Model
  */
 import { ICONS } from '../lib/icons.js'
+import { invoke } from '@tauri-apps/api/core'
 
-const LLM_PROVIDER_TYPES = {
-  10: 'OpenAI',
-  20: 'OpenAI Responses',
-  30: 'Anthropic',
-  40: 'Google',
-  100: 'Ollama'
-}
-
-const CONFIGURATOR_TYPES = {
-  1: '预设模式',
-  2: '进阶模式'
-}
-
-const VENDOR_PROVIDERS = [
-  { name: 'OpenAI', type: 'OpenAI', baseUrl: 'https://api.openai.com/v1', models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo', 'o1-preview', 'o1-mini'] },
-  { name: 'Anthropic', type: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', models: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'] },
-  { name: 'Google', type: 'Google', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro'] },
-  { name: 'DeepSeek', type: 'OpenAI', baseUrl: 'https://api.deepseek.com/v1', models: ['deepseek-chat', 'deepseek-coder', 'deepseek-reasoner'] },
-  { name: 'Moonshot', type: 'OpenAI', baseUrl: 'https://api.moonshot.cn/v1', models: ['moonshot-v1-8k', 'moonshot-v1-32k', 'moonshot-v1-128k'] },
-  { name: 'ZhipuAI', type: 'OpenAI', baseUrl: 'https://open.bigmodel.cn/api/paas/v4', models: ['glm-4', 'glm-4-flash', 'glm-4-plus', 'glm-4-air'] },
-  { name: 'Qwen', type: 'OpenAI', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', models: ['qwen-turbo', 'qwen-plus', 'qwen-max', 'qwen-max-longcontext'] },
-  { name: 'Ollama', type: 'Ollama', baseUrl: 'http://localhost:11434/v1', models: ['llama3.2', 'llama3.1', 'qwen2.5', 'mistral', 'codellama'] },
+// 支持的 Provider 列表
+const PROVIDER_OPTIONS = [
+  { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
+  { value: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1' },
+  { value: 'gemini', label: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta' },
+  { value: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434/v1' },
 ]
 
-const DEMO_LLM_CONFIGS = [
-  { id: 1, vendorName: 'OpenAI', providerType: 10, configuratorType: 1, modelName: 'gpt-4o', apiEndpoint: 'https://api.openai.com/v1', isActive: true, isDefault: true, contextLength: 128000, maxOutputTokens: 4096, capabilities: 153 },
-  { id: 2, vendorName: 'DeepSeek', providerType: 10, configuratorType: 1, modelName: 'deepseek-chat', apiEndpoint: 'https://api.deepseek.com/v1', isActive: true, isDefault: false, contextLength: 64000, maxOutputTokens: 4096, capabilities: 5 },
-  { id: 3, vendorName: 'Ollama', providerType: 100, configuratorType: 1, modelName: 'llama3.2', apiEndpoint: 'http://localhost:11434/v1', isActive: false, isDefault: false, contextLength: 8192, maxOutputTokens: 4096, capabilities: 5 },
-]
-
-let selectedLLMId = null
+let configs = []
+let selectedId = null
 let isCreating = false
-let configuratorType = 1
-let selectedVendor = null
-let isCustomModel = false
-
-const formData = {
-  vendorName: '',
-  providerType: 10,
-  apiEndpoint: '',
-  apiKeys: [''],
-  modelName: '',
-  apiVersion: '',
-  deploymentName: '',
-  contextLength: 8192,
-  maxOutputTokens: 4096,
-  maxInputTokens: 4096,
-  capabilities: 5,
-  inputPricePer1K: 0,
-  outputPricePer1K: 0,
-  isActive: true,
-  isDefault: false,
-}
-
-const capabilities = {
-  supportImageInput: false,
-  supportFunctionCalling: false,
-  supportDeepThinking: false,
-}
 
 export async function render() {
   const el = document.createElement('div')
@@ -69,65 +24,99 @@ export async function render() {
 
   el.innerHTML = `
     <div class="page-header">
-      <h1 class="page-title">LLM设置</h1>
-      <p class="page-subtitle">配置大语言模型API</p>
+      <h1 class="page-title">LLM 配置</h1>
+      <p class="page-subtitle">管理大语言模型配置</p>
     </div>
     
     <div class="llm-layout">
       <div class="card llm-list-card">
         <div class="llm-list-header">
           <h3 class="card-title">${ICONS.settings} 配置列表</h3>
-          <span class="llm-count">共 ${DEMO_LLM_CONFIGS.length} 个配置</span>
+          <span class="llm-count" id="config-count">加载中...</span>
         </div>
         
         <div class="llm-toolbar">
-          <button id="create-llm-btn" class="btn btn-primary btn-sm">${ICONS.plus}<span>新增</span></button>
+          <button id="create-btn" class="btn btn-primary btn-sm">${ICONS.plus}<span>新增配置</span></button>
         </div>
         
-        <div id="llm-list" class="llm-list"></div>
+        <div id="llm-list" class="llm-list">
+          <div class="text-center text-tertiary p-lg">加载中...</div>
+        </div>
       </div>
       
       <div class="card llm-editor-card">
-        <div id="llm-editor"></div>
+        <div id="llm-editor">
+          <div class="empty-state">
+            <div class="empty-state-icon">${ICONS.settings}</div>
+            <div class="empty-state-title">选择配置</div>
+            <div class="empty-state-desc">从左侧列表选择配置进行编辑，或点击新增创建配置</div>
+          </div>
+        </div>
       </div>
     </div>
   `
 
-  await loadLLMList(el)
-
-  el.querySelector('#create-llm-btn')?.addEventListener('click', () => {
+  el.querySelector('#create-btn')?.addEventListener('click', () => {
     isCreating = true
-    selectedLLMId = null
-    resetFormData()
-    renderLLMEditor(el)
+    selectedId = null
+    renderEditor(el)
   })
+
+  await loadConfigs(el)
 
   return el
 }
 
-async function loadLLMList(root) {
-  const listEl = root.querySelector('#llm-list')
-
-  listEl.innerHTML = DEMO_LLM_CONFIGS.map(item => `
-    <div class="llm-item ${selectedLLMId === item.id ? 'active' : ''}" data-id="${item.id}">
-      <div class="llm-item-header">
-        <span class="llm-item-name">${item.vendorName || '未命名配置'}</span>
-        ${item.isDefault ? `<span class="badge badge-warning badge-sm">默认</span>` : ''}
+async function loadConfigs(root) {
+  try {
+    configs = await invoke('list_llm_configs')
+    renderList(root)
+  } catch (err) {
+    console.error('加载 LLM 配置失败:', err)
+    root.querySelector('#llm-list').innerHTML = `
+      <div class="text-center text-danger p-lg">
+        <p>加载失败: ${err}</p>
+        <button class="btn btn-primary btn-sm mt-sm" onclick="location.reload()">重试</button>
       </div>
-      <div class="llm-item-model">${item.modelName || '-'}</div>
+    `
+  }
+}
+
+function renderList(root) {
+  const listEl = root.querySelector('#llm-list')
+  const countEl = root.querySelector('#config-count')
+  
+  countEl.textContent = `共 ${configs.length} 个配置`
+
+  if (configs.length === 0) {
+    listEl.innerHTML = `
+      <div class="text-center text-tertiary p-lg">
+        <p>暂无配置</p>
+        <p class="text-sm mt-xs">点击上方按钮创建</p>
+      </div>
+    `
+    return
+  }
+
+  listEl.innerHTML = configs.map(config => `
+    <div class="llm-item ${selectedId === config.id ? 'active' : ''}" data-id="${config.id}">
+      <div class="llm-item-header">
+        <span class="llm-item-name">${escapeHtml(config.name)}</span>
+        ${config.is_default ? `<span class="badge badge-warning badge-sm">默认</span>` : ''}
+      </div>
+      <div class="llm-item-model">${escapeHtml(config.model)}</div>
       <div class="llm-item-meta">
-        <span class="badge badge-sm">${LLM_PROVIDER_TYPES[item.providerType] || 'OpenAI'}</span>
-        <span class="badge badge-sm ${item.configuratorType === 1 ? 'badge-success' : 'badge-info'}">${item.configuratorType === 1 ? '预设' : '进阶'}</span>
-        <span class="badge badge-sm ${item.isActive ? 'badge-success' : 'badge-secondary'}">${item.isActive ? '激活' : '未激活'}</span>
+        <span class="badge badge-sm">${escapeHtml(config.provider)}</span>
+        <span class="badge badge-sm ${config.enabled ? 'badge-success' : 'badge-secondary'}">${config.enabled ? '启用' : '禁用'}</span>
       </div>
       <div class="llm-item-actions">
-        <button class="btn-icon" data-action="toggle-active" data-id="${item.id}" title="${item.isActive ? '停用' : '激活'}">
-          ${item.isActive ? ICONS.toggleRight : ICONS.toggleLeft}
+        <button class="btn-icon" data-action="toggle" data-id="${config.id}" title="${config.enabled ? '禁用' : '启用'}">
+          ${config.enabled ? ICONS.toggleRight : ICONS.toggleLeft}
         </button>
-        <button class="btn-icon" data-action="set-default" data-id="${item.id}" title="设为默认" ${item.isDefault ? 'disabled' : ''}>
+        <button class="btn-icon" data-action="default" data-id="${config.id}" title="设为默认" ${config.is_default ? 'disabled' : ''}>
           ${ICONS.star}
         </button>
-        <button class="btn-icon btn-icon-danger" data-action="delete" data-id="${item.id}" title="删除">
+        <button class="btn-icon btn-icon-danger" data-action="delete" data-id="${config.id}" title="删除">
           ${ICONS.delete}
         </button>
       </div>
@@ -143,75 +132,47 @@ async function loadLLMList(root) {
         return
       }
       
-      selectedLLMId = Number(item.dataset.id)
+      selectedId = Number(item.dataset.id)
       isCreating = false
-      listEl.querySelectorAll('.llm-item').forEach(i => i.classList.remove('active'))
-      item.classList.add('active')
-      renderLLMEditor(root)
+      renderList(root)
+      renderEditor(root)
     })
   })
-
-  if (!selectedLLMId && !isCreating && DEMO_LLM_CONFIGS.length > 0) {
-    selectedLLMId = DEMO_LLM_CONFIGS[0].id
-    renderLLMEditor(root)
-  }
 }
 
-function handleAction(action, id, root) {
-  const llm = DEMO_LLM_CONFIGS.find(l => l.id === id)
-  if (!llm) return
-
-  switch (action) {
-    case 'toggle-active':
-      llm.isActive = !llm.isActive
-      loadLLMList(root)
-      break
-    case 'set-default':
-      DEMO_LLM_CONFIGS.forEach(l => l.isDefault = false)
-      llm.isDefault = true
-      loadLLMList(root)
-      break
-    case 'delete':
-      if (confirm('确定删除此配置？')) {
-        const index = DEMO_LLM_CONFIGS.findIndex(l => l.id === id)
-        if (index > -1) {
-          DEMO_LLM_CONFIGS.splice(index, 1)
-          if (selectedLLMId === id) {
-            selectedLLMId = null
-          }
-          loadLLMList(root)
-          renderLLMEditor(root)
+async function handleAction(action, id, root) {
+  try {
+    switch (action) {
+      case 'toggle':
+        const config = configs.find(c => c.id === id)
+        if (config.enabled) {
+          await invoke('disable_llm_config', { id })
+        } else {
+          await invoke('enable_llm_config', { id })
         }
-      }
-      break
+        break
+      case 'default':
+        await invoke('set_default_llm_config', { id })
+        break
+      case 'delete':
+        if (confirm('确定删除此配置？')) {
+          await invoke('delete_llm_config', { id })
+          if (selectedId === id) {
+            selectedId = null
+            renderEditor(root)
+          }
+        } else {
+          return
+        }
+        break
+    }
+    await loadConfigs(root)
+  } catch (err) {
+    alert(`操作失败: ${err}`)
   }
 }
 
-function resetFormData() {
-  formData.vendorName = ''
-  formData.providerType = 10
-  formData.apiEndpoint = ''
-  formData.apiKeys = ['']
-  formData.modelName = ''
-  formData.apiVersion = ''
-  formData.deploymentName = ''
-  formData.contextLength = 8192
-  formData.maxOutputTokens = 4096
-  formData.maxInputTokens = 4096
-  formData.capabilities = 5
-  formData.inputPricePer1K = 0
-  formData.outputPricePer1K = 0
-  formData.isActive = true
-  formData.isDefault = false
-  capabilities.supportImageInput = false
-  capabilities.supportFunctionCalling = false
-  capabilities.supportDeepThinking = false
-  selectedVendor = null
-  isCustomModel = false
-  configuratorType = 1
-}
-
-function renderLLMEditor(root) {
+function renderEditor(root) {
   const editorEl = root.querySelector('#llm-editor')
   
   if (isCreating) {
@@ -219,9 +180,9 @@ function renderLLMEditor(root) {
     return
   }
 
-  const llm = DEMO_LLM_CONFIGS.find(l => l.id === selectedLLMId)
+  const config = configs.find(c => c.id === selectedId)
   
-  if (!llm) {
+  if (!config) {
     editorEl.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">${ICONS.settings}</div>
@@ -232,161 +193,97 @@ function renderLLMEditor(root) {
     return
   }
 
-  formData.vendorName = llm.vendorName || ''
-  formData.providerType = llm.providerType || 10
-  formData.apiEndpoint = llm.apiEndpoint || ''
-  formData.apiKeys = ['sk-***']
-  formData.modelName = llm.modelName || ''
-  formData.contextLength = llm.contextLength || 8192
-  formData.maxOutputTokens = llm.maxOutputTokens || 4096
-  formData.maxInputTokens = llm.maxInputTokens || 4096
-  formData.capabilities = llm.capabilities || 5
-  formData.isActive = llm.isActive
-  formData.isDefault = llm.isDefault
-  configuratorType = llm.configuratorType || 1
+  renderEditForm(editorEl, config, root)
+}
 
-  capabilities.supportImageInput = (llm.capabilities & 16) === 16
-  capabilities.supportFunctionCalling = (llm.capabilities & 8) === 8
-  capabilities.supportDeepThinking = (llm.capabilities & 128) === 128
+function renderApiKeyItems(apiKeys, isEditMode) {
+  if (!apiKeys || apiKeys.length === 0) {
+    return `
+      <div class="api-key-item" data-index="0">
+        <input type="password" class="form-input api-key-input" placeholder="sk-..." />
+        <button class="btn-icon api-key-toggle" type="button" title="显示">${ICONS.eye}</button>
+        <button class="btn-icon api-key-add" type="button" title="添加">${ICONS.plus}</button>
+      </div>
+    `
+  }
 
-  selectedVendor = VENDOR_PROVIDERS.find(v => v.name === llm.vendorName)
-
-  renderEditForm(editorEl, llm, root)
+  return apiKeys.map((key, index) => `
+    <div class="api-key-item" data-index="${index}">
+      <input type="password" class="form-input api-key-input" placeholder="sk-..." value="${escapeHtml(key || '')}" />
+      <button class="btn-icon api-key-toggle" type="button" title="显示">${ICONS.eye}</button>
+      <button class="btn-icon api-key-remove" type="button" title="删除">${ICONS.x}</button>
+      ${index === apiKeys.length - 1 ? `<button class="btn-icon api-key-add" type="button" title="添加">${ICONS.plus}</button>` : ''}
+    </div>
+  `).join('')
 }
 
 function renderCreateForm(editorEl, root) {
-  const vendorOptions = VENDOR_PROVIDERS.map(v => 
-    `<option value="${v.name}">${v.name}</option>`
+  const providerOptions = PROVIDER_OPTIONS.map(p => 
+    `<option value="${p.value}">${p.label}</option>`
   ).join('')
 
   editorEl.innerHTML = `
     <div class="llm-editor-header">
-      <h3 class="card-title">创建配置</h3>
+      <h3 class="card-title">创建 LLM 配置</h3>
       <div class="llm-editor-actions">
-        <button id="save-test-btn" class="btn btn-success">${ICONS.connection}<span>保存并测试</span></button>
         <button id="save-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        <button id="cancel-btn" class="btn btn-secondary">取消</button>
       </div>
-    </div>
-    
-    <div class="configurator-tabs">
-      <button class="configurator-tab ${configuratorType === 1 ? 'active' : ''}" data-type="1">预设模式</button>
-      <button class="configurator-tab ${configuratorType === 2 ? 'active' : ''}" data-type="2">进阶模式</button>
     </div>
     
     <div class="llm-form-content">
-      ${configuratorType === 1 ? `
-        <div class="mode-description">
-          <h4>预设模式</h4>
-          <p>通过预定义的模板简化配置，快速上手，适合大多数用户</p>
-        </div>
-        
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">模型提供商</label>
-            <select id="vendor-name" class="form-input">
-              <option value="">请选择模型提供商</option>
-              ${vendorOptions}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">模型名称</label>
-            <select id="model-name" class="form-input" ${!selectedVendor ? 'disabled' : ''}>
-              <option value="">请先选择提供商</option>
-            </select>
-          </div>
-        </div>
-        
+      <div class="form-group">
+        <label class="form-label">配置名称 <span class="text-danger">*</span></label>
+        <input id="name" class="form-input" placeholder="例如：OpenAI GPT-4o" />
+      </div>
+      
+      <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">API密钥</label>
-          <div id="api-keys-list" class="api-keys-list">
-            <div class="api-key-item">
-              <input class="form-input api-key-input" placeholder="sk-..." />
-              <button class="btn-icon btn-icon-danger" data-action="remove-key">${ICONS.delete}</button>
-            </div>
-          </div>
-          <button id="add-api-key-btn" class="btn btn-secondary btn-sm mt-sm">${ICONS.plus}<span>添加密钥</span></button>
+          <label class="form-label">提供商 <span class="text-danger">*</span></label>
+          <select id="provider" class="form-input">
+            <option value="">请选择提供商</option>
+            ${providerOptions}
+          </select>
         </div>
-      ` : `
-        <div class="mode-description">
-          <h4>进阶模式</h4>
-          <p>完全自定义配置，适合有特殊需求的高级用户</p>
-        </div>
-        
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">模型提供商</label>
-            <input id="vendor-name" class="form-input" placeholder="输入提供商名称" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">API端点</label>
-            <input id="api-endpoint" class="form-input" placeholder="https://api.example.com/v1" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">模型ID</label>
-            <input id="model-name" class="form-input" placeholder="model-id" />
-          </div>
-        </div>
-        
         <div class="form-group">
-          <label class="form-label">API密钥</label>
-          <div id="api-keys-list" class="api-keys-list">
-            <div class="api-key-item">
-              <input class="form-input api-key-input" placeholder="sk-..." />
-              <button class="btn-icon btn-icon-danger" data-action="remove-key">${ICONS.delete}</button>
-            </div>
-          </div>
-          <button id="add-api-key-btn" class="btn btn-secondary btn-sm mt-sm">${ICONS.plus}<span>添加密钥</span></button>
+          <label class="form-label">模型 <span class="text-danger">*</span></label>
+          <input id="model" class="form-input" placeholder="例如：gpt-4o" />
         </div>
-      `}
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">API 密钥</label>
+        <div id="api-key-list" class="api-key-list">
+          ${renderApiKeyItems([], false)}
+        </div>
+        <span class="form-hint">可选，如果不填写将使用环境变量或配置文件中的密钥</span>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">自定义 API 地址</label>
+        <input id="base-url" class="form-input" placeholder="https://api.example.com/v1" />
+        <span class="form-hint">可选，用于自定义网关或兼容服务</span>
+      </div>
       
       <div class="form-section">
-        <h4 class="form-section-title">模型参数</h4>
+        <h4 class="form-section-title">高级配置</h4>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">上下文长度</label>
-            <input id="context-length" class="form-input" type="number" value="${formData.contextLength}" />
+            <label class="form-label">温度 (Temperature)</label>
+            <input id="temperature" type="number" class="form-input" min="0" max="2" step="0.1" placeholder="0.7" />
           </div>
           <div class="form-group">
-            <label class="form-label">最大输出Tokens</label>
-            <input id="max-output-tokens" class="form-input" type="number" value="${formData.maxOutputTokens}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">最大输入Tokens</label>
-            <input id="max-input-tokens" class="form-input" type="number" value="${formData.maxInputTokens}" />
+            <label class="form-label">最大 Tokens</label>
+            <input id="max-tokens" type="number" class="form-input" min="1" placeholder="4096" />
           </div>
         </div>
       </div>
       
-      <div class="form-section">
-        <h4 class="form-section-title">模型能力</h4>
-        <div class="capability-options">
-          <label class="checkbox-label">
-            <input type="checkbox" id="cap-image" ${capabilities.supportImageInput ? 'checked' : ''} />
-            <span>支持图像输入</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="cap-function" ${capabilities.supportFunctionCalling ? 'checked' : ''} />
-            <span>支持函数调用</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="cap-thinking" ${capabilities.supportDeepThinking ? 'checked' : ''} />
-            <span>支持深度思考</span>
-          </label>
-        </div>
-      </div>
-      
-      <div class="form-section">
-        <h4 class="form-section-title">状态设置</h4>
-        <div class="form-grid">
-          <label class="checkbox-label">
-            <input type="checkbox" id="is-active" ${formData.isActive ? 'checked' : ''} />
-            <span>激活此配置</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="is-default" ${formData.isDefault ? 'checked' : ''} />
-            <span>设为默认配置</span>
-          </label>
-        </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="is-default" />
+          <span>设为默认配置</span>
+        </label>
       </div>
     </div>
   `
@@ -394,144 +291,82 @@ function renderCreateForm(editorEl, root) {
   setupFormEvents(editorEl, root, true)
 }
 
-function renderEditForm(editorEl, llm, root) {
-  const vendorOptions = VENDOR_PROVIDERS.map(v => 
-    `<option value="${v.name}" ${llm.vendorName === v.name ? 'selected' : ''}>${v.name}</option>`
+function renderEditForm(editorEl, config, root) {
+  const providerOptions = PROVIDER_OPTIONS.map(p => 
+    `<option value="${p.value}" ${config.provider === p.value ? 'selected' : ''}>${p.label}</option>`
   ).join('')
 
-  const modelOptions = selectedVendor 
-    ? selectedVendor.models.map(m => `<option value="${m}" ${llm.modelName === m ? 'selected' : ''}>${m}</option>`).join('')
-    : ''
+  const extraConfig = config.extra_config || {}
+  const apiKeys = config.api_key ? config.api_key.split(',').map(k => k.trim()).filter(k => k) : []
 
   editorEl.innerHTML = `
     <div class="llm-editor-header">
-      <h3 class="card-title">${llm.vendorName}</h3>
+      <h3 class="card-title">${escapeHtml(config.name)}</h3>
       <div class="llm-editor-actions">
-        <button id="save-test-btn" class="btn btn-success">${ICONS.connection}<span>保存并测试</span></button>
         <button id="save-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        <button id="cancel-btn" class="btn btn-secondary">取消</button>
       </div>
-    </div>
-    
-    <div class="configurator-tabs">
-      <button class="configurator-tab ${configuratorType === 1 ? 'active' : ''}" data-type="1">预设模式</button>
-      <button class="configurator-tab ${configuratorType === 2 ? 'active' : ''}" data-type="2">进阶模式</button>
     </div>
     
     <div class="llm-form-content">
-      ${configuratorType === 1 ? `
-        <div class="mode-description">
-          <h4>预设模式</h4>
-          <p>通过预定义的模板简化配置，快速上手，适合大多数用户</p>
-        </div>
-        
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">模型提供商</label>
-            <select id="vendor-name" class="form-input">
-              <option value="">请选择模型提供商</option>
-              ${vendorOptions}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">模型名称</label>
-            <select id="model-name" class="form-input">
-              ${modelOptions}
-              <option value="__custom__">自定义...</option>
-            </select>
-          </div>
-        </div>
-        
+      <div class="form-group">
+        <label class="form-label">配置名称 <span class="text-danger">*</span></label>
+        <input id="name" class="form-input" value="${escapeHtml(config.name)}" />
+      </div>
+      
+      <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">API密钥</label>
-          <div id="api-keys-list" class="api-keys-list">
-            <div class="api-key-item">
-              <input class="form-input api-key-input" value="sk-***" />
-              <button class="btn-icon btn-icon-danger" data-action="remove-key">${ICONS.delete}</button>
-            </div>
-          </div>
-          <button id="add-api-key-btn" class="btn btn-secondary btn-sm mt-sm">${ICONS.plus}<span>添加密钥</span></button>
+          <label class="form-label">提供商 <span class="text-danger">*</span></label>
+          <select id="provider" class="form-input">
+            <option value="">请选择提供商</option>
+            ${providerOptions}
+          </select>
         </div>
-      ` : `
-        <div class="mode-description">
-          <h4>进阶模式</h4>
-          <p>完全自定义配置，适合有特殊需求的高级用户</p>
-        </div>
-        
-        <div class="form-grid">
-          <div class="form-group">
-            <label class="form-label">模型提供商</label>
-            <input id="vendor-name" class="form-input" value="${llm.vendorName || ''}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">API端点</label>
-            <input id="api-endpoint" class="form-input" value="${llm.apiEndpoint || ''}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">模型ID</label>
-            <input id="model-name" class="form-input" value="${llm.modelName || ''}" />
-          </div>
-        </div>
-        
         <div class="form-group">
-          <label class="form-label">API密钥</label>
-          <div id="api-keys-list" class="api-keys-list">
-            <div class="api-key-item">
-              <input class="form-input api-key-input" value="sk-***" />
-              <button class="btn-icon btn-icon-danger" data-action="remove-key">${ICONS.delete}</button>
-            </div>
-          </div>
-          <button id="add-api-key-btn" class="btn btn-secondary btn-sm mt-sm">${ICONS.plus}<span>添加密钥</span></button>
+          <label class="form-label">模型 <span class="text-danger">*</span></label>
+          <input id="model" class="form-input" value="${escapeHtml(config.model)}" placeholder="例如：gpt-4o" />
         </div>
-      `}
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">API 密钥</label>
+        <div id="api-key-list" class="api-key-list">
+          ${renderApiKeyItems(apiKeys, true)}
+        </div>
+        <span class="form-hint">留空表示不修改，输入新值将覆盖原有密钥</span>
+      </div>
+      
+      <div class="form-group">
+        <label class="form-label">自定义 API 地址</label>
+        <input id="base-url" class="form-input" value="${escapeHtml(config.base_url || '')}" placeholder="https://api.example.com/v1" />
+      </div>
       
       <div class="form-section">
-        <h4 class="form-section-title">模型参数</h4>
+        <h4 class="form-section-title">高级配置</h4>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label">上下文长度</label>
-            <input id="context-length" class="form-input" type="number" value="${formData.contextLength}" />
+            <label class="form-label">温度 (Temperature)</label>
+            <input id="temperature" type="number" class="form-input" min="0" max="2" step="0.1" value="${extraConfig.temperature || ''}" placeholder="0.7" />
           </div>
           <div class="form-group">
-            <label class="form-label">最大输出Tokens</label>
-            <input id="max-output-tokens" class="form-input" type="number" value="${formData.maxOutputTokens}" />
-          </div>
-          <div class="form-group">
-            <label class="form-label">最大输入Tokens</label>
-            <input id="max-input-tokens" class="form-input" type="number" value="${formData.maxInputTokens}" />
+            <label class="form-label">最大 Tokens</label>
+            <input id="max-tokens" type="number" class="form-input" min="1" value="${extraConfig.max_tokens || ''}" placeholder="4096" />
           </div>
         </div>
       </div>
       
-      <div class="form-section">
-        <h4 class="form-section-title">模型能力</h4>
-        <div class="capability-options">
-          <label class="checkbox-label">
-            <input type="checkbox" id="cap-image" ${capabilities.supportImageInput ? 'checked' : ''} />
-            <span>支持图像输入</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="cap-function" ${capabilities.supportFunctionCalling ? 'checked' : ''} />
-            <span>支持函数调用</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="cap-thinking" ${capabilities.supportDeepThinking ? 'checked' : ''} />
-            <span>支持深度思考</span>
-          </label>
-        </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="is-default" ${config.is_default ? 'checked' : ''} />
+          <span>设为默认配置</span>
+        </label>
       </div>
       
-      <div class="form-section">
-        <h4 class="form-section-title">状态设置</h4>
-        <div class="form-grid">
-          <label class="checkbox-label">
-            <input type="checkbox" id="is-active" ${formData.isActive ? 'checked' : ''} />
-            <span>激活此配置</span>
-          </label>
-          <label class="checkbox-label">
-            <input type="checkbox" id="is-default" ${formData.isDefault ? 'checked' : ''} />
-            <span>设为默认配置</span>
-          </label>
-        </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input type="checkbox" id="enabled" ${config.enabled ? 'checked' : ''} />
+          <span>启用此配置</span>
+        </label>
       </div>
     </div>
   `
@@ -540,166 +375,156 @@ function renderEditForm(editorEl, llm, root) {
 }
 
 function setupFormEvents(editorEl, root, isCreate) {
-  editorEl.querySelectorAll('.configurator-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      configuratorType = parseInt(tab.dataset.type)
-      editorEl.querySelectorAll('.configurator-tab').forEach(t => t.classList.remove('active'))
-      tab.classList.add('active')
-      if (isCreate) {
-        renderCreateForm(editorEl, root)
+  const providerSelect = editorEl.querySelector('#provider')
+  const baseUrlInput = editorEl.querySelector('#base-url')
+  const apiKeyList = editorEl.querySelector('#api-key-list')
+
+  providerSelect?.addEventListener('change', (e) => {
+    const provider = e.target.value
+    const providerInfo = PROVIDER_OPTIONS.find(p => p.value === provider)
+    if (providerInfo && baseUrlInput && !baseUrlInput.value) {
+      baseUrlInput.value = providerInfo.baseUrl
+    }
+  })
+
+  apiKeyList?.addEventListener('click', (e) => {
+    const item = e.target.closest('.api-key-item')
+    if (!item) return
+
+    if (e.target.closest('.api-key-toggle')) {
+      const input = item.querySelector('.api-key-input')
+      const toggleBtn = e.target.closest('.api-key-toggle')
+      const isPassword = input.type === 'password'
+      input.type = isPassword ? 'text' : 'password'
+      toggleBtn.innerHTML = isPassword ? ICONS.eyeOff : ICONS.eye
+      toggleBtn.title = isPassword ? '隐藏' : '显示'
+    }
+
+    if (e.target.closest('.api-key-add')) {
+      const newItem = document.createElement('div')
+      newItem.className = 'api-key-item'
+      newItem.dataset.index = apiKeyList.children.length
+      newItem.innerHTML = `
+        <input type="password" class="form-input api-key-input" placeholder="sk-..." />
+        <button class="btn-icon api-key-toggle" type="button" title="显示">${ICONS.eye}</button>
+        <button class="btn-icon api-key-remove" type="button" title="删除">${ICONS.x}</button>
+        <button class="btn-icon api-key-add" type="button" title="添加">${ICONS.plus}</button>
+      `
+      const prevAddBtn = item.querySelector('.api-key-add')
+      if (prevAddBtn) prevAddBtn.remove()
+      apiKeyList.appendChild(newItem)
+    }
+
+    if (e.target.closest('.api-key-remove')) {
+      const items = apiKeyList.querySelectorAll('.api-key-item')
+      if (items.length > 1) {
+        const lastItem = items[items.length - 1]
+        if (lastItem === item && items.length > 1) {
+          items[items.length - 2].innerHTML += `<button class="btn-icon api-key-add" type="button" title="添加">${ICONS.plus}</button>`
+        }
+        item.remove()
+        apiKeyList.querySelectorAll('.api-key-item').forEach((el, idx) => el.dataset.index = idx)
       } else {
-        const llm = DEMO_LLM_CONFIGS.find(l => l.id === selectedLLMId)
-        if (llm) renderEditForm(editorEl, llm, root)
+        const input = item.querySelector('.api-key-input')
+        input.value = ''
+        input.dataset.hasKey = 'false'
       }
-    })
+    }
   })
 
-  const vendorSelect = editorEl.querySelector('#vendor-name')
-  const modelSelect = editorEl.querySelector('#model-name')
-
-  if (vendorSelect && configuratorType === 1) {
-    vendorSelect.addEventListener('change', (e) => {
-      const vendor = VENDOR_PROVIDERS.find(v => v.name === e.target.value)
-      selectedVendor = vendor
-      if (vendor && modelSelect) {
-        modelSelect.innerHTML = vendor.models.map(m => `<option value="${m}">${m}</option>`).join('') + '<option value="__custom__">自定义...</option>'
-        modelSelect.disabled = false
-      }
-    })
-  }
-
-  if (modelSelect && configuratorType === 1) {
-    modelSelect.addEventListener('change', (e) => {
-      if (e.target.value === '__custom__') {
-        isCustomModel = true
-        const customInput = document.createElement('input')
-        customInput.className = 'form-input mt-sm'
-        customInput.id = 'custom-model-name'
-        customInput.placeholder = '输入自定义模型名称'
-        modelSelect.parentNode.appendChild(customInput)
-      } else {
-        isCustomModel = false
-        const customInput = editorEl.querySelector('#custom-model-name')
-        if (customInput) customInput.remove()
-      }
-    })
-  }
-
-  editorEl.querySelector('#add-api-key-btn')?.addEventListener('click', () => {
-    const list = editorEl.querySelector('#api-keys-list')
-    const item = document.createElement('div')
-    item.className = 'api-key-item'
-    item.innerHTML = `
-      <input class="form-input api-key-input" placeholder="sk-..." />
-      <button class="btn-icon btn-icon-danger" data-action="remove-key">${ICONS.delete}</button>
-    `
-    list.appendChild(item)
-    setupApiKeyRemove(item)
+  editorEl.querySelector('#save-btn')?.addEventListener('click', async () => {
+    await saveConfig(editorEl, root, isCreate)
   })
 
-  editorEl.querySelectorAll('.api-key-item').forEach(setupApiKeyRemove)
-
-  editorEl.querySelector('#save-btn')?.addEventListener('click', () => {
-    saveLLMConfig(editorEl, isCreate, false)
-  })
-
-  editorEl.querySelector('#save-test-btn')?.addEventListener('click', () => {
-    saveLLMConfig(editorEl, isCreate, true)
+  editorEl.querySelector('#cancel-btn')?.addEventListener('click', () => {
+    if (isCreate) {
+      isCreating = false
+      selectedId = null
+    }
+    renderList(root)
+    renderEditor(root)
   })
 }
 
-function setupApiKeyRemove(item) {
-  item.querySelector('[data-action="remove-key"]')?.addEventListener('click', () => {
-    const list = item.parentElement
-    if (list.children.length > 1) {
-      item.remove()
-    }
-  })
-}
+async function saveConfig(editorEl, root, isCreate) {
+  const name = editorEl.querySelector('#name')?.value?.trim()
+  const provider = editorEl.querySelector('#provider')?.value
+  const model = editorEl.querySelector('#model')?.value?.trim()
+  const baseUrl = editorEl.querySelector('#base-url')?.value?.trim()
+  const isDefault = editorEl.querySelector('#is-default')?.checked
+  const enabled = editorEl.querySelector('#enabled')?.checked ?? true
+  const temperature = editorEl.querySelector('#temperature')?.value
+  const maxTokens = editorEl.querySelector('#max-tokens')?.value
 
-function saveLLMConfig(editorEl, isCreate, testConnection) {
-  const vendorName = editorEl.querySelector('#vendor-name')?.value
-  const modelName = isCustomModel 
-    ? editorEl.querySelector('#custom-model-name')?.value 
-    : editorEl.querySelector('#model-name')?.value
-
-  if (!vendorName) {
-    alert('请选择模型提供商')
+  const apiKeyInputs = editorEl.querySelectorAll('.api-key-input')
+  const apiKeys = Array.from(apiKeyInputs)
+    .map(input => input.value?.trim())
+    .filter(v => v)
+  
+  if (!name) {
+    alert('请输入配置名称')
     return
   }
-  if (!modelName) {
-    alert('请选择或输入模型名称')
+  if (!provider) {
+    alert('请选择提供商')
+    return
+  }
+  if (!model) {
+    alert('请输入模型名称')
     return
   }
 
-  const contextLength = parseInt(editorEl.querySelector('#context-length')?.value) || 8192
-  const maxOutputTokens = parseInt(editorEl.querySelector('#max-output-tokens')?.value) || 4096
-  const maxInputTokens = parseInt(editorEl.querySelector('#max-input-tokens')?.value) || 4096
-  const isActive = editorEl.querySelector('#is-active')?.checked ?? true
-  const isDefault = editorEl.querySelector('#is-default')?.checked ?? false
+  const extraConfig = {}
+  if (temperature) extraConfig.temperature = parseFloat(temperature)
+  if (maxTokens) extraConfig.max_tokens = parseInt(maxTokens)
 
-  let caps = 5
-  if (editorEl.querySelector('#cap-image')?.checked) caps |= 16
-  if (editorEl.querySelector('#cap-function')?.checked) caps |= 8
-  if (editorEl.querySelector('#cap-thinking')?.checked) caps |= 128
+  try {
+    const apiKey = apiKeys.length > 0 ? apiKeys.join(',') : null
 
-  if (isCreate) {
-    const newLLM = {
-      id: Date.now(),
-      vendorName,
-      providerType: selectedVendor ? getProviderType(selectedVendor.type) : 10,
-      configuratorType,
-      modelName,
-      apiEndpoint: selectedVendor?.baseUrl || editorEl.querySelector('#api-endpoint')?.value || '',
-      isActive,
-      isDefault,
-      contextLength,
-      maxOutputTokens,
-      maxInputTokens,
-      capabilities: caps
+    if (isCreate) {
+      await invoke('create_llm_config', {
+        req: {
+          name,
+          provider,
+          model,
+          api_key: apiKey,
+          base_url: baseUrl || null,
+          extra_config: Object.keys(extraConfig).length > 0 ? extraConfig : null,
+          is_default: isDefault,
+        }
+      })
+    } else {
+      await invoke('update_llm_config', {
+        id: selectedId,
+        req: {
+          name,
+          provider,
+          model,
+          api_key: apiKey,
+          base_url: baseUrl || null,
+          extra_config: Object.keys(extraConfig).length > 0 ? extraConfig : null,
+          is_default: isDefault,
+          enabled,
+        }
+      })
     }
-    if (isDefault) {
-      DEMO_LLM_CONFIGS.forEach(l => l.isDefault = false)
-    }
-    DEMO_LLM_CONFIGS.push(newLLM)
-    selectedLLMId = newLLM.id
+
     isCreating = false
-  } else {
-    const llm = DEMO_LLM_CONFIGS.find(l => l.id === selectedLLMId)
-    if (llm) {
-      llm.vendorName = vendorName
-      llm.modelName = modelName
-      llm.configuratorType = configuratorType
-      llm.contextLength = contextLength
-      llm.maxOutputTokens = maxOutputTokens
-      llm.maxInputTokens = maxInputTokens
-      llm.isActive = isActive
-      llm.capabilities = caps
-      if (isDefault) {
-        DEMO_LLM_CONFIGS.forEach(l => l.isDefault = false)
-        llm.isDefault = true
-      }
-    }
+    await loadConfigs(root)
+  } catch (err) {
+    alert(`保存失败: ${err}`)
   }
-
-  alert(testConnection ? '保存成功！正在测试连通性...' : '保存成功！')
-  loadLLMList(document.querySelector('.page'))
-  renderLLMEditor(document.querySelector('.page'))
 }
 
-function getProviderType(typeName) {
-  const typeMap = {
-    'Ollama': 100,
-    'OpenAI': 10,
-    'OpenAIResponses': 20,
-    'Anthropic': 30,
-    'Google': 40,
-  }
-  return typeMap[typeName] || 10
+function escapeHtml(text) {
+  if (!text) return ''
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
 }
 
 export function cleanup() {
-  selectedLLMId = null
+  configs = []
+  selectedId = null
   isCreating = false
-  resetFormData()
 }

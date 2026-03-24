@@ -32,3 +32,6 @@ sea-orm = { version = "1", features = [
   "runtime-tokio-rustls",
   "macros"
 ] }
+anyhow = "1"
+async-trait = "0.1"
+toml = "0.8"

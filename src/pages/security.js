@@ -149,7 +149,7 @@ async function showPasswordModal() {
             <path d="M12 16v-4"/>
             <path d="M12 8h.01"/>
           </svg>
-          <span>首次使用默认密码为 123456</span>
+          <span>首次使用默认密码为 <a href="#" class="default-password-link" data-password="123456" style="color: var(--accent); text-decoration: underline; cursor: pointer;">123456</a></span>
         </div>
       </div>
     `
@@ -230,6 +230,17 @@ async function showPasswordModal() {
         doVerify(e, modal)
       }
     })
+
+    // 默认密码点击事件
+    const defaultPasswordLink = contentEl.querySelector('.default-password-link')
+    if (defaultPasswordLink) {
+      defaultPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault()
+        const password = defaultPasswordLink.getAttribute('data-password')
+        input.value = password
+        input.focus()
+      })
+    }
 
     setTimeout(() => {
       input?.focus()

@@ -1,12 +1,13 @@
-mod db;
+mod ai;
 mod commands;
+mod constants;
+mod db;
+mod entity;
 mod repository;
 mod rig_service;
-mod entity;
 mod seeds;
-mod constants;
-mod tray;
 mod storage;
+mod tray;
 
 use std::sync::Arc;
 use tauri::Manager;
@@ -70,6 +71,30 @@ pub fn run() {
             commands::upsert_meta,
             commands::delete_meta,
             commands::get_novel_meta_properties,
+            // LLM Config commands
+            commands::list_llm_configs,
+            commands::get_llm_config,
+            commands::get_default_llm_config,
+            commands::create_llm_config,
+            commands::update_llm_config,
+            commands::delete_llm_config,
+            commands::set_default_llm_config,
+            commands::enable_llm_config,
+            commands::disable_llm_config,
+            // Agent Config commands
+            commands::list_agent_configs,
+            commands::list_enabled_agent_configs,
+            commands::get_agent_config,
+            commands::get_agent_config_by_code,
+            commands::create_agent_config,
+            commands::update_agent_config,
+            commands::delete_agent_config,
+            commands::enable_agent_config,
+            commands::disable_agent_config,
+            commands::bind_llm_to_agent,
+            commands::set_agent_custom_prompt,
+            commands::init_default_agent_configs,
+            commands::get_agent_types,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
