@@ -1,12 +1,78 @@
+//! 数据库模块
+//! 
+//! 提供数据库初始化、表结构创建和数据迁移功能。
+//! 使用 SQLite 作为数据存储引擎，通过 Sea-ORM 进行 ORM 操作。
+//! 
+//! # 数据表结构
+//! 
+//! | 表名 | 说明 |
+//! |------|------|
+//! | `novels` | 小说主表 |
+//! | `chapters` | 章节表 |
+//! | `characters` | 角色表 |
+//! | `novel_meta` | 小说元数据表 |
+//! | `novel_settings` | 小说设置表 |
+//! | `novel_chapter_meta` | 章节元数据表 |
+//! | `novel_chapter_history` | 章节历史表 |
+//! | `novel_chapter_version` | 章节版本表 |
+//! | `novel_chapter_timeline` | 时间线表 |
+//! 
+//! # 使用示例
+//! 
+//! ```rust
+//! use crate::storage::StorageManager;
+//! use crate::db::init_db;
+//! 
+//! let storage = StorageManager::new()?;
+//! let db = init_db(&storage).await?;
+//! ```
+
 use sea_orm::{Database, DatabaseConnection, Statement, ConnectionTrait, EntityTrait, Set, ActiveModelTrait, PaginatorTrait};
 use chrono::Utc;
 use crate::storage::StorageManager;
 
+/// 初始化数据库连接和表结构
+/// 
+/// 创建 SQLite 数据库连接，并初始化所有必要的数据表。
+/// 数据库文件存储在 `~/.storybook/db/database.db`。
+/// 
+/// # 参数
+/// 
+/// - `storage`: 存储管理器实例，用于获取数据库路径
+/// 
+/// # 返回
+/// 
+/// - `Ok(DatabaseConnection)`: 成功返回数据库连接
+/// - `Err(DbErr)`: 数据库操作失败
+/// 
+/// # 初始化流程
+/// 
+/// 1. 创建数据库连接（如果文件不存在会自动创建）
+/// 2. 创建 `novels` 表（小说主表）
+/// 3. 执行 novels 表迁移（添加新字段）
+/// 4. 创建 `chapters` 表（章节表）
+/// 5. 创建 `characters` 表（角色表）
+/// 6. 创建 `novel_meta` 表（小说元数据）
+/// 7. 创建 `novel_settings` 表（小说设置）
+/// 8. 创建 `novel_chapter_meta` 表（章节元数据）
+/// 9. 创建 `novel_chapter_history` 表（章节历史）
+/// 10. 创建 `novel_chapter_version` 表（章节版本）
+/// 11. 创建 `novel_chapter_timeline` 表（时间线）
+/// 12. 初始化种子数据（如果是新数据库）
+/// 
+/// # 示例
+/// 
+/// ```rust
+/// let storage = StorageManager::new()?;
+/// let db = init_db(&storage).await?;
+/// ```
 pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea_orm::DbErr> {
     let db_path = storage.get_db_path();
     let db_url = format!("sqlite:{}?mode=rwc", db_path.display());
     let db = Database::connect(&db_url).await?;
 
+    // 创建小说主表
+    // 存储小说的基本信息，包括标题、描述、风格、状态等
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -31,8 +97,11 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         "#.to_string(),
     )).await?;
 
+    // 执行 novels 表迁移（添加新字段）
     migrate_novels_table(&db).await?;
 
+    // 创建章节表
+    // 存储小说的章节内容，包括章节号、标题、内容、字数等
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -51,6 +120,8 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         "#.to_string(),
     )).await?;
 
+    // 创建角色表
+    // 存储小说中的角色信息，包括姓名、年龄、性格、角色属性等
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -71,6 +142,8 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         "#.to_string(),
     )).await?;
 
+    // 创建小说元数据表
+    // 存储小说的自定义元数据属性
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -86,6 +159,8 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         "#.to_string(),
     )).await?;
 
+    // 创建小说设置表
+    // 存储小说的配置项
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -100,6 +175,8 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         "#.to_string(),
     )).await?;
 
+    // 创建章节元数据表
+    // 存储章节的自定义属性
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -114,6 +191,8 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         "#.to_string(),
     )).await?;
 
+    // 创建章节历史表
+    // 存储章节的历史版本记录
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -133,6 +212,8 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         "#.to_string(),
     )).await?;
 
+    // 创建章节版本表
+    // 存储章节的 AI 生成版本
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -151,6 +232,8 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         "#.to_string(),
     )).await?;
 
+    // 创建时间线表
+    // 存储小说的时间线大纲
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -170,12 +253,37 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         "#.to_string(),
     )).await?;
 
+    // 初始化种子数据
     init_seed_data(&db).await?;
 
     Ok(db)
 }
 
+/// 迁移 novels 表结构
+/// 
+/// 检查并添加 novels 表中可能缺失的字段。
+/// 这是为了兼容旧版本的数据库结构。
+/// 
+/// # 参数
+/// 
+/// - `db`: 数据库连接
+/// 
+/// # 迁移的字段
+/// 
+/// - `description` - 小说描述
+/// - `image` - 封面图片路径
+/// - `original_description` - 原始描述
+/// - `style` - 小说风格
+/// - `target_audience` - 目标读者
+/// - `length_type` - 篇幅类型
+/// - `is_focus` - 是否专注
+/// - `estimated_chapter_count` - 预计章节数
+/// - `estimated_total_word_count` - 预计总字数
+/// - `estimated_words_per_chapter` - 预计每章字数
+/// - `total_word_count` - 总字数
+/// - `status` - 状态
 async fn migrate_novels_table(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
+    // 需要检查的字段列表：字段名 -> 字段定义
     let columns_to_check = [
         ("description", "TEXT"),
         ("image", "TEXT"),
@@ -191,7 +299,9 @@ async fn migrate_novels_table(db: &DatabaseConnection) -> Result<(), sea_orm::Db
         ("status", "INTEGER DEFAULT 1"),
     ];
 
+    // 遍历每个字段，检查是否存在，不存在则添加
     for (column_name, column_def) in columns_to_check {
+        // 使用 SQLite 的 pragma_table_info 检查字段是否存在
         let check_sql = format!(
             "SELECT COUNT(*) FROM pragma_table_info('novels') WHERE name='{}'",
             column_name
@@ -206,6 +316,7 @@ async fn migrate_novels_table(db: &DatabaseConnection) -> Result<(), sea_orm::Db
             .map(|row| row.try_get::<i64>("", "COUNT(*)").unwrap_or(0))
             .unwrap_or(0);
 
+        // 如果字段不存在，使用 ALTER TABLE 添加
         if result == 0 {
             let alter_sql = format!("ALTER TABLE novels ADD COLUMN {} {}", column_name, column_def);
             db.execute(Statement::from_string(
@@ -218,21 +329,40 @@ async fn migrate_novels_table(db: &DatabaseConnection) -> Result<(), sea_orm::Db
     Ok(())
 }
 
+/// 初始化种子数据
+/// 
+/// 如果数据库是新建的（novels 表为空），则插入示例数据。
+/// 包括示例小说、章节和角色数据。
+/// 
+/// # 参数
+/// 
+/// - `db`: 数据库连接
+/// 
+/// # 种子数据
+/// 
+/// - 小说：从 `seeds` 模块获取的示例小说
+/// - 章节：每个小说的示例章节
+/// - 角色：每个小说的示例角色
 async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
     use crate::entity::novels::Entity as Novels;
     use crate::entity::novels::ActiveModel as ActiveNovel;
     use crate::entity::chapters::ActiveModel as ActiveChapter;
     use crate::entity::characters::ActiveModel as ActiveCharacter;
 
+    // 检查是否已有数据，避免重复插入
     let novels_count: u64 = Novels::find().count(db).await?;
     if novels_count > 0 {
         return Ok(());
     }
 
+    // 获取当前时间戳
     let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
+    
+    // 获取小说种子数据
     let novel_seeds = crate::seeds::get_novel_seeds();
     let mut novel_ids: Vec<i32> = Vec::new();
 
+    // 插入小说数据
     for seed in novel_seeds {
         let novel = ActiveNovel {
             id: sea_orm::ActiveValue::NotSet,
@@ -256,6 +386,7 @@ async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
         novel_ids.push(inserted.id);
     }
 
+    // 插入章节数据
     let chapter_seeds = crate::seeds::get_chapter_seeds();
     for seed in chapter_seeds {
         if seed.novel_index < novel_ids.len() {
@@ -275,6 +406,7 @@ async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
         }
     }
 
+    // 插入角色数据
     let character_seeds = crate::seeds::get_character_seeds();
     for seed in character_seeds {
         if seed.novel_index < novel_ids.len() {
