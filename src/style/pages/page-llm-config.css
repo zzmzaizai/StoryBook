@@ -1,0 +1,250 @@
+/* ==================== LLM Config 页面 ==================== */
+
+.llm-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--space-lg);
+  min-height: calc(100vh - 200px);
+}
+
+.llm-list-card {
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.llm-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.llm-count {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.llm-toolbar {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.llm-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.llm-item {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-bottom: var(--space-xs);
+  border: 1px solid transparent;
+}
+
+.llm-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.llm-item.active {
+  background: var(--accent-alpha);
+  border-color: var(--accent);
+}
+
+.llm-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.llm-item-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.llm-item-model {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.llm-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-xs);
+}
+
+.llm-item-actions {
+  display: flex;
+  gap: var(--space-xs);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.llm-item:hover .llm-item-actions {
+  opacity: 1;
+}
+
+/* LLM编辑器 */
+.llm-editor-card {
+  padding: var(--space-lg);
+  overflow-y: auto;
+}
+
+.llm-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.llm-editor-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.configurator-tabs {
+  display: flex;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border-primary);
+  padding-bottom: var(--space-sm);
+}
+
+.configurator-tab {
+  padding: var(--space-sm) var(--space-lg);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+  cursor: pointer;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: all 0.2s ease;
+}
+
+.configurator-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.configurator-tab.active {
+  color: var(--accent);
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: -1px;
+}
+
+.llm-form-content {
+  animation: fadeIn 0.2s ease;
+}
+
+.mode-description {
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+}
+
+.mode-description h4 {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.mode-description p {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.form-section {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border-primary);
+}
+
+.form-section-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+.api-keys-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.api-key-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.api-key-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.api-key-item .api-key-input {
+  flex: 1;
+  padding-right: 40px;
+}
+
+.api-key-item .btn-icon {
+  flex-shrink: 0;
+}
+
+.api-key-item .api-key-toggle {
+  margin-left: -36px;
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  padding: var(--space-xs);
+}
+
+.api-key-item .api-key-toggle:hover {
+  color: var(--text-secondary);
+}
+
+.capability-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-lg);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  cursor: pointer;
+  font-size: var(--font-size-md);
+  color: var(--text-primary);
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+@media (max-width: 1024px) {
+  .llm-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .llm-list-card {
+    max-height: 300px;
+  }
+}

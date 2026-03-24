@@ -1,0 +1,151 @@
+/* ==================== Agent Config 页面 ==================== */
+
+.agent-layout {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: var(--space-lg);
+  min-height: calc(100vh - 200px);
+}
+
+.agent-list-card {
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.agent-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.agent-count {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.agent-toolbar {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.agent-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.agent-item {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-bottom: var(--space-xs);
+  border: 1px solid transparent;
+}
+
+.agent-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.agent-item.active {
+  background: var(--accent-alpha);
+  border-color: var(--accent);
+}
+
+.agent-item-header {
+  margin-bottom: var(--space-xs);
+}
+
+.agent-item-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.agent-item-type {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xs);
+}
+
+.agent-item-remark {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.agent-item-meta {
+  margin-bottom: var(--space-xs);
+}
+
+.agent-item-actions {
+  display: flex;
+  gap: var(--space-xs);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.agent-item:hover .agent-item-actions {
+  opacity: 1;
+}
+
+/* Agent编辑器 */
+.agent-editor-card {
+  padding: var(--space-lg);
+  overflow-y: auto;
+}
+
+.agent-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.agent-editor-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.agent-form-content {
+  animation: fadeIn 0.2s ease;
+}
+
+.agent-type-description {
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  border-left: 3px solid var(--accent);
+}
+
+.custom-prompt-section {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border-primary);
+}
+
+.prompt-textarea {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+
+@media (max-width: 1024px) {
+  .agent-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .agent-list-card {
+    max-height: 300px;
+  }
+}

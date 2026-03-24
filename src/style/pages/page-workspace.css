@@ -1,0 +1,387 @@
+/* ==================== Workspace 工作区页面 ==================== */
+
+.workspace-content {
+  animation: fadeIn 0.2s ease;
+}
+
+/* 基础信息布局 */
+.basic-layout {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.basic-form-card,
+.settings-card {
+  padding: var(--space-lg);
+}
+
+/* 元数据布局 */
+.meta-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--space-lg);
+  min-height: 500px;
+}
+
+.meta-list-card {
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.meta-tabs {
+  display: flex;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.meta-tab {
+  flex: 1;
+  padding: var(--space-sm);
+  border: none;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.meta-tab:hover {
+  background: var(--bg-secondary);
+}
+
+.meta-tab.active {
+  background: var(--accent);
+  color: white;
+}
+
+.meta-list-mount {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  margin-top: var(--space-md);
+}
+
+.meta-item {
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-bottom: var(--space-xs);
+}
+
+.meta-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.meta-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+
+.meta-item-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.meta-item-preview,
+.meta-item-desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.meta-editor-card {
+  padding: var(--space-lg);
+}
+
+.meta-editor {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.meta-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.meta-editor-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.meta-editor-desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin: var(--space-xs) 0 0 0;
+  line-height: 1.5;
+}
+
+.meta-md-editor {
+  flex: 1;
+  min-height: 300px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.meta-md-editor .vditor {
+  border: none;
+  height: 100%;
+}
+
+.meta-md-editor .vditor-toolbar {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.timeline-md-editor {
+  min-height: 180px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.timeline-md-editor .vditor {
+  border: none;
+}
+
+.timeline-md-editor .vditor-toolbar {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.meta-editor-textarea {
+  flex: 1;
+  min-height: 300px;
+}
+
+/* 时间线样式 */
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.timeline-item {
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  transition: background 0.2s ease;
+  cursor: pointer;
+}
+
+.timeline-item:hover {
+  background: var(--bg-secondary);
+}
+
+.timeline-item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.timeline-item-name {
+  flex: 1;
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-item-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.timeline-chapter-badge-small {
+  padding: 2px 6px;
+  background: var(--accent);
+  color: white;
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.timeline-arrow-small {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.timeline-item-preview {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timeline-editor-form {
+  flex: 1;
+  overflow-y: auto;
+  margin-top: var(--space-md);
+}
+
+.timeline-range {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+.timeline-chapter-badge {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--accent);
+  color: white;
+  font-size: var(--font-size-xs);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.timeline-arrow {
+  color: var(--text-tertiary);
+}
+
+.timeline-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.timeline-title {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.timeline-desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.timeline-actions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+/* 工作流步骤 */
+.workflow-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.workflow-step {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  border-left: 3px solid var(--border-primary);
+  transition: all 0.2s ease;
+}
+
+.workflow-step.completed {
+  border-left-color: var(--success);
+  opacity: 0.8;
+}
+
+.workflow-step.active {
+  border-left-color: var(--accent);
+  background: var(--accent-alpha);
+}
+
+.workflow-step-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.workflow-step.completed .workflow-step-icon {
+  background: var(--success);
+  color: white;
+}
+
+.workflow-step.active .workflow-step-icon {
+  background: var(--accent);
+  color: white;
+}
+
+.workflow-step-content {
+  flex: 1;
+}
+
+.workflow-step-content h4 {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 var(--space-xs) 0;
+}
+
+.workflow-step-content p {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  margin: 0;
+}
+
+.workflow-step-status {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.workflow-step.completed .workflow-step-status {
+  color: var(--success);
+}
+
+.workflow-step.active .workflow-step-status {
+  color: var(--accent);
+}
+
+@media (max-width: 1024px) {
+  .meta-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .meta-list-card {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 640px) {
+  .workspace-tabs {
+    flex-wrap: wrap;
+  }
+  
+  .workspace-tab {
+    flex: 1;
+    min-width: 80px;
+    justify-content: center;
+  }
+}

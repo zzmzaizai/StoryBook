@@ -1,0 +1,191 @@
+/* ==================== Characters 角色管理页面 ==================== */
+
+.characters-layout {
+  display: grid;
+  grid-template-columns: 330px 1fr;
+  gap: var(--space-lg);
+  flex: 1;
+  min-height: 0;
+}
+
+.character-list-card {
+  height: 100%;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.character-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.character-count {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.character-toolbar {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.character-list-mount {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.character-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-bottom: var(--space-xs);
+  position: relative;
+}
+
+.character-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.character-item.active {
+  background: var(--accent-alpha);
+}
+
+.character-avatar {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 600;
+  color: white;
+  font-size: var(--font-size-md);
+  flex-shrink: 0;
+}
+
+.character-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.character-item-name {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.character-item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: 2px;
+}
+
+.character-item-gender {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.character-delete-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.character-item:hover .character-delete-btn {
+  opacity: 1;
+}
+
+/* 角色编辑器 */
+.character-editor-card {
+  padding: var(--space-lg);
+  overflow-y: auto;
+}
+
+.character-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.character-editor-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.character-avatar-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-lg);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.character-avatar-large {
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 700;
+  color: white;
+  font-size: var(--font-size-2xl);
+  flex-shrink: 0;
+}
+
+.character-color-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.character-color-picker input[type="color"] {
+  width: 60px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.character-info-bar {
+  display: flex;
+  gap: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+}
+
+.character-info-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.character-info-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+@media (max-width: 1024px) {
+  .characters-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .character-list-card {
+    max-height: 300px;
+  }
+}

@@ -26,6 +26,9 @@ impl AgentRegistry {
 
     /// 注册内置 Agent
     fn register_builtin_agents(&mut self) {
+        // 注册通用聊天 Agent（默认）
+        self.register(Arc::new(GeneralChatHandler));
+
         // 注册小说大纲 Agent
         self.register(Arc::new(NovelOutlineHandler));
 
@@ -81,6 +84,8 @@ pub fn get_agent_handler(agent_code: &str) -> Option<Arc<dyn AgentHandler>> {
 pub struct AgentCodes;
 
 impl AgentCodes {
+    /// 通用聊天 Agent（默认）
+    pub const GENERAL_CHAT: &'static str = "general_chat";
     /// 小说大纲 Agent
     pub const NOVEL_OUTLINE: &'static str = "novel_outline";
     /// 章节时间线 Agent

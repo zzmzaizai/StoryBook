@@ -95,6 +95,9 @@ pub fn run() {
             commands::set_agent_custom_prompt,
             commands::init_default_agent_configs,
             commands::get_agent_types,
+            // Chat commands
+            commands::chat_with_agent,
+            commands::chat_with_agent_and_llm,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

@@ -4,8 +4,10 @@
 
 mod chapter_timeline_handler;
 mod character_design_handler;
+mod general_chat_handler;
 mod novel_outline_handler;
 
 pub use chapter_timeline_handler::ChapterTimelineHandler;
 pub use character_design_handler::CharacterDesignHandler;
+pub use general_chat_handler::GeneralChatHandler;
 pub use novel_outline_handler::NovelOutlineHandler;

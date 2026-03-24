@@ -5,6 +5,7 @@ pub mod timeline;
 pub mod meta;
 pub mod llm_config;
 pub mod agent_config;
+pub mod chat;
 
 pub use novels::*;
 pub use chapters::*;
@@ -13,6 +14,7 @@ pub use timeline::*;
 pub use meta::*;
 pub use llm_config::*;
 pub use agent_config::*;
+pub use chat::*;
 
 use std::sync::Arc;
 use sea_orm::DatabaseConnection;

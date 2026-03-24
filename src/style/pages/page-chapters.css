@@ -1,0 +1,306 @@
+/* ==================== Chapters 章节管理页面 ==================== */
+
+.chapters-layout {
+  display: grid;
+  grid-template-columns: 330px 1fr;
+  gap: var(--space-lg);
+  flex: 1;
+  min-height: 0;
+}
+
+.chapter-list-card {
+  height: 100%;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chapter-list-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.chapter-count {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.chapter-toolbar {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.chapter-list-mount {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.chapter-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-bottom: var(--space-xs);
+  position: relative;
+}
+
+.chapter-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.chapter-item.active {
+  background: var(--accent-alpha);
+}
+
+.chapter-item-number {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.chapter-item.active .chapter-item-number {
+  background: var(--accent);
+  color: white;
+}
+
+.chapter-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.chapter-item-title {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chapter-item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: 2px;
+}
+
+.chapter-item-words {
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+}
+
+.chapter-item-version {
+  font-size: var(--font-size-xs);
+  color: var(--accent);
+  padding: 1px 4px;
+  background: var(--accent-alpha);
+  border-radius: var(--radius-sm);
+}
+
+.chapter-delete-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.chapter-item:hover .chapter-delete-btn {
+  opacity: 1;
+}
+
+/* 章节编辑器 */
+.chapter-editor-card {
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.chapter-editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.chapter-editor-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.chapter-version-badge {
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--accent-alpha);
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+}
+
+.chapter-stats-bar {
+  display: flex;
+  gap: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+}
+
+.chapter-stat {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.chapter-stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.chapter-stat-value {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chapter-content-textarea {
+  min-height: 400px;
+  font-family: inherit;
+  line-height: 1.8;
+}
+
+/* 历史面板 */
+.history-panel {
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}
+
+.history-header h4 {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.history-item-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.history-version {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.history-words {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.history-date {
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+}
+
+.history-modal-content {
+  padding: var(--space-sm) 0;
+}
+
+.history-list-modal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.history-item-modal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-primary);
+  transition: all 0.2s ease;
+}
+
+.history-item-modal:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--accent);
+}
+
+.history-item-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.history-preview-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-md);
+}
+
+.history-preview-content {
+  padding: var(--space-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  max-height: 400px;
+  overflow-y: auto;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 1024px) {
+  .chapters-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .chapter-list-card {
+    max-height: 300px;
+  }
+}
