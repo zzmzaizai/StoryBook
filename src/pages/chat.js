@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { ICONS } from '../lib/icons.js'
 
 /**
@@ -260,44 +261,80 @@ function switchAgent(root, code) {
 }
 
 /**
- * 发送消息
+ * 发送消息（流式）
  */
 async function sendMessage(root) {
   const input = root.querySelector('#chat-input')
   const message = input.value.trim()
-  
+
   if (!message || isLoading) return
 
   // 添加用户消息
   addUserMessage(root, message)
-  
+
   // 清空输入框
   input.value = ''
   input.style.height = 'auto'
   updateSendButton(root)
 
-  // 显示加载状态
-  showLoading(root)
+  // 创建消息 ID 用于流式更新
+  const messageId = Date.now()
+  let fullContent = ''
+
+  // 先创建一个空的助手消息（流式显示，不需要单独的 loading）
+  const assistantMessage = {
+    id: messageId,
+    role: 'assistant',
+    content: '',
+    timestamp: new Date().toISOString()
+  }
+  messages.push(assistantMessage)
+  renderStreamingMessage(root, assistantMessage)
+  
+  // 设置加载状态（但不显示 loading 动画）
+  isLoading = true
+  updateSendButton(root)
 
   try {
-    // 调用后端发送消息
-    const response = await invoke('chat_with_agent', {
+    // 设置事件监听
+    const eventName = `chat-stream-${currentAgentCode}`
+    const unlisten = await listen(eventName, (event) => {
+      const chunk = event.payload
+
+      if (chunk.is_done) {
+        // 流式结束
+        unlisten()
+        assistantMessage.content = fullContent
+        saveMessages()
+        finalizeStreamingMessage(root, messageId, fullContent)
+        isLoading = false
+        updateSendButton(root)
+      } else {
+        // 追加内容
+        fullContent += chunk.content
+        updateStreamingMessage(root, messageId, fullContent)
+      }
+    })
+
+    // 调用流式接口
+    await invoke('chat_with_agent_stream', {
       agentCode: currentAgentCode,
       message: message,
-      history: messages.filter(m => m.role !== 'system').map(m => ({
+      history: messages.filter(m => m.role !== 'system' && m.id !== messageId).map(m => ({
         role: m.role,
         content: m.content
       }))
     })
-
-    // 添加 AI 回复
-    addAssistantMessage(root, response.content)
   } catch (err) {
     console.error('发送消息失败:', err)
     const errorMsg = err?.message || err?.toString() || '未知错误'
     addErrorMessage(root, `发送失败: ${errorMsg}`)
-  } finally {
-    hideLoading(root)
+
+    // 移除失败的助手消息
+    messages = messages.filter(m => m.id !== messageId)
+    removeMessage(root, messageId)
+    isLoading = false
+    updateSendButton(root)
   }
 }
 
@@ -411,6 +448,78 @@ function renderMessage(root, message) {
   }
 
   messagesContainer.appendChild(messageEl)
+}
+
+/**
+ * 渲染流式消息（初始）
+ */
+function renderStreamingMessage(root, message) {
+  const messagesContainer = root.querySelector('#chat-messages')
+  if (!messagesContainer) return
+
+  // 隐藏欢迎消息
+  const welcomeEl = messagesContainer.querySelector('.chat-welcome')
+  if (welcomeEl) {
+    welcomeEl.style.display = 'none'
+  }
+
+  const messageEl = document.createElement('div')
+  messageEl.className = 'chat-message chat-message-assistant chat-message-streaming'
+  messageEl.dataset.id = message.id
+
+  messageEl.innerHTML = `
+    <div class="chat-message-avatar">
+      ${ICONS.ai}
+    </div>
+    <div class="chat-message-body">
+      <div class="chat-message-header">
+        <span class="chat-message-author">${currentAgentName}</span>
+        <span class="chat-message-time">${formatTime(message.timestamp)}</span>
+      </div>
+      <div class="chat-message-content" id="stream-content-${message.id}">
+        <span class="streaming-cursor">▊</span>
+      </div>
+    </div>
+  `
+
+  messagesContainer.appendChild(messageEl)
+  scrollToBottom(root)
+}
+
+/**
+ * 更新流式消息内容
+ */
+function updateStreamingMessage(root, messageId, content) {
+  const contentEl = root.querySelector(`#stream-content-${messageId}`)
+  if (!contentEl) return
+
+  contentEl.innerHTML = formatMessageContent(content) + '<span class="streaming-cursor">▊</span>'
+  scrollToBottom(root)
+}
+
+/**
+ * 完成流式消息
+ */
+function finalizeStreamingMessage(root, messageId, content) {
+  const contentEl = root.querySelector(`#stream-content-${messageId}`)
+  if (!contentEl) return
+
+  contentEl.innerHTML = formatMessageContent(content)
+
+  const messageEl = root.querySelector(`[data-id="${messageId}"]`)
+  if (messageEl) {
+    messageEl.classList.remove('chat-message-streaming')
+  }
+}
+
+/**
+ * 移除消息
+ */
+function removeMessage(root, messageId) {
+  const messageEl = root.querySelector(`[data-id="${messageId}"]`)
+  if (messageEl) {
+    messageEl.remove()
+  }
 }
 
 /**

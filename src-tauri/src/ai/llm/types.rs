@@ -17,6 +17,15 @@ pub struct LlmRuntimeConfig {
     pub max_tokens: Option<u32>,
 }
 
+/// 流式响应块
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LlmStreamChunk {
+    /// 内容块
+    pub content: String,
+    /// 是否是最后一块
+    pub is_done: bool,
+}
+
 /// LLM 调用结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LlmCompletionResult {

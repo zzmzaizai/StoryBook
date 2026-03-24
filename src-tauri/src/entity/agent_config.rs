@@ -94,6 +94,20 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
+impl Model {
+    /// 获取有效的系统提示词
+    ///
+    /// 如果 use_system_prompt 为 true，则加载默认提示词
+    /// 否则返回空字符串
+    pub async fn get_effective_system_prompt(&self) -> String {
+        if self.use_system_prompt {
+            crate::ai::prompts::load_prompt(&self.agent_code).await.unwrap_or_default()
+        } else {
+            String::new()
+        }
+    }
+}
+
 /// Agent 代码常量
 /// 
 /// 定义系统中所有支持的 Agent 标识码

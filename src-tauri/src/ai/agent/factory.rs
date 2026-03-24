@@ -5,9 +5,10 @@
 use crate::ai::agent::registry::{AgentCodes, AgentRegistry};
 use crate::ai::agent::traits::{AgentContext, AgentExecutionContext, AgentHandler, AgentResult};
 use crate::ai::llm::service::LlmService;
-use crate::entity::agent_config;
+use crate::entity::agent_config::{self, Entity as AgentConfig};
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde_json::Value;
+use std::sync::Arc;
 
 /// Agent 工厂类
 ///
@@ -167,8 +168,6 @@ impl Default for AgentFactory {
     }
 }
 
-use std::sync::Arc;
-
 /// Agent 服务
 ///
 /// 提供 Agent 调用的静态方法
@@ -196,5 +195,26 @@ impl AgentService {
     ) -> anyhow::Result<AgentResult> {
         let factory = AgentFactory::new();
         factory.invoke_with_llm(db, agent_code, llm_config_id, input).await
+    }
+
+    /// 获取 Agent Handler
+    pub fn get_handler(agent_code: &str) -> Option<Arc<dyn AgentHandler>> {
+        let factory = AgentFactory::new();
+        factory.get_handler(agent_code)
+    }
+
+    /// 获取 Agent 配置
+    pub async fn get_agent_config(
+        db: &DatabaseConnection,
+        agent_code: &str,
+    ) -> anyhow::Result<agent_config::Model> {
+        let config = AgentConfig::find()
+            .filter(agent_config::Column::AgentCode.eq(agent_code))
+            .filter(agent_config::Column::Enabled.eq(true))
+            .one(db)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("Agent 配置不存在或已禁用: {}", agent_code))?;
+
+        Ok(config)
     }
 }

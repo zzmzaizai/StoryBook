@@ -388,6 +388,27 @@
   }
 }
 
+/* 流式消息光标 */
+.chat-message-streaming .chat-message-content {
+  background: var(--bg-secondary);
+}
+
+.streaming-cursor {
+  display: inline-block;
+  animation: blink 1s infinite;
+  color: var(--accent);
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0;
+  }
+}
+
 /* 输入区域 */
 .chat-input-area {
   padding: var(--space-md) var(--space-lg);

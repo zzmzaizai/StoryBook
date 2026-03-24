@@ -98,6 +98,7 @@ pub fn run() {
             // Chat commands
             commands::chat_with_agent,
             commands::chat_with_agent_and_llm,
+            commands::chat_with_agent_stream,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

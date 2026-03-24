@@ -3,10 +3,11 @@
 //! 统一创建不同 provider 的 LLM 客户端
 
 use crate::ai::llm::provider::LlmProvider;
-use crate::ai::llm::types::{LlmCompletionParams, LlmCompletionResult, LlmRuntimeConfig};
+use crate::ai::llm::types::{LlmCompletionParams, LlmCompletionResult, LlmRuntimeConfig, LlmStreamChunk};
 use crate::entity::llm_config;
 use rig::completion::Prompt;
 use rig::providers;
+use futures::StreamExt;
 
 /// LLM 工厂类
 ///
@@ -52,6 +53,13 @@ impl LlmFactory {
 pub trait LlmClient: Send + Sync {
     /// 执行对话补全
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult>;
+
+    /// 执行流式对话补全
+    async fn complete_stream(
+        &self,
+        params: LlmCompletionParams,
+        tx: tokio::sync::mpsc::Sender<LlmStreamChunk>,
+    ) -> anyhow::Result<()>;
 
     /// 获取提供商名称
     fn provider(&self) -> &str;
@@ -124,6 +132,77 @@ impl LlmClient for OpenAiClient {
         })
     }
 
+    async fn complete_stream(
+        &self,
+        params: LlmCompletionParams,
+        tx: tokio::sync::mpsc::Sender<LlmStreamChunk>,
+    ) -> anyhow::Result<()> {
+        use rig::streaming::{StreamingPrompt, StreamingChoice};
+        
+        let api_key = self.config.api_key.clone()
+            .ok_or_else(|| anyhow::anyhow!("OpenAI API key not configured"))?;
+        
+        // 清理 base_url
+        let base_url = self.config.base_url.as_ref().map(|url| {
+            let url = url.trim_end_matches("/v1").trim_end_matches('/');
+            url.to_string()
+        });
+        
+        // 创建 OpenAI 客户端
+        let client = if let Some(ref url) = base_url {
+            println!("[OpenAI Stream] Using custom base_url: {}", url);
+            providers::openai::Client::from_url(&api_key, url)
+        } else {
+            println!("[OpenAI Stream] Using default OpenAI API");
+            providers::openai::Client::new(&api_key)
+        };
+        
+        // 构建 agent
+        let mut agent_builder = client.agent(&self.config.model);
+        
+        // 添加系统提示词
+        if !params.system_prompt.is_empty() {
+            agent_builder = agent_builder.preamble(&params.system_prompt);
+        }
+        
+        // 设置温度参数
+        if let Some(temperature) = self.config.temperature {
+            agent_builder = agent_builder.temperature(temperature as f64);
+        }
+        
+        let agent = agent_builder.build();
+        
+        // 执行流式对话
+        let mut stream = agent.stream_prompt(&params.user_prompt).await
+            .map_err(|e| anyhow::anyhow!("OpenAI streaming API call failed: {}", e))?;
+        
+        // 处理流式响应
+        while let Some(chunk) = stream.next().await {
+            match chunk {
+                Ok(StreamingChoice::Message(text)) => {
+                    tx.send(LlmStreamChunk {
+                        content: text,
+                        is_done: false,
+                    }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+                }
+                Ok(StreamingChoice::ToolCall(_, _, _)) => {
+                    // 忽略工具调用
+                }
+                Err(e) => {
+                    eprintln!("Stream error: {}", e);
+                }
+            }
+        }
+        
+        // 发送完成标记
+        tx.send(LlmStreamChunk {
+            content: String::new(),
+            is_done: true,
+        }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+        
+        Ok(())
+    }
+
     fn provider(&self) -> &str {
         "openai"
     }
@@ -154,6 +233,34 @@ impl LlmClient for AnthropicClient {
             content: format!("[Anthropic Mock] {}", params.user_prompt),
             token_usage: None,
         })
+    }
+
+    async fn complete_stream(
+        &self,
+        params: LlmCompletionParams,
+        tx: tokio::sync::mpsc::Sender<LlmStreamChunk>,
+    ) -> anyhow::Result<()> {
+        // 使用非流式方式模拟
+        let result = self.complete(params).await?;
+        
+        let content = result.content;
+        let chunk_size = 5;
+        
+        for chunk in content.chars().collect::<Vec<_>>().chunks(chunk_size) {
+            let chunk_str: String = chunk.iter().collect();
+            tx.send(LlmStreamChunk {
+                content: chunk_str,
+                is_done: false,
+            }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+            tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
+        }
+        
+        tx.send(LlmStreamChunk {
+            content: String::new(),
+            is_done: true,
+        }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+        
+        Ok(())
     }
 
     fn provider(&self) -> &str {
@@ -214,6 +321,68 @@ impl LlmClient for DeepSeekClient {
         })
     }
 
+    async fn complete_stream(
+        &self,
+        params: LlmCompletionParams,
+        tx: tokio::sync::mpsc::Sender<LlmStreamChunk>,
+    ) -> anyhow::Result<()> {
+        use rig::streaming::{StreamingPrompt, StreamingChoice};
+        
+        let api_key = self.config.api_key.clone()
+            .ok_or_else(|| anyhow::anyhow!("DeepSeek API key not configured"))?;
+        
+        // DeepSeek 使用 OpenAI 兼容接口
+        let base_url = self.config.base_url.clone()
+            .unwrap_or_else(|| "https://api.deepseek.com".to_string());
+        
+        let client = providers::openai::Client::from_url(&api_key, &base_url);
+        
+        // 构建 agent
+        let mut agent_builder = client.agent(&self.config.model);
+        
+        // 添加系统提示词
+        if !params.system_prompt.is_empty() {
+            agent_builder = agent_builder.preamble(&params.system_prompt);
+        }
+        
+        // 设置温度参数
+        if let Some(temperature) = self.config.temperature {
+            agent_builder = agent_builder.temperature(temperature as f64);
+        }
+        
+        let agent = agent_builder.build();
+        
+        // 执行流式对话
+        let mut stream = agent.stream_prompt(&params.user_prompt).await
+            .map_err(|e| anyhow::anyhow!("DeepSeek streaming API call failed: {}", e))?;
+        
+        // 处理流式响应
+        while let Some(chunk) = stream.next().await {
+            match chunk {
+                Ok(StreamingChoice::Message(text)) => {
+                    tx.send(LlmStreamChunk {
+                        content: text,
+                        is_done: false,
+                    }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+                }
+                Ok(StreamingChoice::ToolCall(_, _, _)) => {
+                    // 忽略工具调用
+                }
+                Err(e) => {
+                    eprintln!("Stream error: {}", e);
+                }
+            }
+        }
+        
+        // 发送完成标记
+        tx.send(LlmStreamChunk {
+            content: String::new(),
+            is_done: true,
+        }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+        
+        Ok(())
+    }
+
     fn provider(&self) -> &str {
         "deepseek"
     }
@@ -244,6 +413,34 @@ impl LlmClient for GeminiClient {
             content: format!("[Gemini Mock] {}", params.user_prompt),
             token_usage: None,
         })
+    }
+
+    async fn complete_stream(
+        &self,
+        params: LlmCompletionParams,
+        tx: tokio::sync::mpsc::Sender<LlmStreamChunk>,
+    ) -> anyhow::Result<()> {
+        // 使用非流式方式模拟
+        let result = self.complete(params).await?;
+        
+        let content = result.content;
+        let chunk_size = 5;
+        
+        for chunk in content.chars().collect::<Vec<_>>().chunks(chunk_size) {
+            let chunk_str: String = chunk.iter().collect();
+            tx.send(LlmStreamChunk {
+                content: chunk_str,
+                is_done: false,
+            }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+            tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
+        }
+        
+        tx.send(LlmStreamChunk {
+            content: String::new(),
+            is_done: true,
+        }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+        
+        Ok(())
     }
 
     fn provider(&self) -> &str {
@@ -300,6 +497,34 @@ impl LlmClient for OllamaClient {
             content: response,
             token_usage: None,
         })
+    }
+
+    async fn complete_stream(
+        &self,
+        params: LlmCompletionParams,
+        tx: tokio::sync::mpsc::Sender<LlmStreamChunk>,
+    ) -> anyhow::Result<()> {
+        // 使用非流式方式模拟
+        let result = self.complete(params).await?;
+        
+        let content = result.content;
+        let chunk_size = 5;
+        
+        for chunk in content.chars().collect::<Vec<_>>().chunks(chunk_size) {
+            let chunk_str: String = chunk.iter().collect();
+            tx.send(LlmStreamChunk {
+                content: chunk_str,
+                is_done: false,
+            }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+            tokio::time::sleep(tokio::time::Duration::from_millis(30)).await;
+        }
+        
+        tx.send(LlmStreamChunk {
+            content: String::new(),
+            is_done: true,
+        }).await.map_err(|e| anyhow::anyhow!("Send error: {}", e))?;
+        
+        Ok(())
     }
 
     fn provider(&self) -> &str {

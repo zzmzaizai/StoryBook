@@ -3,7 +3,7 @@
 //! 负责执行 LLM 调用，管理对话流程
 
 use crate::ai::llm::factory::{LlmClient, LlmFactory};
-use crate::ai::llm::types::{LlmCompletionParams, LlmCompletionResult, LlmRuntimeConfig};
+use crate::ai::llm::types::{LlmCompletionParams, LlmCompletionResult, LlmRuntimeConfig, LlmStreamChunk};
 use crate::entity::llm_config;
 
 /// LLM 执行器
@@ -72,6 +72,50 @@ impl LlmExecutor {
     /// 获取模型名称
     pub fn model(&self) -> &str {
         self.client.model()
+    }
+
+    /// 执行流式对话补全
+    ///
+    /// # 参数
+    /// - `system_prompt`: 系统提示词
+    /// - `user_prompt`: 用户提示词
+    /// - `callback`: 流式回调函数
+    pub async fn complete_stream<F>(
+        &self,
+        system_prompt: &str,
+        user_prompt: &str,
+        callback: F,
+    ) -> anyhow::Result<()>
+    where
+        F: Fn(LlmStreamChunk) + Send + 'static,
+    {
+        let params = LlmCompletionParams {
+            system_prompt: system_prompt.to_string(),
+            user_prompt: user_prompt.to_string(),
+            ..Default::default()
+        };
+
+        // 使用通道进行流式传输
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<LlmStreamChunk>(100);
+
+        // 在后台任务中接收数据并调用回调
+        let callback_task = tokio::spawn(async move {
+            while let Some(chunk) = rx.recv().await {
+                let is_done = chunk.is_done;
+                callback(chunk);
+                if is_done {
+                    break;
+                }
+            }
+        });
+
+        // 执行流式调用
+        self.client.complete_stream(params, tx).await?;
+
+        // 等待回调任务完成
+        let _ = callback_task.await;
+
+        Ok(())
     }
 }
 
