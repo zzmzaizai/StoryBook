@@ -5,6 +5,8 @@
 use crate::ai::llm::provider::LlmProvider;
 use crate::ai::llm::types::{LlmCompletionParams, LlmCompletionResult, LlmRuntimeConfig};
 use crate::entity::llm_config;
+use rig::completion::Prompt;
+use rig::providers;
 
 /// LLM 工厂类
 ///
@@ -76,19 +78,48 @@ impl OpenAiClient {
 #[async_trait::async_trait]
 impl LlmClient for OpenAiClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        // TODO: 使用 rig 实现 OpenAI 调用
-        // 示例：
-        // let client = rig::providers::openai::Client::new(
-        //     self.config.api_key.clone().unwrap_or_default()
-        // );
-        // let agent = client
-        //     .agent(&self.config.model)
-        //     .preamble(&params.system_prompt)
-        //     .build();
-        // let response = agent.prompt(&params.user_prompt).await?;
+        let api_key = self.config.api_key.clone()
+            .ok_or_else(|| anyhow::anyhow!("OpenAI API key not configured"))?;
+        
+        // 清理 base_url，移除末尾的 /v1 或 /
+        let base_url = self.config.base_url.as_ref().map(|url| {
+            let url = url.trim_end_matches("/v1").trim_end_matches('/');
+            url.to_string()
+        });
+        
+        // 创建 OpenAI 客户端，支持自定义 base_url
+        let client = if let Some(ref url) = base_url {
+            println!("[OpenAI] Using custom base_url: {}", url);
+            providers::openai::Client::from_url(&api_key, url)
+        } else {
+            println!("[OpenAI] Using default OpenAI API");
+            providers::openai::Client::new(&api_key)
+        };
+        
+        println!("[OpenAI] Model: {}, Temperature: {:?}", self.config.model, self.config.temperature);
+        println!("[OpenAI] User prompt length: {}", params.user_prompt.len());
+        
+        // 构建 agent
+        let mut agent_builder = client.agent(&self.config.model);
+        
+        // 添加系统提示词
+        if !params.system_prompt.is_empty() {
+            agent_builder = agent_builder.preamble(&params.system_prompt);
+        }
+        
+        // 设置温度参数
+        if let Some(temperature) = self.config.temperature {
+            agent_builder = agent_builder.temperature(temperature as f64);
+        }
+        
+        let agent = agent_builder.build();
+        
+        // 执行对话
+        let response = agent.prompt(&params.user_prompt).await
+            .map_err(|e| anyhow::anyhow!("OpenAI API call failed: {}", e))?;
 
         Ok(LlmCompletionResult {
-            content: format!("[OpenAI Mock] {}", params.user_prompt),
+            content: response,
             token_usage: None,
         })
     }
@@ -150,9 +181,35 @@ impl DeepSeekClient {
 #[async_trait::async_trait]
 impl LlmClient for DeepSeekClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        // TODO: 使用 rig 实现 DeepSeek 调用
+        let api_key = self.config.api_key.clone()
+            .ok_or_else(|| anyhow::anyhow!("DeepSeek API key not configured"))?;
+        
+        // DeepSeek 使用 OpenAI 兼容接口
+        let base_url = self.config.base_url.clone()
+            .unwrap_or_else(|| "https://api.deepseek.com".to_string());
+        
+        let client = providers::openai::Client::from_url(&api_key, &base_url);
+        
+        // 构建 agent
+        let mut agent_builder = client.agent(&self.config.model);
+        
+        // 添加系统提示词
+        if !params.system_prompt.is_empty() {
+            agent_builder = agent_builder.preamble(&params.system_prompt);
+        }
+        
+        // 设置温度参数
+        if let Some(temperature) = self.config.temperature {
+            agent_builder = agent_builder.temperature(temperature as f64);
+        }
+        
+        let agent = agent_builder.build();
+        
+        // 执行对话
+        let response = agent.prompt(&params.user_prompt).await?;
+
         Ok(LlmCompletionResult {
-            content: format!("[DeepSeek Mock] {}", params.user_prompt),
+            content: response,
             token_usage: None,
         })
     }
@@ -214,9 +271,33 @@ impl OllamaClient {
 #[async_trait::async_trait]
 impl LlmClient for OllamaClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        // TODO: 使用 rig 实现 Ollama 调用
+        // Ollama 使用 OpenAI 兼容接口
+        let base_url = self.config.base_url.clone()
+            .unwrap_or_else(|| "http://localhost:11434".to_string());
+        
+        // Ollama 不需要 API key，使用空字符串
+        let client = providers::openai::Client::from_url("", &base_url);
+        
+        // 构建 agent
+        let mut agent_builder = client.agent(&self.config.model);
+        
+        // 添加系统提示词
+        if !params.system_prompt.is_empty() {
+            agent_builder = agent_builder.preamble(&params.system_prompt);
+        }
+        
+        // 设置温度参数
+        if let Some(temperature) = self.config.temperature {
+            agent_builder = agent_builder.temperature(temperature as f64);
+        }
+        
+        let agent = agent_builder.build();
+        
+        // 执行对话
+        let response = agent.prompt(&params.user_prompt).await?;
+
         Ok(LlmCompletionResult {
-            content: format!("[Ollama Mock] {}", params.user_prompt),
+            content: response,
             token_usage: None,
         })
     }

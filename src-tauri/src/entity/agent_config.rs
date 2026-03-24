@@ -100,6 +100,9 @@ impl ActiveModelBehavior for ActiveModel {}
 pub struct AgentCodes;
 
 impl AgentCodes {
+    /// 通用聊天 Agent
+    pub const GENERAL_CHAT: &'static str = "general_chat";
+
     /// 小说大纲生成 Agent
     pub const NOVEL_OUTLINE: &'static str = "novel_outline";
 
@@ -118,6 +121,7 @@ impl AgentCodes {
     /// 获取所有 Agent 代码列表
     pub fn all() -> Vec<&'static str> {
         vec![
+            Self::GENERAL_CHAT,
             Self::NOVEL_OUTLINE,
             Self::CHAPTER_TIMELINE,
             Self::CHARACTER_DESIGN,
@@ -129,6 +133,7 @@ impl AgentCodes {
     /// 获取 Agent 默认名称
     pub fn get_default_name(code: &str) -> &'static str {
         match code {
+            Self::GENERAL_CHAT => "通用助手",
             Self::NOVEL_OUTLINE => "小说大纲生成",
             Self::CHAPTER_TIMELINE => "章节时间线规划",
             Self::CHARACTER_DESIGN => "角色设计",

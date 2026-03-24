@@ -16,17 +16,36 @@ export async function render() {
   let characterStats = { total: 0 }
   
   try {
-    const novels = await api.getNovels({ page: 0, pageSize: 1000 })
+    const novels = await api.listNovels(0, 1000)
     novelStats.total = novels?.total || novels?.data?.length || 0
     novelStats.totalWords = novels?.data?.reduce((sum, n) => sum + (n.total_word_count || 0), 0) || 0
     novelStats.writing = novels?.data?.filter(n => n.status === 1 || n.status === 2).length || 0
     novelStats.completed = novels?.data?.filter(n => n.status === 3).length || 0
     
-    const chapters = await api.getChapters({ page: 0, pageSize: 1 })
-    chapterStats.total = chapters?.total || 0
+    // 计算所有小说的章节和角色总数
+    let totalChapters = 0
+    let totalCharacters = 0
     
-    const characters = await api.getCharacters({ page: 0, pageSize: 1 })
-    characterStats.total = characters?.total || 0
+    if (novels?.data?.length > 0) {
+      for (const novel of novels.data) {
+        try {
+          const chapters = await api.listChapters(novel.id, 0, 1)
+          totalChapters += chapters?.total || 0
+        } catch (e) {
+          // 忽略单个小说的错误
+        }
+        
+        try {
+          const characters = await api.listCharacters(novel.id, 0, 1)
+          totalCharacters += characters?.total || 0
+        } catch (e) {
+          // 忽略单个小说的错误
+        }
+      }
+    }
+    
+    chapterStats.total = totalChapters
+    characterStats.total = totalCharacters
   } catch (e) {
     console.error('Failed to load dashboard stats:', e)
   }

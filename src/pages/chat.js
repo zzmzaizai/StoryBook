@@ -16,7 +16,9 @@ let agents = []
 /**
  * 渲染 Chat 页面
  */
-export function renderChat(root) {
+export async function render() {
+  const root = document.createElement('div')
+  root.className = 'page'
   root.innerHTML = `
     <div class="page-container chat-container">
       <!-- 侧边栏：Agent 选择 -->
@@ -81,18 +83,20 @@ export function renderChat(root) {
   `
 
   // 初始化
-  initChat()
+  await initChat(root)
+
+  return root
 }
 
 /**
  * 初始化聊天功能
  */
-async function initChat() {
+async function initChat(root) {
   // 加载 Agent 列表
-  await loadAgents()
+  await loadAgents(root)
 
   // 绑定事件
-  bindEvents()
+  bindEvents(root)
 
   // 加载历史消息（如果有）
   loadMessages()
@@ -101,7 +105,7 @@ async function initChat() {
 /**
  * 加载可用 Agent 列表
  */
-async function loadAgents() {
+async function loadAgents(root) {
   try {
     // 从后端获取 Agent 配置列表
     const agentConfigs = await invoke('list_agent_configs')
@@ -126,7 +130,7 @@ async function loadAgents() {
         }))
     ]
 
-    renderAgentList()
+    renderAgentList(root)
   } catch (err) {
     console.error('加载 Agent 列表失败:', err)
     // 使用默认列表
@@ -139,7 +143,7 @@ async function loadAgents() {
         isDefault: true
       }
     ]
-    renderAgentList()
+    renderAgentList(root)
   }
 }
 
@@ -159,8 +163,8 @@ function getAgentIcon(agentCode) {
 /**
  * 渲染 Agent 列表
  */
-function renderAgentList() {
-  const listEl = document.getElementById('agent-list')
+function renderAgentList(root) {
+  const listEl = root.querySelector('#agent-list')
   if (!listEl) return
 
   listEl.innerHTML = agents.map(agent => `
@@ -178,39 +182,42 @@ function renderAgentList() {
 /**
  * 绑定事件
  */
-function bindEvents() {
+function bindEvents(root) {
   // Agent 切换
-  const agentList = document.getElementById('agent-list')
+  const agentList = root.querySelector('#agent-list')
   agentList?.addEventListener('click', (e) => {
     const item = e.target.closest('.chat-agent-item')
     if (item) {
       const code = item.dataset.code
-      switchAgent(code)
+      switchAgent(root, code)
     }
   })
 
   // 输入框自动调整高度
-  const input = document.getElementById('chat-input')
+  const input = root.querySelector('#chat-input')
   input?.addEventListener('input', () => {
     autoResizeTextarea(input)
-    updateSendButton()
+    updateSendButton(root)
   })
 
   // 发送消息
   input?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      sendMessage(root)
     }
   })
 
   // 发送按钮
-  const sendBtn = document.getElementById('send-btn')
-  sendBtn?.addEventListener('click', sendMessage)
+  const sendBtn = root.querySelector('#send-btn')
+  sendBtn?.addEventListener('click', () => sendMessage(root))
 
   // 清空对话
-  const clearBtn = document.getElementById('clear-chat')
-  clearBtn?.addEventListener('click', clearChat)
+  const clearBtn = root.querySelector('#clear-chat')
+  clearBtn?.addEventListener('click', () => clearChat(root))
+
+  // 初始更新发送按钮状态
+  updateSendButton(root)
 }
 
 /**
@@ -224,9 +231,9 @@ function autoResizeTextarea(textarea) {
 /**
  * 更新发送按钮状态
  */
-function updateSendButton() {
-  const input = document.getElementById('chat-input')
-  const sendBtn = document.getElementById('send-btn')
+function updateSendButton(root) {
+  const input = root.querySelector('#chat-input')
+  const sendBtn = root.querySelector('#send-btn')
   if (input && sendBtn) {
     sendBtn.disabled = !input.value.trim() || isLoading
   }
@@ -235,7 +242,7 @@ function updateSendButton() {
 /**
  * 切换 Agent
  */
-function switchAgent(code) {
+function switchAgent(root, code) {
   if (code === currentAgentCode) return
 
   const agent = agents.find(a => a.code === code)
@@ -245,32 +252,32 @@ function switchAgent(code) {
   currentAgentName = agent.name
 
   // 更新 UI
-  document.getElementById('current-agent-name').textContent = agent.name
-  renderAgentList()
+  root.querySelector('#current-agent-name').textContent = agent.name
+  renderAgentList(root)
 
   // 添加系统消息
-  addSystemMessage(`已切换到 ${agent.name}`)
+  addSystemMessage(root, `已切换到 ${agent.name}`)
 }
 
 /**
  * 发送消息
  */
-async function sendMessage() {
-  const input = document.getElementById('chat-input')
+async function sendMessage(root) {
+  const input = root.querySelector('#chat-input')
   const message = input.value.trim()
   
   if (!message || isLoading) return
 
   // 添加用户消息
-  addUserMessage(message)
+  addUserMessage(root, message)
   
   // 清空输入框
   input.value = ''
   input.style.height = 'auto'
-  updateSendButton()
+  updateSendButton(root)
 
   // 显示加载状态
-  showLoading()
+  showLoading(root)
 
   try {
     // 调用后端发送消息
@@ -284,19 +291,20 @@ async function sendMessage() {
     })
 
     // 添加 AI 回复
-    addAssistantMessage(response.content)
+    addAssistantMessage(root, response.content)
   } catch (err) {
     console.error('发送消息失败:', err)
-    addErrorMessage('发送失败，请重试')
+    const errorMsg = err?.message || err?.toString() || '未知错误'
+    addErrorMessage(root, `发送失败: ${errorMsg}`)
   } finally {
-    hideLoading()
+    hideLoading(root)
   }
 }
 
 /**
  * 添加用户消息
  */
-function addUserMessage(content) {
+function addUserMessage(root, content) {
   const message = {
     id: Date.now(),
     role: 'user',
@@ -304,14 +312,15 @@ function addUserMessage(content) {
     timestamp: new Date().toISOString()
   }
   messages.push(message)
-  renderMessage(message)
-  scrollToBottom()
+  saveMessages()
+  renderMessage(root, message)
+  scrollToBottom(root)
 }
 
 /**
  * 添加助手消息
  */
-function addAssistantMessage(content) {
+function addAssistantMessage(root, content) {
   const message = {
     id: Date.now(),
     role: 'assistant',
@@ -319,14 +328,15 @@ function addAssistantMessage(content) {
     timestamp: new Date().toISOString()
   }
   messages.push(message)
-  renderMessage(message)
-  scrollToBottom()
+  saveMessages()
+  renderMessage(root, message)
+  scrollToBottom(root)
 }
 
 /**
  * 添加系统消息
  */
-function addSystemMessage(content) {
+function addSystemMessage(root, content) {
   const message = {
     id: Date.now(),
     role: 'system',
@@ -334,15 +344,15 @@ function addSystemMessage(content) {
     timestamp: new Date().toISOString()
   }
   messages.push(message)
-  renderMessage(message)
-  scrollToBottom()
+  renderMessage(root, message)
+  scrollToBottom(root)
 }
 
 /**
  * 添加错误消息
  */
-function addErrorMessage(content) {
-  const messagesContainer = document.getElementById('chat-messages')
+function addErrorMessage(root, content) {
+  const messagesContainer = root.querySelector('#chat-messages')
   if (!messagesContainer) return
 
   const errorEl = document.createElement('div')
@@ -354,14 +364,14 @@ function addErrorMessage(content) {
     </div>
   `
   messagesContainer.appendChild(errorEl)
-  scrollToBottom()
+  scrollToBottom(root)
 }
 
 /**
  * 渲染单条消息
  */
-function renderMessage(message) {
-  const messagesContainer = document.getElementById('chat-messages')
+function renderMessage(root, message) {
+  const messagesContainer = root.querySelector('#chat-messages')
   if (!messagesContainer) return
 
   // 隐藏欢迎消息
@@ -426,8 +436,8 @@ function formatTime(timestamp) {
 /**
  * 滚动到底部
  */
-function scrollToBottom() {
-  const messagesContainer = document.getElementById('chat-messages')
+function scrollToBottom(root) {
+  const messagesContainer = root.querySelector('#chat-messages')
   if (messagesContainer) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight
   }
@@ -436,11 +446,11 @@ function scrollToBottom() {
 /**
  * 显示加载状态
  */
-function showLoading() {
+function showLoading(root) {
   isLoading = true
-  updateSendButton()
+  updateSendButton(root)
 
-  const messagesContainer = document.getElementById('chat-messages')
+  const messagesContainer = root.querySelector('#chat-messages')
   if (!messagesContainer) return
 
   const loadingEl = document.createElement('div')
@@ -457,17 +467,17 @@ function showLoading() {
     </div>
   `
   messagesContainer.appendChild(loadingEl)
-  scrollToBottom()
+  scrollToBottom(root)
 }
 
 /**
  * 隐藏加载状态
  */
-function hideLoading() {
+function hideLoading(root) {
   isLoading = false
-  updateSendButton()
+  updateSendButton(root)
 
-  const loadingEl = document.getElementById('chat-loading')
+  const loadingEl = root.querySelector('#chat-loading')
   if (loadingEl) {
     loadingEl.remove()
   }
@@ -476,12 +486,12 @@ function hideLoading() {
 /**
  * 清空对话
  */
-function clearChat() {
+function clearChat(root) {
   if (messages.length === 0) return
 
   if (confirm('确定要清空当前对话吗？')) {
     messages = []
-    const messagesContainer = document.getElementById('chat-messages')
+    const messagesContainer = root.querySelector('#chat-messages')
     if (messagesContainer) {
       messagesContainer.innerHTML = `
         <div class="chat-welcome">
@@ -498,6 +508,26 @@ function clearChat() {
  * 加载历史消息
  */
 function loadMessages() {
-  // TODO: 从本地存储或数据库加载历史消息
-  messages = []
+  try {
+    const saved = localStorage.getItem(`chat_messages_${currentAgentCode}`)
+    if (saved) {
+      messages = JSON.parse(saved)
+    } else {
+      messages = []
+    }
+  } catch (err) {
+    console.error('加载历史消息失败:', err)
+    messages = []
+  }
+}
+
+/**
+ * 保存消息到本地存储
+ */
+function saveMessages() {
+  try {
+    localStorage.setItem(`chat_messages_${currentAgentCode}`, JSON.stringify(messages))
+  } catch (err) {
+    console.error('保存消息失败:', err)
+  }
 }
