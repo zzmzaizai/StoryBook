@@ -4,15 +4,20 @@
 
 use crate::ai::agent::traits::{AgentContext, AgentHandler};
 use async_trait::async_trait;
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 /// 角色设计输入参数
-#[derive(Debug, Deserialize)]
-struct CharacterDesignInput {
-    story_background: String,
-    role_type: String,
-    keywords: Vec<String>,
-    relationship_hint: Option<String>,
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct CharacterDesignInput {
+    #[doc = "Story background and world setting"]
+    pub story_background: String,
+    #[doc = "Character role type (protagonist, antagonist, supporting, etc.)"]
+    pub role_type: String,
+    #[doc = "Keywords for character design"]
+    pub keywords: Vec<String>,
+    #[doc = "Hint for character relationships"]
+    pub relationship_hint: Option<String>,
 }
 
 /// 角色设计 Agent Handler
@@ -33,7 +38,7 @@ impl AgentHandler for CharacterDesignHandler {
     }
 
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String> {
-        let input: CharacterDesignInput = serde_json::from_value(ctx.input)?;
+        let input: CharacterDesignInput = ctx.parse()?;
 
         let prompt = format!(
             r#"请设计一个小说角色：
@@ -61,7 +66,7 @@ impl AgentHandler for CharacterDesignHandler {
 8. 可用于剧情推进的秘密或矛盾点"#,
             input.story_background,
             input.role_type,
-            input.keywords.join("。"),
+            input.keywords.join("、"),
             input.relationship_hint.unwrap_or_default(),
         );
 

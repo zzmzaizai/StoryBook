@@ -3,10 +3,9 @@
 //! 提供 Agent 相关的业务逻辑
 
 use crate::ai::agent::factory::AgentFactory;
-use crate::ai::agent::registry::AgentCodes;
+use crate::entity::agent_config::AgentCodes;
 use crate::ai::agent::traits::AgentResult;
 use sea_orm::DatabaseConnection;
-use serde_json::Value;
 
 /// 小说大纲生成参数
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -38,11 +37,18 @@ pub struct CharacterDesignParams {
     pub relationship_hint: Option<String>,
 }
 
+/// 通用聊天参数
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct GeneralChatParams {
+    pub message: String,
+    pub history: Option<Vec<crate::ai::agent::traits::ChatMessage>>,
+    pub context: Option<String>,
+}
+
 /// Agent 业务服务
 pub struct AgentBizService;
 
 impl AgentBizService {
-    /// 生成小说大纲
     pub async fn generate_novel_outline(
         db: &DatabaseConnection,
         params: NovelOutlineParams,
@@ -53,7 +59,6 @@ impl AgentBizService {
             .await
     }
 
-    /// 生成章节时间线
     pub async fn generate_chapter_timeline(
         db: &DatabaseConnection,
         params: ChapterTimelineParams,
@@ -64,7 +69,6 @@ impl AgentBizService {
             .await
     }
 
-    /// 设计角色
     pub async fn design_character(
         db: &DatabaseConnection,
         params: CharacterDesignParams,
@@ -72,6 +76,16 @@ impl AgentBizService {
         let input = serde_json::to_value(params)?;
         AgentFactory::new()
             .invoke(db, AgentCodes::CHARACTER_DESIGN, input)
+            .await
+    }
+
+    pub async fn general_chat(
+        db: &DatabaseConnection,
+        params: GeneralChatParams,
+    ) -> anyhow::Result<AgentResult> {
+        let input = serde_json::to_value(params)?;
+        AgentFactory::new()
+            .invoke(db, AgentCodes::GENERAL_CHAT, input)
             .await
     }
 }

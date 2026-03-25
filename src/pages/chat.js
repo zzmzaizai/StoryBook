@@ -101,6 +101,9 @@ async function initChat(root) {
 
   // 加载历史消息（如果有）
   loadMessages()
+
+  // 渲染历史消息到页面
+  renderHistoryMessages(root)
 }
 
 /**
@@ -249,6 +252,9 @@ function switchAgent(root, code) {
   const agent = agents.find(a => a.code === code)
   if (!agent) return
 
+  // 保存当前对话到 localStorage
+  saveMessages()
+
   currentAgentCode = code
   currentAgentName = agent.name
 
@@ -256,8 +262,29 @@ function switchAgent(root, code) {
   root.querySelector('#current-agent-name').textContent = agent.name
   renderAgentList(root)
 
-  // 添加系统消息
-  addSystemMessage(root, `已切换到 ${agent.name}`)
+  // 清空当前消息并加载新 Agent 的历史消息
+  messages = []
+  loadMessages()
+  
+  // 重置消息容器
+  const messagesContainer = root.querySelector('#chat-messages')
+  if (messagesContainer) {
+    if (messages.length > 0) {
+      // 渲染历史消息
+      messagesContainer.innerHTML = ''
+      messages.forEach(msg => renderMessage(root, msg))
+      scrollToBottom(root)
+    } else {
+      // 显示欢迎消息
+      messagesContainer.innerHTML = `
+        <div class="chat-welcome">
+          <div class="chat-welcome-icon">${ICONS.sparkles}</div>
+          <h3>你好！我是 ${currentAgentName}</h3>
+          <p>有什么我可以帮你的吗？</p>
+        </div>
+      `
+    }
+  }
 }
 
 /**
@@ -309,10 +336,18 @@ async function sendMessage(root) {
         finalizeStreamingMessage(root, messageId, fullContent)
         isLoading = false
         updateSendButton(root)
+      } else if (chunk.kind === 'error') {
+        unlisten()
+        addErrorMessage(root, `生成失败: ${chunk.content}`)
+        messages = messages.filter(m => m.id !== messageId)
+        removeMessage(root, messageId)
+        isLoading = false
+        updateSendButton(root)
       } else {
-        // 追加内容
-        fullContent += chunk.content
-        updateStreamingMessage(root, messageId, fullContent)
+        if (chunk.kind === 'text' || chunk.kind === 'reasoning_delta') {
+          fullContent += chunk.content
+          updateStreamingMessage(root, messageId, fullContent)
+        }
       }
     })
 
@@ -628,6 +663,31 @@ function loadMessages() {
     console.error('加载历史消息失败:', err)
     messages = []
   }
+}
+
+/**
+ * 渲染历史消息到页面
+ */
+function renderHistoryMessages(root) {
+  if (messages.length === 0) return
+  
+  const messagesContainer = root.querySelector('#chat-messages')
+  if (!messagesContainer) return
+  
+  // 隐藏欢迎消息
+  const welcomeEl = messagesContainer.querySelector('.chat-welcome')
+  if (welcomeEl) {
+    welcomeEl.style.display = 'none'
+  }
+  
+  // 渲染所有历史消息
+  messages.forEach(msg => {
+    if (msg.role !== 'system') {
+      renderMessage(root, msg)
+    }
+  })
+  
+  scrollToBottom(root)
 }
 
 /**

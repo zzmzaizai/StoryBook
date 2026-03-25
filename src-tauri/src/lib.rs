@@ -4,7 +4,6 @@ mod constants;
 mod db;
 mod entity;
 mod repository;
-mod rig_service;
 mod seeds;
 mod storage;
 mod tray;

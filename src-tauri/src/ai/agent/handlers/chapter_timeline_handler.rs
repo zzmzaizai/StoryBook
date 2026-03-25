@@ -4,15 +4,20 @@
 
 use crate::ai::agent::traits::{AgentContext, AgentHandler};
 use async_trait::async_trait;
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 /// 章节时间线输入参数
-#[derive(Debug, Deserialize)]
-struct ChapterTimelineInput {
-    outline: String,
-    chapter_start: u32,
-    chapter_end: u32,
-    current_arc_goal: Option<String>,
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ChapterTimelineInput {
+    #[doc = "Novel outline"]
+    pub outline: String,
+    #[doc = "Starting chapter number"]
+    pub chapter_start: u32,
+    #[doc = "Ending chapter number"]
+    pub chapter_end: u32,
+    #[doc = "Current story arc goal"]
+    pub current_arc_goal: Option<String>,
 }
 
 /// 章节时间线 Agent Handler
@@ -33,7 +38,7 @@ impl AgentHandler for ChapterTimelineHandler {
     }
 
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String> {
-        let input: ChapterTimelineInput = serde_json::from_value(ctx.input)?;
+        let input: ChapterTimelineInput = ctx.parse()?;
 
         let prompt = format!(
             r#"请基于以下小说大纲，为第 {} 到第 {} 章生成章节时间线。

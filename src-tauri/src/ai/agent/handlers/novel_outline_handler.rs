@@ -4,18 +4,26 @@
 
 use crate::ai::agent::traits::{AgentContext, AgentHandler};
 use async_trait::async_trait;
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 /// 小说大纲输入参数
-#[derive(Debug, Deserialize)]
-struct NovelOutlineInput {
-    title: Option<String>,
-    genre: String,
-    theme: Option<String>,
-    world_setting: String,
-    core_conflict: String,
-    style: Option<String>,
-    target_length: Option<String>,
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct NovelOutlineInput {
+    #[doc = "Novel title"]
+    pub title: Option<String>,
+    #[doc = "Genre (fantasy, romance, sci-fi, etc.)"]
+    pub genre: String,
+    #[doc = "Core theme"]
+    pub theme: Option<String>,
+    #[doc = "World setting and background"]
+    pub world_setting: String,
+    #[doc = "Core conflict of the story"]
+    pub core_conflict: String,
+    #[doc = "Writing style preference"]
+    pub style: Option<String>,
+    #[doc = "Target length (short, medium, long)"]
+    pub target_length: Option<String>,
 }
 
 /// 小说大纲 Agent Handler
@@ -36,7 +44,7 @@ impl AgentHandler for NovelOutlineHandler {
     }
 
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String> {
-        let input: NovelOutlineInput = serde_json::from_value(ctx.input)?;
+        let input: NovelOutlineInput = ctx.parse()?;
 
         let prompt = format!(
             r#"请根据以下信息生成小说大纲：
