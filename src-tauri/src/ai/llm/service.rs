@@ -1,33 +1,30 @@
 //! LLM 服务层
 //!
 //! 负责从数据库获取 LLM 配置，提供统一的 LLM 获取接口
-//! 所有方法都通过 LlmConfigRepository 实现，保持架构一致
 
 use crate::entity::llm_config;
-use crate::repository::LlmConfigRepository;
-use std::sync::Arc;
-use sea_orm::DatabaseConnection;
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 
 /// LLM 服务
 ///
-/// 封装 LLM 配置的数据库操作，统一通过 Repository 层访问
+/// 封装 LLM 配置的数据库操作
 pub struct LlmService;
 
 impl LlmService {
-    fn get_repository(db: &DatabaseConnection) -> LlmConfigRepository {
-        LlmConfigRepository::new(Arc::new(db.clone()))
-    }
-
     /// 获取默认 LLM 配置
     ///
     /// 返回启用的默认 LLM 配置
     pub async fn get_default_llm(
         db: &DatabaseConnection,
     ) -> anyhow::Result<llm_config::Model> {
-        let repo = Self::get_repository(db);
-        repo.find_default()
+        let model = llm_config::Entity::find()
+            .filter(llm_config::Column::IsDefault.eq(true))
+            .filter(llm_config::Column::Enabled.eq(true))
+            .one(db)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("默认 LLM 未配置"))
+            .ok_or_else(|| anyhow::anyhow!("默认 LLM 未配置"))?;
+
+        Ok(model)
     }
 
     /// 根据 ID 获取 LLM 配置
@@ -41,9 +38,8 @@ impl LlmService {
         db: &DatabaseConnection,
         id: i32,
     ) -> anyhow::Result<llm_config::Model> {
-        let repo = Self::get_repository(db);
-        let model = repo
-            .find_by_id(id)
+        let model = llm_config::Entity::find_by_id(id)
+            .one(db)
             .await?
             .ok_or_else(|| anyhow::anyhow!("LLM 配置不存在: {}", id))?;
 
@@ -79,7 +75,11 @@ impl LlmService {
     pub async fn list_enabled_llms(
         db: &DatabaseConnection,
     ) -> anyhow::Result<Vec<llm_config::Model>> {
-        let repo = Self::get_repository(db);
-        repo.find_enabled().await.map_err(Into::into)
+        let models = llm_config::Entity::find()
+            .filter(llm_config::Column::Enabled.eq(true))
+            .all(db)
+            .await?;
+
+        Ok(models)
     }
 }

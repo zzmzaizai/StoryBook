@@ -94,29 +94,12 @@ pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl Model {
-    /// 获取有效的系统提示词
-    ///
-    /// 如果 use_system_prompt 为 true，则加载默认提示词
-    /// 否则返回空字符串
-    pub async fn get_effective_system_prompt(&self) -> String {
-        if self.use_system_prompt {
-            crate::ai::prompts::load_prompt(&self.agent_code).await.unwrap_or_default()
-        } else {
-            String::new()
-        }
-    }
-}
-
 /// Agent 代码常量
 /// 
 /// 定义系统中所有支持的 Agent 标识码
 pub struct AgentCodes;
 
 impl AgentCodes {
-    /// 通用聊天 Agent
-    pub const GENERAL_CHAT: &'static str = "general_chat";
-
     /// 小说大纲生成 Agent
     pub const NOVEL_OUTLINE: &'static str = "novel_outline";
 
@@ -135,7 +118,6 @@ impl AgentCodes {
     /// 获取所有 Agent 代码列表
     pub fn all() -> Vec<&'static str> {
         vec![
-            Self::GENERAL_CHAT,
             Self::NOVEL_OUTLINE,
             Self::CHAPTER_TIMELINE,
             Self::CHARACTER_DESIGN,
@@ -147,7 +129,6 @@ impl AgentCodes {
     /// 获取 Agent 默认名称
     pub fn get_default_name(code: &str) -> &'static str {
         match code {
-            Self::GENERAL_CHAT => "通用助手",
             Self::NOVEL_OUTLINE => "小说大纲生成",
             Self::CHAPTER_TIMELINE => "章节时间线规划",
             Self::CHARACTER_DESIGN => "角色设计",

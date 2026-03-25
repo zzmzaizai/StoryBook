@@ -121,7 +121,7 @@ fn get_builtin_prompt(agent_code: &str) -> PromptConfig {
 pub async fn init_prompt_cache() -> anyhow::Result<()> {
     let mut cache = HashMap::new();
 
-    let agents = ["novel_outline", "chapter_timeline", "character_design"];
+    let agents = ["novel_outline", "chapter_timeline", "character_design", "novel_info_generator"];
 
     for agent_code in agents {
         if let Ok(config) = load_prompt_from_file(agent_code).await {

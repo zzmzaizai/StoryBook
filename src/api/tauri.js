@@ -35,6 +35,7 @@ export const api = {
   getNovel: (id) => invoke('get_novel', { id }),
   updateNovel: (payload) => invoke('update_novel', payload),
   deleteNovel: (id) => invoke('delete_novel', { id }),
+  aiGenerateNovelInfo: (requirement) => invoke('ai_generate_novel_info', { requirement }),
 
   createChapter: (novelId, chapterName) => invoke('create_chapter', { novelId, chapterName }),
   listChapters: (novelId, page = 0, pageSize = 20) =>

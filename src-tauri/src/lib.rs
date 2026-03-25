@@ -37,14 +37,15 @@ pub fn run() {
             
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            commands::create_novel,
-            commands::list_novels,
-            commands::count_novels,
-            commands::get_novel,
-            commands::update_novel,
-            commands::delete_novel,
-            commands::create_chapter,
+.invoke_handler(tauri::generate_handler![
+        commands::create_novel,
+        commands::list_novels,
+        commands::count_novels,
+        commands::get_novel,
+        commands::update_novel,
+        commands::delete_novel,
+        commands::ai_generate_novel_info,
+        commands::create_chapter,
             commands::list_chapters,
             commands::get_chapter,
             commands::save_chapter,

@@ -1,12 +1,9 @@
 //! LLM 模块
 //!
-//! 提供统一的 LLM 调用接口
-
-mod factory;
-mod types;
+//! 负责 LLM 的创建、配置解析和执行
 
 pub mod executor;
+pub mod factory;
+pub mod provider;
 pub mod service;
-
-pub use executor::{LlmExecutor, LlmExecutorBuilder};
-pub use types::{CompletionResult, LlmConfig, LlmProvider, StreamChunk, TokenUsage};
+pub mod types;

@@ -26,6 +26,7 @@ impl AgentRegistry {
         self.register(Arc::new(NovelOutlineHandler));
         self.register(Arc::new(ChapterTimelineHandler));
         self.register(Arc::new(CharacterDesignHandler));
+        self.register(Arc::new(NovelInfoGeneratorHandler));
     }
 
     pub fn register(&mut self, handler: Arc<dyn AgentHandler>) {

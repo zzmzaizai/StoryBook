@@ -500,23 +500,18 @@ async fn init_agent_configs(db: &DatabaseConnection) -> Result<(), sea_orm::DbEr
     use crate::entity::agent_config::Entity as AgentConfig;
     use crate::entity::agent_config::ActiveModel as ActiveAgentConfig;
     use crate::entity::agent_config::AgentCodes;
-    use sea_orm::{ColumnTrait, QueryFilter};
+
+    // 检查是否已有数据，避免重复插入
+    let count: u64 = AgentConfig::find().count(db).await?;
+    if count > 0 {
+        return Ok(());
+    }
 
     // 获取当前时间戳
     let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
 
-    // 检查并插入缺失的 Agent 配置
+    // 插入默认 Agent 配置
     for code in AgentCodes::all() {
-        // 检查该 Agent 是否已存在
-        let exists = AgentConfig::find()
-            .filter(crate::entity::agent_config::Column::AgentCode.eq(code))
-            .count(db)
-            .await? > 0;
-        
-        if exists {
-            continue;
-        }
-
         let name = AgentCodes::get_default_name(code).to_string();
 
         let agent = ActiveAgentConfig {

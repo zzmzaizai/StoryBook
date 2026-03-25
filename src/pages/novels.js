@@ -68,7 +68,25 @@ export async function render() {
     showCreateNovelModal({
       onConfirm: async (formData) => {
         try {
-          await api.createNovel(formData.title)
+          const novel = await api.createNovel(formData.title)
+          
+          if (formData.description || formData.style !== 1 || formData.target_audience !== 4 || formData.length_type !== 3) {
+            await api.updateNovel({
+              id: novel.id,
+              title: formData.title,
+              description: formData.description || null,
+              image: null,
+              style: formData.style,
+              target_audience: formData.target_audience,
+              length_type: formData.length_type,
+              is_focus: false,
+              estimated_chapter_count: null,
+              estimated_total_word_count: null,
+              estimated_words_per_chapter: null,
+              status: 1,
+            })
+          }
+          
           await load(el)
         } catch (e) {
           console.error('创建小说失败:', e)

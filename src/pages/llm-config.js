@@ -8,11 +8,10 @@ import { invoke } from '@tauri-apps/api/core'
 
 // 支持的 Provider 列表
 const PROVIDER_OPTIONS = [
-  { value: 'openai', label: 'OpenAI (Chat Completions API)', baseUrl: 'https://api.openai.com/v1', apiType: 'chat' },
-  { value: 'openai_responses', label: 'OpenAI (Responses API)', baseUrl: 'https://api.openai.com/v1', apiType: 'responses' },
-  { value: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1', apiType: 'chat' },
-  { value: 'gemini', label: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', apiType: 'chat' },
-  { value: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434/v1', apiType: 'chat' },
+  { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
+  { value: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1' },
+  { value: 'gemini', label: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta' },
+  { value: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434/v1' },
 ]
 
 let configs = []

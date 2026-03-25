@@ -1,5 +1,4 @@
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
 import { ICONS } from '../lib/icons.js'
 
 /**
@@ -17,9 +16,7 @@ let agents = []
 /**
  * 渲染 Chat 页面
  */
-export async function render() {
-  const root = document.createElement('div')
-  root.className = 'page'
+export function renderChat(root) {
   root.innerHTML = `
     <div class="page-container chat-container">
       <!-- 侧边栏：Agent 选择 -->
@@ -84,32 +81,27 @@ export async function render() {
   `
 
   // 初始化
-  await initChat(root)
-
-  return root
+  initChat()
 }
 
 /**
  * 初始化聊天功能
  */
-async function initChat(root) {
+async function initChat() {
   // 加载 Agent 列表
-  await loadAgents(root)
+  await loadAgents()
 
   // 绑定事件
-  bindEvents(root)
+  bindEvents()
 
   // 加载历史消息（如果有）
   loadMessages()
-
-  // 渲染历史消息到页面
-  renderHistoryMessages(root)
 }
 
 /**
  * 加载可用 Agent 列表
  */
-async function loadAgents(root) {
+async function loadAgents() {
   try {
     // 从后端获取 Agent 配置列表
     const agentConfigs = await invoke('list_agent_configs')
@@ -134,7 +126,7 @@ async function loadAgents(root) {
         }))
     ]
 
-    renderAgentList(root)
+    renderAgentList()
   } catch (err) {
     console.error('加载 Agent 列表失败:', err)
     // 使用默认列表
@@ -147,7 +139,7 @@ async function loadAgents(root) {
         isDefault: true
       }
     ]
-    renderAgentList(root)
+    renderAgentList()
   }
 }
 
@@ -167,8 +159,8 @@ function getAgentIcon(agentCode) {
 /**
  * 渲染 Agent 列表
  */
-function renderAgentList(root) {
-  const listEl = root.querySelector('#agent-list')
+function renderAgentList() {
+  const listEl = document.getElementById('agent-list')
   if (!listEl) return
 
   listEl.innerHTML = agents.map(agent => `
@@ -186,42 +178,39 @@ function renderAgentList(root) {
 /**
  * 绑定事件
  */
-function bindEvents(root) {
+function bindEvents() {
   // Agent 切换
-  const agentList = root.querySelector('#agent-list')
+  const agentList = document.getElementById('agent-list')
   agentList?.addEventListener('click', (e) => {
     const item = e.target.closest('.chat-agent-item')
     if (item) {
       const code = item.dataset.code
-      switchAgent(root, code)
+      switchAgent(code)
     }
   })
 
   // 输入框自动调整高度
-  const input = root.querySelector('#chat-input')
+  const input = document.getElementById('chat-input')
   input?.addEventListener('input', () => {
     autoResizeTextarea(input)
-    updateSendButton(root)
+    updateSendButton()
   })
 
   // 发送消息
   input?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage(root)
+      sendMessage()
     }
   })
 
   // 发送按钮
-  const sendBtn = root.querySelector('#send-btn')
-  sendBtn?.addEventListener('click', () => sendMessage(root))
+  const sendBtn = document.getElementById('send-btn')
+  sendBtn?.addEventListener('click', sendMessage)
 
   // 清空对话
-  const clearBtn = root.querySelector('#clear-chat')
-  clearBtn?.addEventListener('click', () => clearChat(root))
-
-  // 初始更新发送按钮状态
-  updateSendButton(root)
+  const clearBtn = document.getElementById('clear-chat')
+  clearBtn?.addEventListener('click', clearChat)
 }
 
 /**
@@ -235,9 +224,9 @@ function autoResizeTextarea(textarea) {
 /**
  * 更新发送按钮状态
  */
-function updateSendButton(root) {
-  const input = root.querySelector('#chat-input')
-  const sendBtn = root.querySelector('#send-btn')
+function updateSendButton() {
+  const input = document.getElementById('chat-input')
+  const sendBtn = document.getElementById('send-btn')
   if (input && sendBtn) {
     sendBtn.disabled = !input.value.trim() || isLoading
   }
@@ -246,137 +235,68 @@ function updateSendButton(root) {
 /**
  * 切换 Agent
  */
-function switchAgent(root, code) {
+function switchAgent(code) {
   if (code === currentAgentCode) return
 
   const agent = agents.find(a => a.code === code)
   if (!agent) return
 
-  // 保存当前对话到 localStorage
-  saveMessages()
-
   currentAgentCode = code
   currentAgentName = agent.name
 
   // 更新 UI
-  root.querySelector('#current-agent-name').textContent = agent.name
-  renderAgentList(root)
+  document.getElementById('current-agent-name').textContent = agent.name
+  renderAgentList()
 
-  // 清空当前消息并加载新 Agent 的历史消息
-  messages = []
-  loadMessages()
-  
-  // 重置消息容器
-  const messagesContainer = root.querySelector('#chat-messages')
-  if (messagesContainer) {
-    if (messages.length > 0) {
-      // 渲染历史消息
-      messagesContainer.innerHTML = ''
-      messages.forEach(msg => renderMessage(root, msg))
-      scrollToBottom(root)
-    } else {
-      // 显示欢迎消息
-      messagesContainer.innerHTML = `
-        <div class="chat-welcome">
-          <div class="chat-welcome-icon">${ICONS.sparkles}</div>
-          <h3>你好！我是 ${currentAgentName}</h3>
-          <p>有什么我可以帮你的吗？</p>
-        </div>
-      `
-    }
-  }
+  // 添加系统消息
+  addSystemMessage(`已切换到 ${agent.name}`)
 }
 
 /**
- * 发送消息（流式）
+ * 发送消息
  */
-async function sendMessage(root) {
-  const input = root.querySelector('#chat-input')
+async function sendMessage() {
+  const input = document.getElementById('chat-input')
   const message = input.value.trim()
-
+  
   if (!message || isLoading) return
 
   // 添加用户消息
-  addUserMessage(root, message)
-
+  addUserMessage(message)
+  
   // 清空输入框
   input.value = ''
   input.style.height = 'auto'
-  updateSendButton(root)
+  updateSendButton()
 
-  // 创建消息 ID 用于流式更新
-  const messageId = Date.now()
-  let fullContent = ''
-
-  // 先创建一个空的助手消息（流式显示，不需要单独的 loading）
-  const assistantMessage = {
-    id: messageId,
-    role: 'assistant',
-    content: '',
-    timestamp: new Date().toISOString()
-  }
-  messages.push(assistantMessage)
-  renderStreamingMessage(root, assistantMessage)
-  
-  // 设置加载状态（但不显示 loading 动画）
-  isLoading = true
-  updateSendButton(root)
+  // 显示加载状态
+  showLoading()
 
   try {
-    // 设置事件监听
-    const eventName = `chat-stream-${currentAgentCode}`
-    const unlisten = await listen(eventName, (event) => {
-      const chunk = event.payload
-
-      if (chunk.is_done) {
-        // 流式结束
-        unlisten()
-        assistantMessage.content = fullContent
-        saveMessages()
-        finalizeStreamingMessage(root, messageId, fullContent)
-        isLoading = false
-        updateSendButton(root)
-      } else if (chunk.kind === 'error') {
-        unlisten()
-        addErrorMessage(root, `生成失败: ${chunk.content}`)
-        messages = messages.filter(m => m.id !== messageId)
-        removeMessage(root, messageId)
-        isLoading = false
-        updateSendButton(root)
-      } else {
-        if (chunk.kind === 'text' || chunk.kind === 'reasoning_delta') {
-          fullContent += chunk.content
-          updateStreamingMessage(root, messageId, fullContent)
-        }
-      }
-    })
-
-    // 调用流式接口
-    await invoke('chat_with_agent_stream', {
+    // 调用后端发送消息
+    const response = await invoke('chat_with_agent', {
       agentCode: currentAgentCode,
       message: message,
-      history: messages.filter(m => m.role !== 'system' && m.id !== messageId).map(m => ({
+      history: messages.filter(m => m.role !== 'system').map(m => ({
         role: m.role,
         content: m.content
       }))
     })
+
+    // 添加 AI 回复
+    addAssistantMessage(response.content)
   } catch (err) {
     console.error('发送消息失败:', err)
-    const errorMsg = err?.message || err?.toString() || '未知错误'
-    addErrorMessage(root, `发送失败: ${errorMsg}`)
-
-    // 移除失败的助手消息
-    messages = messages.filter(m => m.id !== messageId)
-    removeMessage(root, messageId)
-    isLoading = false
-    updateSendButton(root)
+    addErrorMessage('发送失败，请重试')
+  } finally {
+    hideLoading()
   }
 }
 
 /**
  * 添加用户消息
  */
-function addUserMessage(root, content) {
+function addUserMessage(content) {
   const message = {
     id: Date.now(),
     role: 'user',
@@ -384,15 +304,14 @@ function addUserMessage(root, content) {
     timestamp: new Date().toISOString()
   }
   messages.push(message)
-  saveMessages()
-  renderMessage(root, message)
-  scrollToBottom(root)
+  renderMessage(message)
+  scrollToBottom()
 }
 
 /**
  * 添加助手消息
  */
-function addAssistantMessage(root, content) {
+function addAssistantMessage(content) {
   const message = {
     id: Date.now(),
     role: 'assistant',
@@ -400,15 +319,14 @@ function addAssistantMessage(root, content) {
     timestamp: new Date().toISOString()
   }
   messages.push(message)
-  saveMessages()
-  renderMessage(root, message)
-  scrollToBottom(root)
+  renderMessage(message)
+  scrollToBottom()
 }
 
 /**
  * 添加系统消息
  */
-function addSystemMessage(root, content) {
+function addSystemMessage(content) {
   const message = {
     id: Date.now(),
     role: 'system',
@@ -416,15 +334,15 @@ function addSystemMessage(root, content) {
     timestamp: new Date().toISOString()
   }
   messages.push(message)
-  renderMessage(root, message)
-  scrollToBottom(root)
+  renderMessage(message)
+  scrollToBottom()
 }
 
 /**
  * 添加错误消息
  */
-function addErrorMessage(root, content) {
-  const messagesContainer = root.querySelector('#chat-messages')
+function addErrorMessage(content) {
+  const messagesContainer = document.getElementById('chat-messages')
   if (!messagesContainer) return
 
   const errorEl = document.createElement('div')
@@ -436,14 +354,14 @@ function addErrorMessage(root, content) {
     </div>
   `
   messagesContainer.appendChild(errorEl)
-  scrollToBottom(root)
+  scrollToBottom()
 }
 
 /**
  * 渲染单条消息
  */
-function renderMessage(root, message) {
-  const messagesContainer = root.querySelector('#chat-messages')
+function renderMessage(message) {
+  const messagesContainer = document.getElementById('chat-messages')
   if (!messagesContainer) return
 
   // 隐藏欢迎消息
@@ -486,78 +404,6 @@ function renderMessage(root, message) {
 }
 
 /**
- * 渲染流式消息（初始）
- */
-function renderStreamingMessage(root, message) {
-  const messagesContainer = root.querySelector('#chat-messages')
-  if (!messagesContainer) return
-
-  // 隐藏欢迎消息
-  const welcomeEl = messagesContainer.querySelector('.chat-welcome')
-  if (welcomeEl) {
-    welcomeEl.style.display = 'none'
-  }
-
-  const messageEl = document.createElement('div')
-  messageEl.className = 'chat-message chat-message-assistant chat-message-streaming'
-  messageEl.dataset.id = message.id
-
-  messageEl.innerHTML = `
-    <div class="chat-message-avatar">
-      ${ICONS.ai}
-    </div>
-    <div class="chat-message-body">
-      <div class="chat-message-header">
-        <span class="chat-message-author">${currentAgentName}</span>
-        <span class="chat-message-time">${formatTime(message.timestamp)}</span>
-      </div>
-      <div class="chat-message-content" id="stream-content-${message.id}">
-        <span class="streaming-cursor">▊</span>
-      </div>
-    </div>
-  `
-
-  messagesContainer.appendChild(messageEl)
-  scrollToBottom(root)
-}
-
-/**
- * 更新流式消息内容
- */
-function updateStreamingMessage(root, messageId, content) {
-  const contentEl = root.querySelector(`#stream-content-${messageId}`)
-  if (!contentEl) return
-
-  contentEl.innerHTML = formatMessageContent(content) + '<span class="streaming-cursor">▊</span>'
-  scrollToBottom(root)
-}
-
-/**
- * 完成流式消息
- */
-function finalizeStreamingMessage(root, messageId, content) {
-  const contentEl = root.querySelector(`#stream-content-${messageId}`)
-  if (!contentEl) return
-
-  contentEl.innerHTML = formatMessageContent(content)
-
-  const messageEl = root.querySelector(`[data-id="${messageId}"]`)
-  if (messageEl) {
-    messageEl.classList.remove('chat-message-streaming')
-  }
-}
-
-/**
- * 移除消息
- */
-function removeMessage(root, messageId) {
-  const messageEl = root.querySelector(`[data-id="${messageId}"]`)
-  if (messageEl) {
-    messageEl.remove()
-  }
-}
-
-/**
  * 格式化消息内容
  */
 function formatMessageContent(content) {
@@ -580,8 +426,8 @@ function formatTime(timestamp) {
 /**
  * 滚动到底部
  */
-function scrollToBottom(root) {
-  const messagesContainer = root.querySelector('#chat-messages')
+function scrollToBottom() {
+  const messagesContainer = document.getElementById('chat-messages')
   if (messagesContainer) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight
   }
@@ -590,11 +436,11 @@ function scrollToBottom(root) {
 /**
  * 显示加载状态
  */
-function showLoading(root) {
+function showLoading() {
   isLoading = true
-  updateSendButton(root)
+  updateSendButton()
 
-  const messagesContainer = root.querySelector('#chat-messages')
+  const messagesContainer = document.getElementById('chat-messages')
   if (!messagesContainer) return
 
   const loadingEl = document.createElement('div')
@@ -611,17 +457,17 @@ function showLoading(root) {
     </div>
   `
   messagesContainer.appendChild(loadingEl)
-  scrollToBottom(root)
+  scrollToBottom()
 }
 
 /**
  * 隐藏加载状态
  */
-function hideLoading(root) {
+function hideLoading() {
   isLoading = false
-  updateSendButton(root)
+  updateSendButton()
 
-  const loadingEl = root.querySelector('#chat-loading')
+  const loadingEl = document.getElementById('chat-loading')
   if (loadingEl) {
     loadingEl.remove()
   }
@@ -630,12 +476,12 @@ function hideLoading(root) {
 /**
  * 清空对话
  */
-function clearChat(root) {
+function clearChat() {
   if (messages.length === 0) return
 
   if (confirm('确定要清空当前对话吗？')) {
     messages = []
-    const messagesContainer = root.querySelector('#chat-messages')
+    const messagesContainer = document.getElementById('chat-messages')
     if (messagesContainer) {
       messagesContainer.innerHTML = `
         <div class="chat-welcome">
@@ -652,51 +498,6 @@ function clearChat(root) {
  * 加载历史消息
  */
 function loadMessages() {
-  try {
-    const saved = localStorage.getItem(`chat_messages_${currentAgentCode}`)
-    if (saved) {
-      messages = JSON.parse(saved)
-    } else {
-      messages = []
-    }
-  } catch (err) {
-    console.error('加载历史消息失败:', err)
-    messages = []
-  }
-}
-
-/**
- * 渲染历史消息到页面
- */
-function renderHistoryMessages(root) {
-  if (messages.length === 0) return
-  
-  const messagesContainer = root.querySelector('#chat-messages')
-  if (!messagesContainer) return
-  
-  // 隐藏欢迎消息
-  const welcomeEl = messagesContainer.querySelector('.chat-welcome')
-  if (welcomeEl) {
-    welcomeEl.style.display = 'none'
-  }
-  
-  // 渲染所有历史消息
-  messages.forEach(msg => {
-    if (msg.role !== 'system') {
-      renderMessage(root, msg)
-    }
-  })
-  
-  scrollToBottom(root)
-}
-
-/**
- * 保存消息到本地存储
- */
-function saveMessages() {
-  try {
-    localStorage.setItem(`chat_messages_${currentAgentCode}`, JSON.stringify(messages))
-  } catch (err) {
-    console.error('保存消息失败:', err)
-  }
+  // TODO: 从本地存储或数据库加载历史消息
+  messages = []
 }

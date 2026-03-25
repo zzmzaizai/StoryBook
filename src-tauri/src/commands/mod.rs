@@ -52,4 +52,8 @@ impl AppState {
     pub fn agent_configs(&self) -> AgentConfigRepository {
         AgentConfigRepository::new(self.db.clone())
     }
+
+    pub fn db(&self) -> &DatabaseConnection {
+        &self.db
+    }
 }
