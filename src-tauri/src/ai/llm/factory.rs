@@ -2,9 +2,16 @@
 //!
 //! 统一创建不同 provider 的 LLM 客户端
 
-use crate::ai::llm::provider::LlmProvider;
-use crate::ai::llm::types::{LlmCompletionParams, LlmCompletionResult, LlmRuntimeConfig};
+use crate::ai::llm::types::{LlmCompletionParams, LlmCompletionResult, LlmProvider, LlmRuntimeConfig};
 use crate::entity::llm_config;
+use futures::StreamExt;
+use rig::agent::MultiTurnStreamItem;
+use rig::completion::message::Text;
+use rig::client::CompletionClient;
+use rig::completion::Prompt;
+use rig::providers::openai;
+use rig::streaming::{StreamedAssistantContent, StreamingPrompt};
+use tokio::sync::mpsc::UnboundedSender;
 
 /// LLM 工厂类
 ///
@@ -43,6 +50,91 @@ impl LlmFactory {
     }
 }
 
+fn require_api_key(config: &LlmRuntimeConfig, provider: &str) -> anyhow::Result<String> {
+    config
+        .api_key
+        .clone()
+        .filter(|key| !key.trim().is_empty())
+        .ok_or_else(|| anyhow::anyhow!("{} 未配置 API Key", provider))
+}
+
+async fn complete_with_openai_compatible(
+    config: &LlmRuntimeConfig,
+    params: LlmCompletionParams,
+    provider_name: &str,
+    default_base_url: Option<&str>,
+) -> anyhow::Result<LlmCompletionResult> {
+    let api_key = require_api_key(config, provider_name)?;
+
+    let mut builder = openai::Client::builder().api_key(&api_key);
+
+    if let Some(base_url) = config.base_url.as_deref().or(default_base_url) {
+        if !base_url.trim().is_empty() {
+            builder = builder.base_url(base_url);
+        }
+    }
+
+    let client = builder.build()?;
+
+    let agent = client
+        .agent(&config.model)
+        .preamble(&params.system_prompt)
+        .build();
+
+    let response = agent.prompt(&params.user_prompt).await?;
+
+    Ok(LlmCompletionResult {
+        content: response,
+        token_usage: None,
+    })
+}
+
+async fn stream_with_openai_compatible(
+    config: &LlmRuntimeConfig,
+    params: LlmCompletionParams,
+    provider_name: &str,
+    default_base_url: Option<&str>,
+    tx: UnboundedSender<String>,
+) -> anyhow::Result<LlmCompletionResult> {
+    let api_key = require_api_key(config, provider_name)?;
+
+    let mut builder = openai::Client::builder().api_key(&api_key);
+
+    if let Some(base_url) = config.base_url.as_deref().or(default_base_url) {
+        if !base_url.trim().is_empty() {
+            builder = builder.base_url(base_url);
+        }
+    }
+
+    let client = builder.build()?;
+
+    let agent = client
+        .agent(&config.model)
+        .preamble(&params.system_prompt)
+        .build();
+
+    let mut stream = agent.stream_prompt(&params.user_prompt).await;
+    let mut content = String::new();
+
+    while let Some(chunk) = stream.next().await {
+        match chunk {
+            Ok(MultiTurnStreamItem::StreamAssistantItem(StreamedAssistantContent::Text(
+                Text { text },
+            ))) => {
+                content.push_str(&text);
+                let _ = tx.send(text);
+            }
+            Ok(_) => {}
+            Err(err) => return Err(anyhow::anyhow!(err.to_string())),
+        }
+    }
+
+    Ok(LlmCompletionResult {
+        content,
+        token_usage: None,
+    })
+}
+
 /// LLM 客户端 trait
 ///
 /// 定义所有 LLM 客户端必须实现的接口
@@ -50,6 +142,13 @@ impl LlmFactory {
 pub trait LlmClient: Send + Sync {
     /// 执行对话补全
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult>;
+
+    /// 流式执行对话补全
+    async fn stream_complete(
+        &self,
+        params: LlmCompletionParams,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<LlmCompletionResult>;
 
     /// 获取提供商名称
     fn provider(&self) -> &str;
@@ -76,21 +175,15 @@ impl OpenAiClient {
 #[async_trait::async_trait]
 impl LlmClient for OpenAiClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        // TODO: 使用 rig 实现 OpenAI 调用
-        // 示例：
-        // let client = rig::providers::openai::Client::new(
-        //     self.config.api_key.clone().unwrap_or_default()
-        // );
-        // let agent = client
-        //     .agent(&self.config.model)
-        //     .preamble(&params.system_prompt)
-        //     .build();
-        // let response = agent.prompt(&params.user_prompt).await?;
+        complete_with_openai_compatible(&self.config, params, "OpenAI", None).await
+    }
 
-        Ok(LlmCompletionResult {
-            content: format!("[OpenAI Mock] {}", params.user_prompt),
-            token_usage: None,
-        })
+    async fn stream_complete(
+        &self,
+        params: LlmCompletionParams,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<LlmCompletionResult> {
+        stream_with_openai_compatible(&self.config, params, "OpenAI", None, tx).await
     }
 
     fn provider(&self) -> &str {
@@ -118,11 +211,19 @@ impl AnthropicClient {
 #[async_trait::async_trait]
 impl LlmClient for AnthropicClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        // TODO: 使用 rig 实现 Anthropic 调用
-        Ok(LlmCompletionResult {
-            content: format!("[Anthropic Mock] {}", params.user_prompt),
-            token_usage: None,
-        })
+        Err(anyhow::anyhow!(
+            "Anthropic 真实调用暂未接入，请先使用 OpenAI / DeepSeek / Ollama(openai-compatible) 配置"
+        ))
+    }
+
+    async fn stream_complete(
+        &self,
+        _params: LlmCompletionParams,
+        _tx: UnboundedSender<String>,
+    ) -> anyhow::Result<LlmCompletionResult> {
+        Err(anyhow::anyhow!(
+            "Anthropic 流式调用暂未接入，请先使用 OpenAI / DeepSeek / Ollama(openai-compatible) 配置"
+        ))
     }
 
     fn provider(&self) -> &str {
@@ -150,11 +251,28 @@ impl DeepSeekClient {
 #[async_trait::async_trait]
 impl LlmClient for DeepSeekClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        // TODO: 使用 rig 实现 DeepSeek 调用
-        Ok(LlmCompletionResult {
-            content: format!("[DeepSeek Mock] {}", params.user_prompt),
-            token_usage: None,
-        })
+        complete_with_openai_compatible(
+            &self.config,
+            params,
+            "DeepSeek",
+            Some("https://api.deepseek.com/v1"),
+        )
+        .await
+    }
+
+    async fn stream_complete(
+        &self,
+        params: LlmCompletionParams,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<LlmCompletionResult> {
+        stream_with_openai_compatible(
+            &self.config,
+            params,
+            "DeepSeek",
+            Some("https://api.deepseek.com/v1"),
+            tx,
+        )
+        .await
     }
 
     fn provider(&self) -> &str {
@@ -182,11 +300,19 @@ impl GeminiClient {
 #[async_trait::async_trait]
 impl LlmClient for GeminiClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        // TODO: 使用 rig 实现 Gemini 调用
-        Ok(LlmCompletionResult {
-            content: format!("[Gemini Mock] {}", params.user_prompt),
-            token_usage: None,
-        })
+        Err(anyhow::anyhow!(
+            "Gemini 真实调用暂未接入，请先使用 OpenAI / DeepSeek / Ollama(openai-compatible) 配置"
+        ))
+    }
+
+    async fn stream_complete(
+        &self,
+        _params: LlmCompletionParams,
+        _tx: UnboundedSender<String>,
+    ) -> anyhow::Result<LlmCompletionResult> {
+        Err(anyhow::anyhow!(
+            "Gemini 流式调用暂未接入，请先使用 OpenAI / DeepSeek / Ollama(openai-compatible) 配置"
+        ))
     }
 
     fn provider(&self) -> &str {
@@ -214,11 +340,37 @@ impl OllamaClient {
 #[async_trait::async_trait]
 impl LlmClient for OllamaClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        // TODO: 使用 rig 实现 Ollama 调用
-        Ok(LlmCompletionResult {
-            content: format!("[Ollama Mock] {}", params.user_prompt),
-            token_usage: None,
-        })
+        let openai_compatible = LlmRuntimeConfig {
+            api_key: Some(self.config.api_key.clone().unwrap_or_else(|| "ollama".to_string())),
+            base_url: Some(
+                self.config
+                    .base_url
+                    .clone()
+                    .unwrap_or_else(|| "http://127.0.0.1:11434/v1".to_string()),
+            ),
+            ..self.config.clone()
+        };
+
+        complete_with_openai_compatible(&openai_compatible, params, "Ollama", None).await
+    }
+
+    async fn stream_complete(
+        &self,
+        params: LlmCompletionParams,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<LlmCompletionResult> {
+        let openai_compatible = LlmRuntimeConfig {
+            api_key: Some(self.config.api_key.clone().unwrap_or_else(|| "ollama".to_string())),
+            base_url: Some(
+                self.config
+                    .base_url
+                    .clone()
+                    .unwrap_or_else(|| "http://127.0.0.1:11434/v1".to_string()),
+            ),
+            ..self.config.clone()
+        };
+
+        stream_with_openai_compatible(&openai_compatible, params, "Ollama", None, tx).await
     }
 
     fn provider(&self) -> &str {

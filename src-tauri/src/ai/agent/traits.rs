@@ -3,7 +3,9 @@
 //! 定义所有 Agent 必须实现的接口
 
 use crate::entity::llm_config;
+use serde::de::DeserializeOwned;
 use serde_json::Value;
+use tokio::sync::mpsc::UnboundedSender;
 
 /// Agent 上下文
 #[derive(Debug, Clone)]
@@ -29,6 +31,11 @@ impl AgentContext {
             input,
             metadata: Some(metadata),
         }
+    }
+
+    /// 解析输入参数为指定类型
+    pub fn parse<T: DeserializeOwned>(&self) -> anyhow::Result<T> {
+        serde_json::from_value(self.input.clone()).map_err(|e| anyhow::anyhow!("解析输入参数失败: {}", e))
     }
 }
 
@@ -101,6 +108,23 @@ pub trait AgentHandler: Send + Sync {
         let result = executor.complete(&system_prompt, &user_prompt).await?;
 
         Ok(result)
+    }
+
+    /// 流式执行 Agent
+    async fn execute_stream(
+        &self,
+        llm: &llm_config::Model,
+        exec_ctx: AgentExecutionContext,
+        ctx: AgentContext,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<String> {
+        use crate::ai::llm::executor::LlmExecutor;
+
+        let user_prompt = self.build_user_prompt(ctx).await?;
+        let system_prompt = exec_ctx.merge_custom_prompt();
+
+        let executor = LlmExecutor::from_config(llm)?;
+        executor.stream_complete(&system_prompt, &user_prompt, tx).await
     }
 }
 

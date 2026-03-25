@@ -2,12 +2,14 @@
 //!
 //! 统一创建和管理 Agent 实例
 
-use crate::ai::agent::registry::{AgentCodes, AgentRegistry};
+use crate::ai::agent::registry::AgentRegistry;
+use crate::entity::agent_config::AgentCodes;
 use crate::ai::agent::traits::{AgentContext, AgentExecutionContext, AgentHandler, AgentResult};
 use crate::ai::llm::service::LlmService;
 use crate::entity::agent_config;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use serde_json::Value;
+use tokio::sync::mpsc::UnboundedSender;
 
 /// Agent 工厂类
 ///
@@ -129,6 +131,45 @@ impl AgentFactory {
         })
     }
 
+    /// 流式执行 Agent
+    pub async fn invoke_stream(
+        &self,
+        db: &DatabaseConnection,
+        agent_code: &str,
+        input: Value,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<AgentResult> {
+        let agent_config = self.load_agent_config(db, agent_code).await?;
+        let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
+
+        let handler = self
+            .registry
+            .get(agent_code)
+            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_code))?;
+
+        let system_prompt = if agent_config.use_system_prompt {
+            crate::ai::prompts::load_prompt(agent_code).await?
+        } else {
+            String::new()
+        };
+
+        let exec_ctx = AgentExecutionContext {
+            system_prompt,
+            custom_prompt: agent_config.custom_prompt.clone(),
+            extra_params: agent_config.extra_config.clone(),
+        };
+
+        let ctx = AgentContext::new(input);
+        let content = handler.execute_stream(&llm_config, exec_ctx, ctx, tx).await?;
+
+        Ok(AgentResult {
+            content,
+            llm_config_id: llm_config.id,
+            provider: llm_config.provider.clone(),
+            model: llm_config.model.clone(),
+        })
+    }
+
     /// 加载 Agent 配置
     async fn load_agent_config(
         &self,
@@ -196,5 +237,15 @@ impl AgentService {
     ) -> anyhow::Result<AgentResult> {
         let factory = AgentFactory::new();
         factory.invoke_with_llm(db, agent_code, llm_config_id, input).await
+    }
+
+    pub async fn invoke_stream(
+        db: &DatabaseConnection,
+        agent_code: &str,
+        input: Value,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<AgentResult> {
+        let factory = AgentFactory::new();
+        factory.invoke_stream(db, agent_code, input, tx).await
     }
 }

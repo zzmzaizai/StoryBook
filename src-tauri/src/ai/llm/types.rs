@@ -1,5 +1,29 @@
 use serde::{Deserialize, Serialize};
 
+/// LLM 提供商枚举
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LlmProvider {
+    OpenAi,
+    Anthropic,
+    DeepSeek,
+    Gemini,
+    Ollama,
+    Other(String),
+}
+
+impl From<&str> for LlmProvider {
+    fn from(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "openai" => LlmProvider::OpenAi,
+            "anthropic" => LlmProvider::Anthropic,
+            "deepseek" => LlmProvider::DeepSeek,
+            "gemini" | "google" => LlmProvider::Gemini,
+            "ollama" => LlmProvider::Ollama,
+            other => LlmProvider::Other(other.to_string()),
+        }
+    }
+}
+
 /// LLM 运行时配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LlmRuntimeConfig {

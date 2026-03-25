@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import { ICONS } from '../lib/icons.js'
 
 /**
@@ -12,12 +13,19 @@ let currentAgentName = '通用助手'
 let messages = []
 let isLoading = false
 let agents = []
+let unlistenChunk = null
+let unlistenDone = null
+let unlistenError = null
+let activeStreamRequestId = null
+let streamingMessageId = null
 
 /**
  * 渲染 Chat 页面
  */
-export function renderChat(root) {
-  root.innerHTML = `
+export async function render() {
+  const el = document.createElement('div')
+  el.className = 'page'
+  el.innerHTML = `
     <div class="page-container chat-container">
       <!-- 侧边栏：Agent 选择 -->
       <aside class="chat-sidebar">
@@ -80,14 +88,18 @@ export function renderChat(root) {
     </div>
   `
 
-  // 初始化
-  initChat()
+  // 延迟初始化，确保元素已插入 DOM
+  requestAnimationFrame(() => initChat())
+  
+  return el
 }
 
 /**
  * 初始化聊天功能
  */
 async function initChat() {
+  await bindStreamEvents()
+
   // 加载 Agent 列表
   await loadAgents()
 
@@ -96,6 +108,39 @@ async function initChat() {
 
   // 加载历史消息（如果有）
   loadMessages()
+}
+
+async function bindStreamEvents() {
+  if (!unlistenChunk) {
+    unlistenChunk = await listen('chat-stream-chunk', (event) => {
+      const payload = event.payload
+      if (!payload || payload.request_id !== activeStreamRequestId) return
+      appendAssistantStreamChunk(payload.delta)
+    })
+  }
+
+  if (!unlistenDone) {
+    unlistenDone = await listen('chat-stream-done', (event) => {
+      const payload = event.payload
+      if (!payload || payload.request_id !== activeStreamRequestId) return
+      finalizeAssistantStream(payload.content)
+      hideLoading()
+      activeStreamRequestId = null
+      streamingMessageId = null
+    })
+  }
+
+  if (!unlistenError) {
+    unlistenError = await listen('chat-stream-error', (event) => {
+      const payload = event.payload
+      if (!payload || payload.request_id !== activeStreamRequestId) return
+      removeStreamingMessage()
+      addErrorMessage(payload.error || '发送失败，请重试')
+      hideLoading()
+      activeStreamRequestId = null
+      streamingMessageId = null
+    })
+  }
 }
 
 /**
@@ -273,8 +318,11 @@ async function sendMessage() {
   showLoading()
 
   try {
-    // 调用后端发送消息
-    const response = await invoke('chat_with_agent', {
+    activeStreamRequestId = `chat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+    createStreamingAssistantMessage()
+
+    await invoke('chat_with_agent_stream', {
+      requestId: activeStreamRequestId,
       agentCode: currentAgentCode,
       message: message,
       history: messages.filter(m => m.role !== 'system').map(m => ({
@@ -282,14 +330,13 @@ async function sendMessage() {
         content: m.content
       }))
     })
-
-    // 添加 AI 回复
-    addAssistantMessage(response.content)
   } catch (err) {
     console.error('发送消息失败:', err)
+    removeStreamingMessage()
     addErrorMessage('发送失败，请重试')
+    activeStreamRequestId = null
+    streamingMessageId = null
   } finally {
-    hideLoading()
   }
 }
 
@@ -321,6 +368,52 @@ function addAssistantMessage(content) {
   messages.push(message)
   renderMessage(message)
   scrollToBottom()
+}
+
+function createStreamingAssistantMessage() {
+  const message = {
+    id: Date.now(),
+    role: 'assistant',
+    content: '',
+    timestamp: new Date().toISOString(),
+    streaming: true,
+  }
+  messages.push(message)
+  streamingMessageId = message.id
+  renderMessage(message)
+  scrollToBottom()
+}
+
+function appendAssistantStreamChunk(delta) {
+  const message = messages.find(m => m.id === streamingMessageId)
+  if (!message) return
+
+  message.content += delta
+  const contentEl = document.querySelector(`.chat-message[data-id="${message.id}"] .chat-message-content`)
+  if (contentEl) {
+    contentEl.innerHTML = `${formatMessageContent(message.content)}<span class="chat-typing-caret"></span>`
+  }
+  scrollToBottom()
+}
+
+function finalizeAssistantStream(content) {
+  const message = messages.find(m => m.id === streamingMessageId)
+  if (!message) return
+
+  message.content = content
+  message.streaming = false
+  const contentEl = document.querySelector(`.chat-message[data-id="${message.id}"] .chat-message-content`)
+  if (contentEl) {
+    contentEl.innerHTML = formatMessageContent(content)
+  }
+  scrollToBottom()
+}
+
+function removeStreamingMessage() {
+  if (!streamingMessageId) return
+  messages = messages.filter(m => m.id !== streamingMessageId)
+  const el = document.querySelector(`.chat-message[data-id="${streamingMessageId}"]`)
+  if (el) el.remove()
 }
 
 /**
@@ -394,7 +487,7 @@ function renderMessage(message) {
           <span class="chat-message-time">${formatTime(message.timestamp)}</span>
         </div>
         <div class="chat-message-content">
-          ${formatMessageContent(message.content)}
+          ${formatMessageContent(message.content)}${message.streaming ? '<span class="chat-typing-caret"></span>' : ''}
         </div>
       </div>
     `
@@ -440,24 +533,10 @@ function showLoading() {
   isLoading = true
   updateSendButton()
 
-  const messagesContainer = document.getElementById('chat-messages')
-  if (!messagesContainer) return
-
-  const loadingEl = document.createElement('div')
-  loadingEl.className = 'chat-message chat-message-loading'
-  loadingEl.id = 'chat-loading'
-  loadingEl.innerHTML = `
-    <div class="chat-message-avatar">${ICONS.ai}</div>
-    <div class="chat-message-body">
-      <div class="chat-loading-dots">
-        <span></span>
-        <span></span>
-        <span></span>
-      </div>
-    </div>
-  `
-  messagesContainer.appendChild(loadingEl)
-  scrollToBottom()
+  const statusEl = document.getElementById('agent-status')
+  if (statusEl) {
+    statusEl.textContent = '正在思考...'
+  }
 }
 
 /**
@@ -467,9 +546,9 @@ function hideLoading() {
   isLoading = false
   updateSendButton()
 
-  const loadingEl = document.getElementById('chat-loading')
-  if (loadingEl) {
-    loadingEl.remove()
+  const statusEl = document.getElementById('agent-status')
+  if (statusEl) {
+    statusEl.textContent = '准备就绪'
   }
 }
 
@@ -500,4 +579,15 @@ function clearChat() {
 function loadMessages() {
   // TODO: 从本地存储或数据库加载历史消息
   messages = []
+}
+
+export function cleanup() {
+  unlistenChunk?.()
+  unlistenDone?.()
+  unlistenError?.()
+  unlistenChunk = null
+  unlistenDone = null
+  unlistenError = null
+  activeStreamRequestId = null
+  streamingMessageId = null
 }

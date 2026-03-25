@@ -4,6 +4,5 @@
 
 pub mod executor;
 pub mod factory;
-pub mod provider;
 pub mod service;
 pub mod types;

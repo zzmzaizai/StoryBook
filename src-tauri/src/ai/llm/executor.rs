@@ -5,6 +5,7 @@
 use crate::ai::llm::factory::{LlmClient, LlmFactory};
 use crate::ai::llm::types::{LlmCompletionParams, LlmCompletionResult, LlmRuntimeConfig};
 use crate::entity::llm_config;
+use tokio::sync::mpsc::UnboundedSender;
 
 /// LLM 执行器
 ///
@@ -62,6 +63,23 @@ impl LlmExecutor {
         params: LlmCompletionParams,
     ) -> anyhow::Result<LlmCompletionResult> {
         self.client.complete(params).await
+    }
+
+    /// 执行流式补全
+    pub async fn stream_complete(
+        &self,
+        system_prompt: &str,
+        user_prompt: &str,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<String> {
+        let params = LlmCompletionParams {
+            system_prompt: system_prompt.to_string(),
+            user_prompt: user_prompt.to_string(),
+            ..Default::default()
+        };
+
+        let result = self.client.stream_complete(params, tx).await?;
+        Ok(result.content)
     }
 
     /// 获取提供商名称

@@ -3,10 +3,9 @@
 //! 提供 Agent 相关的业务逻辑
 
 use crate::ai::agent::factory::AgentFactory;
-use crate::ai::agent::registry::AgentCodes;
+use crate::entity::agent_config::AgentCodes;
 use crate::ai::agent::traits::AgentResult;
 use sea_orm::DatabaseConnection;
-use serde_json::Value;
 
 /// 小说大纲生成参数
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]

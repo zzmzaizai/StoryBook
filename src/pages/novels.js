@@ -77,12 +77,12 @@ export async function render() {
               description: formData.description || null,
               image: null,
               style: formData.style,
-              target_audience: formData.target_audience,
-              length_type: formData.length_type,
-              is_focus: false,
-              estimated_chapter_count: null,
-              estimated_total_word_count: null,
-              estimated_words_per_chapter: null,
+              targetAudience: formData.target_audience,
+              lengthType: formData.length_type,
+              isFocus: false,
+              estimatedChapterCount: null,
+              estimatedTotalWordCount: null,
+              estimatedWordsPerChapter: null,
               status: 1,
             })
           }
