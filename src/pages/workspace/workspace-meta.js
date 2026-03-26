@@ -9,6 +9,7 @@ import '../../style/virtual-list.css'
 
 let activeMetaTab = 'added'
 let editingMeta = null
+let previewMetaProperty = null
 let metaDataList = []
 let metaProperties = []
 let metaEditorInstance = null
@@ -18,9 +19,11 @@ let metaListComponent = null
 export async function loadMeta(novelId) {
   try {
     metaProperties = await api.getNovelMetaProperties()
+    metaDataList = await api.listMeta(novelId)
   } catch (e) {
     console.error('加载元数据属性失败:', e)
     metaProperties = []
+    metaDataList = []
   }
   return { metaProperties }
 }
@@ -56,8 +59,8 @@ export async function render(content, novelInfo) {
   metaTabsComponent = createTabs({
     containerId: 'meta-tabs',
     tabs: [
-      { key: 'added', label: `已添加`, color: '#10b981' },
-      { key: 'available', label: `可添加`, color: '#6366f1' }
+      { key: 'added', label: `已添加(${metaDataList.length})`, color: '#10b981' },
+      { key: 'available', label: `可添加(${unaddedProps.length})`, icon: ICONS.plus, color: '#6366f1' }
     ],
     activeKey: activeMetaTab,
     onChange: (key) => {
@@ -99,39 +102,59 @@ function renderMetaList(content, novelInfo) {
       renderItem: (meta) => {
         const div = document.createElement('div')
         div.className = 'meta-list-item'
+        if (editingMeta?.id === meta.id) {
+          div.classList.add('active')
+        }
+        const propDef = metaProperties.find(p => p.property_name === meta.property_name)
+        const previewText = propDef?.property_description || '点击继续编辑该元数据内容'
         div.innerHTML = `
           <div class="meta-item-header">
             <span class="meta-item-name">${meta.property_name}</span>
-            <button class="btn-icon btn-icon-danger" data-action="delete-meta" data-meta-id="${meta.id}">
+            <button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete-meta" data-meta-id="${meta.id}" aria-label="删除元数据">
               ${ICONS.delete}
             </button>
           </div>
-          <p class="meta-item-preview">${(meta.property_value || '').substring(0, 50)}${(meta.property_value || '').length > 50 ? '...' : ''}</p>
+          <p class="meta-item-preview">${previewText}</p>
         `
+
+        const deleteBtn = div.querySelector('[data-action="delete-meta"]')
+        deleteBtn?.addEventListener('click', async (e) => {
+          e.stopPropagation()
+          const confirmed = await confirm('确定要删除这个元数据吗？', '删除确认')
+          if (!confirmed) return
+
+          try {
+            await api.deleteMeta(meta.id)
+            metaDataList = metaDataList.filter(m => m.id !== meta.id)
+            if (editingMeta?.id === meta.id) {
+              editingMeta = null
+              previewMetaProperty = null
+              const editorContent = content.querySelector('#meta-editor-content')
+              if (editorContent) {
+                editorContent.innerHTML = `
+                  <div class="empty-state">
+                    <div class="empty-state-icon">${ICONS.meta}</div>
+                    <div class="empty-state-title">选择元数据</div>
+                    <div class="empty-state-desc">从左侧列表选择元数据进行编辑</div>
+                  </div>
+                `
+              }
+            }
+            toastSuccess('删除成功')
+            await render(content, novelInfo)
+            if (activeMetaTab === 'added' && editingMeta) {
+              renderEditor(content, novelInfo)
+            }
+          } catch (err) {
+            toastError('删除失败: ' + err.message)
+          }
+        })
+
         return div
       },
       onItemClick: (meta, index, el) => {
-        // 处理删除按钮点击
-        const deleteBtn = el.querySelector('[data-action="delete-meta"]')
-        if (deleteBtn) {
-          deleteBtn.addEventListener('click', async (e) => {
-            e.stopPropagation()
-            const confirmed = await confirm('确定要删除这个元数据吗？', '删除确认')
-            if (confirmed) {
-              try {
-                await api.deleteMeta(meta.id)
-                metaDataList = metaDataList.filter(m => m.id !== meta.id)
-                toastSuccess('删除成功')
-                // 刷新列表
-                metaListComponent.refresh()
-              } catch (err) {
-                toastError('删除失败: ' + err.message)
-              }
-            }
-          })
-        }
-
         // 选中编辑
+        previewMetaProperty = null
         editingMeta = meta
         renderEditor(content, novelInfo)
       },
@@ -156,45 +179,92 @@ function renderMetaList(content, novelInfo) {
       renderItem: (prop) => {
         const div = document.createElement('div')
         div.className = 'meta-list-item'
+        if (previewMetaProperty?.property_name === prop.property_name) {
+          div.classList.add('active')
+        }
         div.innerHTML = `
           <div class="meta-item-header">
             <span class="meta-item-name">${prop.property_name}</span>
-            <button class="btn-icon" data-action="add-meta">${ICONS.plus}</button>
+            <button class="list-item-add-btn" data-action="add-meta" aria-label="添加元数据">${ICONS.plus}</button>
           </div>
           <p class="meta-item-preview">${prop.property_description || ''}</p>
         `
+
+        const addBtn = div.querySelector('[data-action="add-meta"]')
+        addBtn?.addEventListener('click', async (e) => {
+          e.stopPropagation()
+          try {
+            await api.createMeta(novelInfo.id, prop.property_name, '')
+            const newMetaList = await api.listMeta(novelInfo.id)
+            metaDataList = newMetaList
+            previewMetaProperty = null
+
+            await render(content, novelInfo)
+            toastSuccess('添加成功')
+          } catch (err) {
+            toastError('添加失败: ' + err.message)
+          }
+        })
+
         return div
       },
-      onItemClick: (prop, index, el) => {
-        // 处理添加按钮点击
-        const addBtn = el.querySelector('[data-action="add-meta"]')
-        if (addBtn) {
-          addBtn.addEventListener('click', async (e) => {
-            e.stopPropagation()
-            try {
-              await api.createMeta(novelInfo.id, prop.property_name, '')
-              const newMetaList = await api.listMeta(novelInfo.id)
-              metaDataList = newMetaList
-              activeMetaTab = 'added'
-              editingMeta = metaDataList.find(m => m.property_name === prop.property_name)
-
-              // 重新渲染整个页面
-              render(content, novelInfo)
-              if (editingMeta) {
-                renderEditor(content, novelInfo)
-              }
-              toastSuccess('添加成功')
-            } catch (err) {
-              toastError('添加失败: ' + err.message)
-            }
-          })
-        }
+      onItemClick: (prop) => {
+        editingMeta = null
+        previewMetaProperty = prop
+        renderMetaPreview(content, prop, novelInfo)
+        renderMetaList(content, novelInfo)
       },
       emptyText: '所有元数据已添加'
     })
   }
 
   listMount.appendChild(metaListComponent.element)
+}
+
+async function addMetaFromPreview(content, novelInfo, prop) {
+  try {
+    await api.createMeta(novelInfo.id, prop.property_name, '')
+    const newMetaList = await api.listMeta(novelInfo.id)
+    metaDataList = newMetaList
+    previewMetaProperty = null
+
+    await render(content, novelInfo)
+    toastSuccess('添加成功')
+  } catch (err) {
+    toastError('添加失败: ' + err.message)
+  }
+}
+
+function renderMetaPreview(content, prop, novelInfo) {
+  const editorContent = content.querySelector('#meta-editor-content')
+  if (!editorContent) return
+
+  if (metaEditorInstance) {
+    metaEditorInstance.destroy()
+    metaEditorInstance = null
+  }
+
+  editorContent.innerHTML = `
+    <div class="meta-editor meta-preview-panel">
+      <div class="meta-editor-header">
+        <div>
+          <h3 class="meta-editor-title">${prop.property_name}</h3>
+          <p class="meta-editor-desc">${prop.property_description || '该元数据暂无详细描述。'}</p>
+        </div>
+      </div>
+      <div class="meta-preview-note">
+        <button id="add-preview-meta-btn" class="meta-preview-note__icon" aria-label="立即添加这个元数据">${ICONS.plus}</button>
+        <div>
+          <div class="meta-preview-note__title">立即添加这个元数据</div>
+          <div class="meta-preview-note__desc">添加后，这个元数据会进入“已添加”列表，并可在这里继续编辑具体内容。</div>
+        </div>
+      </div>
+    </div>
+  `
+
+  editorContent.querySelector('#add-preview-meta-btn')?.addEventListener('click', () => {
+    addMetaFromPreview(content, novelInfo, prop)
+  })
 }
 
 function renderEditor(content, novelInfo) {
@@ -286,6 +356,7 @@ export function cleanup() {
   }
   activeMetaTab = 'added'
   editingMeta = null
+  previewMetaProperty = null
   metaDataList = []
   metaProperties = []
 }
