@@ -2,6 +2,7 @@ import { api } from '../../api/tauri.js'
 import { ICONS } from '../../lib/icons.js'
 import { toastSuccess, toastError } from '../../lib/toast.js'
 import { confirm } from '../../lib/modal.js'
+import { Modal } from '../../lib/modal.js'
 import { createMarkdownEditor } from '../../lib/markdown-editor.js'
 import { createPagedList } from '../../lib/virtual-list.js'
 import '../../style/virtual-list.css'
@@ -284,8 +285,56 @@ function renderEditor(content, novelInfo) {
   })
 
   editorContent.querySelector('#ai-generate-timeline-btn')?.addEventListener('click', () => {
-    toastSuccess('AI生成功能开发中...')
+    openTimelineAiModal(novelInfo, editorContent)
   })
+}
+
+function openTimelineAiModal(novelInfo, editorContent) {
+  const body = document.createElement('div')
+  body.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">补充要求</label>
+      <textarea id="timeline-ai-requirement" class="form-input" rows="6" placeholder="输入你希望 AI 如何生成或修改这个小卷时间线..."></textarea>
+    </div>
+  `
+
+  const modal = new Modal({
+    title: 'AI生成时间线',
+    content: body,
+    size: 'md',
+    confirmText: '确定生成',
+    cancelText: '取消',
+    onConfirm: async (instance) => {
+      const requirement = instance.contentEl.querySelector('#timeline-ai-requirement')?.value?.trim() || ''
+      if (!requirement) return false
+      instance.setLoading(true)
+
+      try {
+        const result = await api.aiGenerateTimeline({
+          novelId: novelInfo.id,
+          timelineId: editingTimeline?.id ?? null,
+          currentTitle: editorContent.querySelector('#timeline-title')?.value || '',
+          currentDescription: editorContent.querySelector('#timeline-desc')?.value || '',
+          currentOutline: timelineOutlineEditor ? timelineOutlineEditor.getValue() : '',
+          currentCharactersDescription: timelineCharactersEditor ? timelineCharactersEditor.getValue() : '',
+          startChapterNumber: parseInt(editorContent.querySelector('#timeline-start')?.value || '1'),
+          endChapterNumber: parseInt(editorContent.querySelector('#timeline-end')?.value || '10'),
+          requirement,
+        })
+
+        editorContent.querySelector('#timeline-title').value = result.title || ''
+        editorContent.querySelector('#timeline-desc').value = result.description || ''
+        timelineOutlineEditor?.setValue(result.timeline_outline || '')
+        timelineCharactersEditor?.setValue(result.characters_description || '')
+        toastSuccess('AI生成完成')
+      } catch (err) {
+        toastError('AI生成失败: ' + err)
+        return false
+      }
+    }
+  })
+
+  modal.open()
 }
 
 export function cleanup() {

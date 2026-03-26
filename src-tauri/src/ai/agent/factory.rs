@@ -36,10 +36,11 @@ impl AgentFactory {
         agent_code: &str,
         input: Value,
     ) -> anyhow::Result<AgentResult> {
+        let settings_context = crate::ai::agent::settings_context::load_settings_context_from_input(db, &input).await?;
         let agent_config = self.load_agent_config(db, agent_code).await?;
         let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
         let handler = self.get_required_handler(agent_code)?;
-        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config).await?;
+        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config, settings_context).await?;
         let ctx = AgentContext::new(input);
         let content = handler.execute(&llm_config, exec_ctx, ctx).await?;
 
@@ -58,10 +59,11 @@ impl AgentFactory {
         llm_config_id: i32,
         input: Value,
     ) -> anyhow::Result<AgentResult> {
+        let settings_context = crate::ai::agent::settings_context::load_settings_context_from_input(db, &input).await?;
         let agent_config = self.load_agent_config(db, agent_code).await?;
         let llm_config = LlmService::get_llm_by_id(db, llm_config_id).await?;
         let handler = self.get_required_handler(agent_code)?;
-        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config).await?;
+        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config, settings_context).await?;
         let ctx = AgentContext::new(input);
         let content = handler.execute(&llm_config, exec_ctx, ctx).await?;
 
@@ -80,10 +82,11 @@ impl AgentFactory {
         input: Value,
         tx: UnboundedSender<String>,
     ) -> anyhow::Result<AgentResult> {
+        let settings_context = crate::ai::agent::settings_context::load_settings_context_from_input(db, &input).await?;
         let agent_config = self.load_agent_config(db, agent_code).await?;
         let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
         let handler = self.get_required_handler(agent_code)?;
-        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config).await?;
+        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config, settings_context).await?;
         let ctx = AgentContext::new(input);
         let content = handler
             .execute_stream(&llm_config, exec_ctx, ctx, tx)
@@ -101,6 +104,7 @@ impl AgentFactory {
         &self,
         agent_code: &str,
         agent_config: &agent_config::Model,
+        settings_context: Option<String>,
     ) -> anyhow::Result<AgentExecutionContext> {
         let system_prompt = if agent_config.use_system_prompt {
             crate::ai::prompts::load_prompt(agent_code).await?
@@ -117,6 +121,16 @@ impl AgentFactory {
                     system_prompt.trim(),
                     NOVEL_INFO_GENERATOR_JSON_GUARD
                 )
+            }
+        } else {
+            system_prompt
+        };
+
+        let system_prompt = if let Some(settings_context) = settings_context {
+            if system_prompt.trim().is_empty() {
+                settings_context
+            } else {
+                format!("{}\n\n{}", system_prompt.trim(), settings_context)
             }
         } else {
             system_prompt

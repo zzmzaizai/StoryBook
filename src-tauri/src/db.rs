@@ -90,7 +90,6 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             style INTEGER DEFAULT 1,
             target_audience INTEGER DEFAULT 4,
             length_type INTEGER DEFAULT 3,
-            is_focus INTEGER DEFAULT 0,
             estimated_chapter_count INTEGER,
             estimated_total_word_count INTEGER,
             estimated_words_per_chapter INTEGER,
@@ -348,7 +347,6 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
 /// - `style` - 小说风格
 /// - `target_audience` - 目标读者
 /// - `length_type` - 篇幅类型
-/// - `is_focus` - 是否专注
 /// - `estimated_chapter_count` - 预计章节数
 /// - `estimated_total_word_count` - 预计总字数
 /// - `estimated_words_per_chapter` - 预计每章字数
@@ -363,7 +361,6 @@ async fn migrate_novels_table(db: &DatabaseConnection) -> Result<(), sea_orm::Db
         ("style", "INTEGER DEFAULT 1"),
         ("target_audience", "INTEGER DEFAULT 4"),
         ("length_type", "INTEGER DEFAULT 3"),
-        ("is_focus", "INTEGER DEFAULT 0"),
         ("estimated_chapter_count", "INTEGER"),
         ("estimated_total_word_count", "INTEGER"),
         ("estimated_words_per_chapter", "INTEGER"),
@@ -443,7 +440,6 @@ async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
             style: Set(seed.style),
             target_audience: Set(seed.target_audience),
             length_type: Set(seed.length_type),
-            is_focus: Set(seed.is_focus),
             estimated_chapter_count: Set(seed.estimated_chapter_count),
             estimated_total_word_count: Set(seed.estimated_total_word_count),
             estimated_words_per_chapter: Set(seed.estimated_words_per_chapter),

@@ -26,7 +26,11 @@ export async function render() {
 
   if (novelId) {
     try {
-      novelInfo = await api.getNovel(novelId)
+      const [novel, settings] = await Promise.all([
+        api.getNovel(novelId),
+        api.getNovelSettings(novelId),
+      ])
+      novelInfo = novel ? { ...novel, settings: settings || {} } : null
       await metaTab.loadMeta(novelId)
       await timelineTab.loadTimelines(novelId)
     } catch (e) {

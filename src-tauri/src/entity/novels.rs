@@ -25,8 +25,6 @@ pub struct Model {
     pub target_audience: i32,
     /// 篇幅长度类型（对应 NovelLengthType 枚举）
     pub length_type: i32,
-    /// 是否重点关注
-    pub is_focus: bool,
     /// 预估章节数量
     pub estimated_chapter_count: Option<i32>,
     /// 预估总字数

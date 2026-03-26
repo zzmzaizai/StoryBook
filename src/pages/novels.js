@@ -72,6 +72,7 @@ export async function render() {
           
           if (
             formData.description ||
+            formData.original_description ||
             formData.style !== 1 ||
             formData.target_audience !== 4 ||
             formData.length_type !== 3 ||
@@ -83,11 +84,11 @@ export async function render() {
               id: novel.id,
               title: formData.title,
               description: formData.description || null,
+              original_description: formData.original_description || null,
               image: null,
               style: formData.style,
               target_audience: formData.target_audience,
               length_type: formData.length_type,
-              is_focus: false,
               estimated_chapter_count: formData.estimated_chapter_count,
               estimated_total_word_count: formData.estimated_total_word_count,
               estimated_words_per_chapter: formData.estimated_words_per_chapter,

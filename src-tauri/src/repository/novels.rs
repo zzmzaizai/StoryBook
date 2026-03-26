@@ -28,7 +28,6 @@ impl NovelRepository {
             style: Set(1),
             target_audience: Set(4),
             length_type: Set(3),
-            is_focus: Set(false),
             estimated_chapter_count: Set(None),
             estimated_total_word_count: Set(None),
             estimated_words_per_chapter: Set(None),
@@ -74,6 +73,9 @@ impl NovelRepository {
         if let Some(description) = params.description {
             active.description = Set(Some(description));
         }
+        if let Some(original_description) = params.original_description {
+            active.original_description = Set(Some(original_description));
+        }
         if let Some(image) = params.image {
             active.image = Set(Some(image));
         }
@@ -85,9 +87,6 @@ impl NovelRepository {
         }
         if let Some(length_type) = params.length_type {
             active.length_type = Set(length_type);
-        }
-        if let Some(is_focus) = params.is_focus {
-            active.is_focus = Set(is_focus);
         }
         if let Some(estimated_chapter_count) = params.estimated_chapter_count {
             active.estimated_chapter_count = Set(Some(estimated_chapter_count));
@@ -129,11 +128,11 @@ impl NovelRepository {
 pub struct NovelUpdateParams {
     pub title: Option<String>,
     pub description: Option<String>,
+    pub original_description: Option<String>,
     pub image: Option<String>,
     pub style: Option<i32>,
     pub target_audience: Option<i32>,
     pub length_type: Option<i32>,
-    pub is_focus: Option<bool>,
     pub estimated_chapter_count: Option<i32>,
     pub estimated_total_word_count: Option<i64>,
     pub estimated_words_per_chapter: Option<i32>,

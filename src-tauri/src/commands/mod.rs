@@ -4,6 +4,7 @@ pub mod characters;
 pub mod chat;
 pub mod llm_config;
 pub mod meta;
+pub mod novel_settings;
 pub mod novels;
 pub mod timeline;
 
@@ -13,12 +14,13 @@ pub use characters::*;
 pub use chat::*;
 pub use llm_config::*;
 pub use meta::*;
+pub use novel_settings::*;
 pub use novels::*;
 pub use timeline::*;
 
 use crate::repository::{
     AgentConfigRepository, ChapterRepository, CharacterRepository, LlmConfigRepository,
-    MetaRepository, NovelRepository, TimelineRepository,
+    MetaRepository, NovelRepository, NovelSettingsRepository, TimelineRepository,
 };
 use sea_orm::DatabaseConnection;
 use std::sync::Arc;
@@ -46,6 +48,10 @@ impl AppState {
 
     pub fn meta(&self) -> MetaRepository {
         MetaRepository::new(self.db.clone())
+    }
+
+    pub fn novel_settings(&self) -> NovelSettingsRepository {
+        NovelSettingsRepository::new(self.db.clone())
     }
 
     #[allow(dead_code)]

@@ -13,6 +13,7 @@ export class CreateNovelModal {
     this.formData = {
       title: '',
       description: '',
+      original_description: null,
       style: 1,
       target_audience: 4,
       length_type: 3,
@@ -281,6 +282,7 @@ export class CreateNovelModal {
         const result = await api.aiGenerateNovelInfo(requirement)
         console.log('AI result:', result)
 
+        self.formData.original_description = requirement
         self.fillFormWithAiResult(result)
         aiModal.close()
 
@@ -448,14 +450,75 @@ function parseOptionalInt(value) {
 
 const style = document.createElement('style')
 style.textContent = `
-.create-novel-modal .modal-container,
-.ai-generate-novel-modal .modal-container {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
+.create-novel-modal,
+.ai-generate-novel-modal {
+  --story-modal-border: var(--border-primary);
+  --story-modal-surface:
+    radial-gradient(circle at top left, rgba(255, 188, 92, 0.12), transparent 34%),
+    radial-gradient(circle at top right, rgba(105, 164, 255, 0.1), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 255, 0.98));
+  --story-modal-shadow: 0 36px 120px rgba(15, 23, 42, 0.18);
+  --story-modal-header-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(255, 255, 255, 0.24));
+  --story-modal-text: var(--text-primary);
+  --story-modal-muted: rgba(82, 82, 91, 0.82);
+  --story-modal-soft-text: rgba(82, 82, 91, 0.72);
+  --story-modal-eyebrow: rgba(180, 109, 13, 0.88);
+  --story-modal-title: var(--text-primary);
+  --story-modal-chip-bg: rgba(255, 255, 255, 0.64);
+  --story-modal-chip-border: rgba(99, 102, 241, 0.12);
+  --story-modal-chip-text: var(--text-secondary);
+  --story-modal-panel-bg: rgba(255, 255, 255, 0.62);
+  --story-modal-panel-border: rgba(99, 102, 241, 0.1);
+  --story-modal-trigger-bg: linear-gradient(135deg, rgba(255, 180, 88, 0.18), rgba(103, 151, 255, 0.14));
+  --story-modal-trigger-border: rgba(255, 206, 134, 0.3);
+  --story-modal-trigger-text: var(--text-primary);
+  --story-modal-trigger-shadow: 0 12px 30px rgba(255, 184, 107, 0.12);
+  --story-modal-card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(246, 248, 255, 0.56));
+  --story-modal-card-border: rgba(99, 102, 241, 0.1);
+  --story-modal-input-bg: rgba(255, 255, 255, 0.82);
+  --story-modal-input-border: rgba(99, 102, 241, 0.14);
+  --story-modal-input-text: var(--text-primary);
+  --story-modal-focus-border: rgba(255, 197, 118, 0.54);
+  --story-modal-focus-ring: rgba(255, 188, 92, 0.12);
+}
+
+[data-theme="dark"] .create-novel-modal,
+[data-theme="dark"] .ai-generate-novel-modal {
+  --story-modal-border: rgba(255, 255, 255, 0.08);
+  --story-modal-surface:
     radial-gradient(circle at top left, rgba(255, 188, 92, 0.16), transparent 34%),
     radial-gradient(circle at top right, rgba(105, 164, 255, 0.14), transparent 36%),
     linear-gradient(180deg, rgba(16, 22, 36, 0.98), rgba(11, 16, 28, 0.98));
-  box-shadow: 0 36px 120px rgba(0, 0, 0, 0.42);
+  --story-modal-shadow: 0 36px 120px rgba(0, 0, 0, 0.42);
+  --story-modal-header-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+  --story-modal-text: rgba(245, 247, 252, 0.96);
+  --story-modal-muted: rgba(235, 239, 248, 0.78);
+  --story-modal-soft-text: rgba(235, 239, 248, 0.72);
+  --story-modal-eyebrow: rgba(255, 214, 154, 0.84);
+  --story-modal-title: #fff7eb;
+  --story-modal-chip-bg: rgba(255, 255, 255, 0.04);
+  --story-modal-chip-border: rgba(255, 255, 255, 0.12);
+  --story-modal-chip-text: rgba(245, 247, 252, 0.84);
+  --story-modal-panel-bg: rgba(255, 255, 255, 0.03);
+  --story-modal-panel-border: rgba(255, 255, 255, 0.08);
+  --story-modal-trigger-bg: linear-gradient(135deg, rgba(255, 180, 88, 0.18), rgba(103, 151, 255, 0.14));
+  --story-modal-trigger-border: rgba(255, 206, 134, 0.3);
+  --story-modal-trigger-text: #fff3df;
+  --story-modal-trigger-shadow: 0 12px 30px rgba(255, 184, 107, 0.12);
+  --story-modal-card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  --story-modal-card-border: rgba(255, 255, 255, 0.08);
+  --story-modal-input-bg: rgba(8, 12, 20, 0.58);
+  --story-modal-input-border: rgba(255, 255, 255, 0.1);
+  --story-modal-input-text: rgba(245, 247, 252, 0.96);
+  --story-modal-focus-border: rgba(255, 197, 118, 0.54);
+  --story-modal-focus-ring: rgba(255, 188, 92, 0.1);
+}
+
+.create-novel-modal .modal-container,
+.ai-generate-novel-modal .modal-container {
+  border: 1px solid var(--story-modal-border);
+  background: var(--story-modal-surface);
+  box-shadow: var(--story-modal-shadow);
   overflow: hidden;
 }
 
@@ -471,13 +534,13 @@ style.textContent = `
 
 .create-novel-modal .modal-header,
 .ai-generate-novel-modal .modal-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
+  border-bottom: 1px solid var(--story-modal-border);
+  background: var(--story-modal-header-bg);
 }
 
 .create-novel-form,
 .ai-generate-form {
-  color: rgba(245, 247, 252, 0.96);
+  color: var(--story-modal-text);
 }
 
 .create-novel-modal .modal-body,
@@ -490,11 +553,11 @@ style.textContent = `
 .ai-generate-stage__hero {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--story-modal-panel-border);
   border-radius: 24px;
   padding: 18px 20px;
   margin-bottom: 14px;
-  background: linear-gradient(135deg, rgba(255, 184, 107, 0.12), rgba(83, 135, 255, 0.08) 52%, rgba(255, 255, 255, 0.03));
+  background: linear-gradient(135deg, rgba(255, 184, 107, 0.12), rgba(83, 135, 255, 0.08) 52%, var(--story-modal-panel-bg));
 }
 
 .novel-create-hero__glow {
@@ -519,7 +582,7 @@ style.textContent = `
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-size: 11px;
-  color: rgba(255, 214, 154, 0.84);
+  color: var(--story-modal-eyebrow);
   margin-bottom: 6px;
 }
 
@@ -529,14 +592,14 @@ style.textContent = `
   font-size: 28px;
   line-height: 1.15;
   font-weight: 700;
-  color: #fff7eb;
+  color: var(--story-modal-title);
 }
 
 .novel-create-hero__desc,
 .ai-generate-stage__desc,
 .novel-create-panel__hint {
   margin: 8px 0 0;
-  color: rgba(235, 239, 248, 0.72);
+  color: var(--story-modal-soft-text);
   line-height: 1.7;
 }
 
@@ -548,19 +611,19 @@ style.textContent = `
 }
 
 .novel-create-chip {
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--story-modal-chip-border);
   border-radius: 999px;
   padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(245, 247, 252, 0.84);
+  background: var(--story-modal-chip-bg);
+  color: var(--story-modal-chip-text);
   font-size: 12px;
 }
 
 .novel-create-panel,
 .ai-generate-stage__layout {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--story-modal-panel-border);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--story-modal-panel-bg);
   padding: 22px;
 }
 
@@ -640,11 +703,11 @@ style.textContent = `
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid rgba(255, 206, 134, 0.3);
+  border: 1px solid var(--story-modal-trigger-border);
   border-radius: 999px;
   padding: 11px 16px;
-  background: linear-gradient(135deg, rgba(255, 180, 88, 0.18), rgba(103, 151, 255, 0.14));
-  color: #fff3df;
+  background: var(--story-modal-trigger-bg);
+  color: var(--story-modal-trigger-text);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
@@ -659,8 +722,8 @@ style.textContent = `
 .novel-create-ai-trigger:hover,
 .novel-create-footer-ai:hover {
   transform: translateY(-1px);
-  border-color: rgba(255, 214, 154, 0.5);
-  box-shadow: 0 12px 30px rgba(255, 184, 107, 0.12);
+  border-color: color-mix(in srgb, var(--story-modal-trigger-border) 70%, var(--accent));
+  box-shadow: var(--story-modal-trigger-shadow);
 }
 
 .create-novel-footer {
@@ -696,43 +759,43 @@ style.textContent = `
   height: 100%;
   border-radius: 20px;
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--story-modal-card-border);
+  background: var(--story-modal-card-bg);
 }
 
 .novel-create-metric-note {
   margin-top: 18px;
   padding: 16px;
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  border: 1px solid var(--story-modal-card-border);
+  background: var(--story-modal-card-bg);
 }
 
 .novel-create-metric-note__title {
   font-size: 13px;
   font-weight: 600;
-  color: #fff2dc;
+  color: var(--story-modal-title);
   margin-bottom: 8px;
 }
 
 .novel-create-metric-note__text {
-  color: rgba(235, 239, 248, 0.72);
+  color: var(--story-modal-soft-text);
   line-height: 1.65;
   font-size: 13px;
 }
 
 .ai-generate-stage__card-title {
   margin-bottom: 14px;
-  color: #fff2dc;
+  color: var(--story-modal-title);
   font-size: 14px;
   font-weight: 600;
 }
 
 .ai-generate-stage__example {
   padding: 12px 0;
-  color: rgba(235, 239, 248, 0.78);
+  color: var(--story-modal-muted);
   line-height: 1.65;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--story-modal-card-border);
 }
 
 .ai-generate-stage__example:first-of-type {
@@ -744,17 +807,17 @@ style.textContent = `
 .create-novel-modal .form-textarea,
 .ai-generate-novel-modal .form-textarea,
 .create-novel-modal select {
-  background: rgba(8, 12, 20, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(245, 247, 252, 0.96);
+  background: var(--story-modal-input-bg);
+  border: 1px solid var(--story-modal-input-border);
+  color: var(--story-modal-input-text);
 }
 
 .create-novel-modal .form-input:focus,
 .create-novel-modal .form-textarea:focus,
 .ai-generate-novel-modal .form-textarea:focus,
 .create-novel-modal select:focus {
-  border-color: rgba(255, 197, 118, 0.54);
-  box-shadow: 0 0 0 4px rgba(255, 188, 92, 0.1);
+  border-color: var(--story-modal-focus-border);
+  box-shadow: 0 0 0 4px var(--story-modal-focus-ring);
 }
 
 @media (max-width: 720px) {

@@ -3,6 +3,7 @@ pub mod chapters;
 pub mod characters;
 pub mod llm_config;
 pub mod meta;
+pub mod novel_settings;
 pub mod novels;
 pub mod timeline;
 
@@ -11,6 +12,7 @@ pub use chapters::ChapterRepository;
 pub use characters::CharacterRepository;
 pub use llm_config::LlmConfigRepository;
 pub use meta::MetaRepository;
+pub use novel_settings::NovelSettingsRepository;
 pub use novels::NovelRepository;
 pub use timeline::TimelineRepository;
 

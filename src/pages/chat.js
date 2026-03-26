@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { ICONS } from '../lib/icons.js'
+import { store } from '../state/store.js'
 
 /**
  * Chat 页面模块
@@ -292,6 +293,7 @@ async function sendMessage() {
       requestId,
       agentCode: currentAgentCode,
       message,
+      novelId: store.currentNovelId ?? null,
       history: messages
         .filter(m => m.role !== 'system' && m.requestId !== requestId)
         .map(m => ({

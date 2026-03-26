@@ -2,6 +2,8 @@ import { api } from '../../api/tauri.js'
 import { ICONS } from '../../lib/icons.js'
 import { toastSuccess, toastError } from '../../lib/toast.js'
 import { confirm } from '../../lib/modal.js'
+import { Modal } from '../../lib/modal.js'
+import { listen } from '@tauri-apps/api/event'
 import { createMarkdownEditor } from '../../lib/markdown-editor.js'
 import { createTabs } from '../../lib/tabs.js'
 import { createPagedList } from '../../lib/virtual-list.js'
@@ -15,6 +17,8 @@ let metaProperties = []
 let metaEditorInstance = null
 let metaTabsComponent = null
 let metaListComponent = null
+let metaAiUnlisteners = []
+let activeMetaAiRequestId = null
 
 export async function loadMeta(novelId) {
   try {
@@ -33,6 +37,7 @@ export function getMetaDataList() {
 }
 
 export async function render(content, novelInfo) {
+  await ensureMetaAiListeners()
   const unaddedProps = metaProperties.filter(p => !metaDataList.find(m => m.property_name === p.property_name))
 
   content.innerHTML = `
@@ -337,8 +342,78 @@ function renderEditor(content, novelInfo) {
   })
 
   editorContent.querySelector('#ai-generate-btn')?.addEventListener('click', () => {
-    toastSuccess('AI生成功能开发中...')
+    openMetaAiModal(novelInfo)
   })
+}
+
+async function openMetaAiModal(novelInfo) {
+  const body = document.createElement('div')
+  body.innerHTML = `
+    <div class="form-group">
+      <label class="form-label">补充要求</label>
+      <textarea id="meta-ai-requirement" class="form-input" rows="6" placeholder="输入你希望 AI 如何生成或修改这段元数据..."></textarea>
+    </div>
+  `
+
+  const modal = new Modal({
+    title: `AI生成 - ${editingMeta.property_name}`,
+    content: body,
+    size: 'md',
+    confirmText: '确定生成',
+    cancelText: '取消',
+    onConfirm: async (instance) => {
+      const requirement = instance.contentEl.querySelector('#meta-ai-requirement')?.value?.trim() || ''
+      if (!requirement) return false
+
+      const requestId = `meta_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+      activeMetaAiRequestId = requestId
+      if (metaEditorInstance) {
+        metaEditorInstance.setValue('')
+      }
+      instance.setLoading(true)
+      try {
+        await api.aiGenerateMetaStream({
+          requestId,
+          novelId: novelInfo.id,
+          propertyName: editingMeta.property_name,
+          propertyDescription: metaProperties.find(p => p.property_name === editingMeta.property_name)?.property_description || '',
+          currentContent: metaEditorInstance ? metaEditorInstance.getValue() : '',
+          requirement,
+        })
+      } catch (err) {
+        toastError('AI生成失败: ' + err)
+        instance.setLoading(false)
+        return false
+      }
+    }
+  })
+
+  modal.open()
+}
+
+async function ensureMetaAiListeners() {
+  if (metaAiUnlisteners.length > 0) return
+
+  metaAiUnlisteners.push(
+    await listen('meta-ai-stream-chunk', (event) => {
+      const payload = event.payload
+      if (!metaEditorInstance || !payload?.delta || payload.request_id !== activeMetaAiRequestId) return
+      metaEditorInstance.setValue((metaEditorInstance.getValue() || '') + payload.delta)
+    }),
+    await listen('meta-ai-stream-done', (event) => {
+      const payload = event.payload
+      if (!metaEditorInstance || !payload || payload.request_id !== activeMetaAiRequestId) return
+      metaEditorInstance.setValue(payload.content || '')
+      activeMetaAiRequestId = null
+      toastSuccess('AI生成完成')
+    }),
+    await listen('meta-ai-stream-error', (event) => {
+      const payload = event.payload
+      if (payload?.request_id !== activeMetaAiRequestId) return
+      activeMetaAiRequestId = null
+      toastError('AI生成失败: ' + (payload?.error || '未知错误'))
+    })
+  )
 }
 
 export function cleanup() {
@@ -359,4 +434,7 @@ export function cleanup() {
   previewMetaProperty = null
   metaDataList = []
   metaProperties = []
+  activeMetaAiRequestId = null
+  metaAiUnlisteners.forEach(fn => fn())
+  metaAiUnlisteners = []
 }

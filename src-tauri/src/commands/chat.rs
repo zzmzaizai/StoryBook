@@ -69,11 +69,13 @@ pub async fn chat_with_agent(
     state: State<'_, AppState>,
     agent_code: String,
     message: String,
+    novel_id: Option<i32>,
     history: Option<Vec<ChatMessage>>,
 ) -> Result<ChatResponse, String> {
     // 构建输入参数
     let input = serde_json::json!({
         "message": message,
+        "novel_id": novel_id,
         "history": history.unwrap_or_default(),
     });
 
@@ -97,11 +99,13 @@ pub async fn chat_with_agent_and_llm(
     agent_code: String,
     llm_config_id: i32,
     message: String,
+    novel_id: Option<i32>,
     history: Option<Vec<ChatMessage>>,
 ) -> Result<ChatResponse, String> {
     // 构建输入参数
     let input = serde_json::json!({
         "message": message,
+        "novel_id": novel_id,
         "history": history.unwrap_or_default(),
     });
 
@@ -126,10 +130,12 @@ pub async fn chat_with_agent_stream(
     request_id: String,
     agent_code: String,
     message: String,
+    novel_id: Option<i32>,
     history: Option<Vec<ChatMessage>>,
 ) -> Result<(), String> {
     let input = serde_json::json!({
         "message": message,
+        "novel_id": novel_id,
         "history": history.unwrap_or_default(),
     });
 

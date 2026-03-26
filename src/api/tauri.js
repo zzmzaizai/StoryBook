@@ -33,21 +33,23 @@ export const api = {
   listNovels: (page = 0, pageSize = 12) => invoke('list_novels', { page, pageSize }),
   countNovels: () => invoke('count_novels'),
   getNovel: (id) => invoke('get_novel', { id }),
+  getNovelSettings: (novelId) => invoke('get_novel_settings', { novelId }),
   updateNovel: (payload) => invoke('update_novel', {
     id: payload.id,
     title: payload.title,
     description: payload.description,
+    originalDescription: payload.originalDescription ?? payload.original_description,
     image: payload.image,
     style: payload.style,
     targetAudience: payload.targetAudience ?? payload.target_audience,
     lengthType: payload.lengthType ?? payload.length_type,
-    isFocus: payload.isFocus ?? payload.is_focus,
     estimatedChapterCount: payload.estimatedChapterCount ?? payload.estimated_chapter_count,
     estimatedTotalWordCount: payload.estimatedTotalWordCount ?? payload.estimated_total_word_count,
     estimatedWordsPerChapter: payload.estimatedWordsPerChapter ?? payload.estimated_words_per_chapter,
     status: payload.status,
   }),
   deleteNovel: (id) => invoke('delete_novel', { id }),
+  saveNovelSettings: (novelId, settings) => invoke('save_novel_settings', { novelId, settings }),
   aiGenerateNovelInfo: (requirement) => invoke('ai_generate_novel_info', { requirement }),
 
   createChapter: (novelId, chapterName) => invoke('create_chapter', { novelId, chapterName }),
@@ -83,6 +85,7 @@ export const api = {
   getTimeline: (id) => invoke('get_timeline', { id }),
   updateTimeline: (id, title, description, timelineOutline, startChapterNumber, endChapterNumber, charactersDescription, chapterMetas) =>
     invoke('update_timeline', { id, title, description, timelineOutline, startChapterNumber, endChapterNumber, charactersDescription, chapterMetas }),
+  aiGenerateTimeline: (payload) => invoke('ai_generate_timeline', payload),
   deleteTimeline: (id) => invoke('delete_timeline', { id }),
   getChapterMetaProperties: () => invoke('get_chapter_meta_properties'),
 
@@ -95,6 +98,7 @@ export const api = {
   getMetaByName: (novelId, propertyName) =>
     invoke('get_meta_by_name', { novelId, propertyName }),
   updateMeta: (id, propertyValue) => invoke('update_meta', { id, propertyValue }),
+  aiGenerateMetaStream: (payload) => invoke('ai_generate_meta_stream', payload),
   upsertMeta: (novelId, propertyName, propertyValue) =>
     invoke('upsert_meta', { novelId, propertyName, propertyValue }),
   deleteMeta: (id) => invoke('delete_meta', { id }),
