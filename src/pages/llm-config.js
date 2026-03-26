@@ -8,9 +8,9 @@ import { invoke } from '@tauri-apps/api/core'
 
 // 支持的 Provider 列表
 const PROVIDER_OPTIONS = [
-  { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1' },
-  { value: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com/v1' },
-  { value: 'gemini', label: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta' },
+  { value: 'openai', label: 'OpenAI / 兼容网关', baseUrl: 'https://api.openai.com/v1' },
+  { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
+  { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
   { value: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434/v1' },
 ]
 
@@ -244,6 +244,7 @@ function renderCreateForm(editorEl, root) {
             <option value="">请选择提供商</option>
             ${providerOptions}
           </select>
+          <span class="form-hint">当前后端只支持 OpenAI Chat Completions 兼容接口；Claude/Gemini 请通过兼容网关接入</span>
         </div>
         <div class="form-group">
           <label class="form-label">模型 <span class="text-danger">*</span></label>
@@ -256,7 +257,7 @@ function renderCreateForm(editorEl, root) {
         <div id="api-key-list" class="api-key-list">
           ${renderApiKeyItems([], false)}
         </div>
-        <span class="form-hint">可选，如果不填写将使用环境变量或配置文件中的密钥</span>
+        <span class="form-hint">支持填写多个 KEY，使用英文逗号分隔；运行时会随机选择一个 KEY</span>
       </div>
       
       <div class="form-group">
@@ -321,6 +322,7 @@ function renderEditForm(editorEl, config, root) {
             <option value="">请选择提供商</option>
             ${providerOptions}
           </select>
+          <span class="form-hint">当前后端只支持 OpenAI Chat Completions 兼容接口；Claude/Gemini 请通过兼容网关接入</span>
         </div>
         <div class="form-group">
           <label class="form-label">模型 <span class="text-danger">*</span></label>
@@ -333,7 +335,7 @@ function renderEditForm(editorEl, config, root) {
         <div id="api-key-list" class="api-key-list">
           ${renderApiKeyItems(apiKeys, true)}
         </div>
-        <span class="form-hint">留空表示不修改，输入新值将覆盖原有密钥</span>
+        <span class="form-hint">支持填写多个 KEY，使用英文逗号分隔；留空表示不修改，输入后会整体覆盖原有 KEY 列表</span>
       </div>
       
       <div class="form-group">

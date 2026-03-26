@@ -76,6 +76,29 @@ fn get_prompt_file_path(agent_code: &str) -> PathBuf {
 /// 获取内置默认提示词
 fn get_builtin_prompt(agent_code: &str) -> PromptConfig {
     match agent_code {
+        "general_chat" => PromptConfig {
+            system_prompt: include_str!("general_chat.toml")
+                .parse::<toml::Value>()
+                .ok()
+                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
+                .unwrap_or_else(|| "你是一个专业的 AI 助手。".to_string()),
+            user_template: None,
+            output_format: None,
+            extra: HashMap::new(),
+        },
+        "novel_info_generator" => PromptConfig {
+            system_prompt: include_str!("novel_info_generator.toml")
+                .parse::<toml::Value>()
+                .ok()
+                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
+                .unwrap_or_else(|| {
+                    "你是一个专业的网络小说编辑和策划专家。必须只输出 JSON 对象，不要输出解释、前缀、markdown 或代码块。"
+                        .to_string()
+                }),
+            user_template: None,
+            output_format: None,
+            extra: HashMap::new(),
+        },
         "novel_outline" => PromptConfig {
             system_prompt: include_str!("novel_outline.toml")
                 .parse::<toml::Value>()
@@ -121,7 +144,13 @@ fn get_builtin_prompt(agent_code: &str) -> PromptConfig {
 pub async fn init_prompt_cache() -> anyhow::Result<()> {
     let mut cache = HashMap::new();
 
-    let agents = ["novel_outline", "chapter_timeline", "character_design", "novel_info_generator"];
+    let agents = [
+        "general_chat",
+        "novel_info_generator",
+        "novel_outline",
+        "chapter_timeline",
+        "character_design",
+    ];
 
     for agent_code in agents {
         if let Ok(config) = load_prompt_from_file(agent_code).await {

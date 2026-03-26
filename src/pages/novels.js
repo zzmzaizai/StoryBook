@@ -70,19 +70,27 @@ export async function render() {
         try {
           const novel = await api.createNovel(formData.title)
           
-          if (formData.description || formData.style !== 1 || formData.target_audience !== 4 || formData.length_type !== 3) {
+          if (
+            formData.description ||
+            formData.style !== 1 ||
+            formData.target_audience !== 4 ||
+            formData.length_type !== 3 ||
+            formData.estimated_chapter_count ||
+            formData.estimated_total_word_count ||
+            formData.estimated_words_per_chapter
+          ) {
             await api.updateNovel({
               id: novel.id,
               title: formData.title,
               description: formData.description || null,
               image: null,
               style: formData.style,
-              targetAudience: formData.target_audience,
-              lengthType: formData.length_type,
-              isFocus: false,
-              estimatedChapterCount: null,
-              estimatedTotalWordCount: null,
-              estimatedWordsPerChapter: null,
+              target_audience: formData.target_audience,
+              length_type: formData.length_type,
+              is_focus: false,
+              estimated_chapter_count: formData.estimated_chapter_count,
+              estimated_total_word_count: formData.estimated_total_word_count,
+              estimated_words_per_chapter: formData.estimated_words_per_chapter,
               status: 1,
             })
           }

@@ -13,19 +13,17 @@ let currentAgentName = '通用助手'
 let messages = []
 let isLoading = false
 let agents = []
-let unlistenChunk = null
-let unlistenDone = null
-let unlistenError = null
-let activeStreamRequestId = null
-let streamingMessageId = null
+let pageRoot = null
+let streamUnlisteners = []
 
 /**
  * 渲染 Chat 页面
  */
 export async function render() {
-  const el = document.createElement('div')
-  el.className = 'page'
-  el.innerHTML = `
+  const root = document.createElement('div')
+  pageRoot = root
+
+  root.innerHTML = `
     <div class="page-container chat-container">
       <!-- 侧边栏：Agent 选择 -->
       <aside class="chat-sidebar">
@@ -88,17 +86,17 @@ export async function render() {
     </div>
   `
 
-  // 延迟初始化，确保元素已插入 DOM
-  requestAnimationFrame(() => initChat())
-  
-  return el
+  // 初始化
+  await initChat()
+
+  return root
 }
 
 /**
  * 初始化聊天功能
  */
 async function initChat() {
-  await bindStreamEvents()
+  await setupStreamListeners()
 
   // 加载 Agent 列表
   await loadAgents()
@@ -108,39 +106,6 @@ async function initChat() {
 
   // 加载历史消息（如果有）
   loadMessages()
-}
-
-async function bindStreamEvents() {
-  if (!unlistenChunk) {
-    unlistenChunk = await listen('chat-stream-chunk', (event) => {
-      const payload = event.payload
-      if (!payload || payload.request_id !== activeStreamRequestId) return
-      appendAssistantStreamChunk(payload.delta)
-    })
-  }
-
-  if (!unlistenDone) {
-    unlistenDone = await listen('chat-stream-done', (event) => {
-      const payload = event.payload
-      if (!payload || payload.request_id !== activeStreamRequestId) return
-      finalizeAssistantStream(payload.content)
-      hideLoading()
-      activeStreamRequestId = null
-      streamingMessageId = null
-    })
-  }
-
-  if (!unlistenError) {
-    unlistenError = await listen('chat-stream-error', (event) => {
-      const payload = event.payload
-      if (!payload || payload.request_id !== activeStreamRequestId) return
-      removeStreamingMessage()
-      addErrorMessage(payload.error || '发送失败，请重试')
-      hideLoading()
-      activeStreamRequestId = null
-      streamingMessageId = null
-    })
-  }
 }
 
 /**
@@ -205,7 +170,7 @@ function getAgentIcon(agentCode) {
  * 渲染 Agent 列表
  */
 function renderAgentList() {
-  const listEl = document.getElementById('agent-list')
+  const listEl = getPageEl('#agent-list')
   if (!listEl) return
 
   listEl.innerHTML = agents.map(agent => `
@@ -225,7 +190,7 @@ function renderAgentList() {
  */
 function bindEvents() {
   // Agent 切换
-  const agentList = document.getElementById('agent-list')
+  const agentList = getPageEl('#agent-list')
   agentList?.addEventListener('click', (e) => {
     const item = e.target.closest('.chat-agent-item')
     if (item) {
@@ -235,7 +200,7 @@ function bindEvents() {
   })
 
   // 输入框自动调整高度
-  const input = document.getElementById('chat-input')
+  const input = getPageEl('#chat-input')
   input?.addEventListener('input', () => {
     autoResizeTextarea(input)
     updateSendButton()
@@ -250,11 +215,11 @@ function bindEvents() {
   })
 
   // 发送按钮
-  const sendBtn = document.getElementById('send-btn')
+  const sendBtn = getPageEl('#send-btn')
   sendBtn?.addEventListener('click', sendMessage)
 
   // 清空对话
-  const clearBtn = document.getElementById('clear-chat')
+  const clearBtn = getPageEl('#clear-chat')
   clearBtn?.addEventListener('click', clearChat)
 }
 
@@ -270,8 +235,8 @@ function autoResizeTextarea(textarea) {
  * 更新发送按钮状态
  */
 function updateSendButton() {
-  const input = document.getElementById('chat-input')
-  const sendBtn = document.getElementById('send-btn')
+  const input = getPageEl('#chat-input')
+  const sendBtn = getPageEl('#send-btn')
   if (input && sendBtn) {
     sendBtn.disabled = !input.value.trim() || isLoading
   }
@@ -290,7 +255,10 @@ function switchAgent(code) {
   currentAgentName = agent.name
 
   // 更新 UI
-  document.getElementById('current-agent-name').textContent = agent.name
+  const currentAgentNameEl = getPageEl('#current-agent-name')
+  if (currentAgentNameEl) {
+    currentAgentNameEl.textContent = agent.name
+  }
   renderAgentList()
 
   // 添加系统消息
@@ -299,9 +267,10 @@ function switchAgent(code) {
 
 /**
  * 发送消息
- */
+  */
 async function sendMessage() {
-  const input = document.getElementById('chat-input')
+  const input = getPageEl('#chat-input')
+  if (!input) return
   const message = input.value.trim()
   
   if (!message || isLoading) return
@@ -314,29 +283,29 @@ async function sendMessage() {
   input.style.height = 'auto'
   updateSendButton()
 
-  // 显示加载状态
-  showLoading()
+  const requestId = `chat_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+  const assistantMessage = addAssistantMessage('', requestId)
+  setAgentStatus('正在回复...')
 
   try {
-    activeStreamRequestId = `chat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-    createStreamingAssistantMessage()
-
     await invoke('chat_with_agent_stream', {
-      requestId: activeStreamRequestId,
+      requestId,
       agentCode: currentAgentCode,
-      message: message,
-      history: messages.filter(m => m.role !== 'system').map(m => ({
-        role: m.role,
-        content: m.content
-      }))
+      message,
+      history: messages
+        .filter(m => m.role !== 'system' && m.requestId !== requestId)
+        .map(m => ({
+          role: m.role,
+          content: m.content
+        }))
     })
   } catch (err) {
     console.error('发送消息失败:', err)
-    removeStreamingMessage()
+    removeMessageById(assistantMessage.id)
     addErrorMessage('发送失败，请重试')
-    activeStreamRequestId = null
-    streamingMessageId = null
-  } finally {
+    isLoading = false
+    setAgentStatus('发送失败')
+    updateSendButton()
   }
 }
 
@@ -358,62 +327,18 @@ function addUserMessage(content) {
 /**
  * 添加助手消息
  */
-function addAssistantMessage(content) {
+function addAssistantMessage(content, requestId = null) {
   const message = {
     id: Date.now(),
     role: 'assistant',
     content,
-    timestamp: new Date().toISOString()
-  }
-  messages.push(message)
-  renderMessage(message)
-  scrollToBottom()
-}
-
-function createStreamingAssistantMessage() {
-  const message = {
-    id: Date.now(),
-    role: 'assistant',
-    content: '',
     timestamp: new Date().toISOString(),
-    streaming: true,
+    requestId,
   }
   messages.push(message)
-  streamingMessageId = message.id
   renderMessage(message)
   scrollToBottom()
-}
-
-function appendAssistantStreamChunk(delta) {
-  const message = messages.find(m => m.id === streamingMessageId)
-  if (!message) return
-
-  message.content += delta
-  const contentEl = document.querySelector(`.chat-message[data-id="${message.id}"] .chat-message-content`)
-  if (contentEl) {
-    contentEl.innerHTML = `${formatMessageContent(message.content)}<span class="chat-typing-caret"></span>`
-  }
-  scrollToBottom()
-}
-
-function finalizeAssistantStream(content) {
-  const message = messages.find(m => m.id === streamingMessageId)
-  if (!message) return
-
-  message.content = content
-  message.streaming = false
-  const contentEl = document.querySelector(`.chat-message[data-id="${message.id}"] .chat-message-content`)
-  if (contentEl) {
-    contentEl.innerHTML = formatMessageContent(content)
-  }
-  scrollToBottom()
-}
-
-function removeStreamingMessage() {
-  if (!streamingMessageId) return
-  messages = messages.filter(m => m.id !== streamingMessageId)
-  const el = document.querySelector(`.chat-message[data-id="${streamingMessageId}"]`)
-  if (el) el.remove()
+  return message
 }
 
 /**
@@ -435,7 +360,7 @@ function addSystemMessage(content) {
  * 添加错误消息
  */
 function addErrorMessage(content) {
-  const messagesContainer = document.getElementById('chat-messages')
+  const messagesContainer = getPageEl('#chat-messages')
   if (!messagesContainer) return
 
   const errorEl = document.createElement('div')
@@ -454,7 +379,7 @@ function addErrorMessage(content) {
  * 渲染单条消息
  */
 function renderMessage(message) {
-  const messagesContainer = document.getElementById('chat-messages')
+  const messagesContainer = getPageEl('#chat-messages')
   if (!messagesContainer) return
 
   // 隐藏欢迎消息
@@ -469,6 +394,9 @@ function renderMessage(message) {
   const messageEl = document.createElement('div')
   messageEl.className = `chat-message ${isUser ? 'chat-message-user' : isSystem ? 'chat-message-system' : 'chat-message-assistant'}`
   messageEl.dataset.id = message.id
+  if (message.requestId) {
+    messageEl.dataset.requestId = message.requestId
+  }
 
   if (isSystem) {
     messageEl.innerHTML = `
@@ -487,13 +415,53 @@ function renderMessage(message) {
           <span class="chat-message-time">${formatTime(message.timestamp)}</span>
         </div>
         <div class="chat-message-content">
-          ${formatMessageContent(message.content)}${message.streaming ? '<span class="chat-typing-caret"></span>' : ''}
+          ${formatMessageContent(message.content)}
         </div>
       </div>
     `
   }
 
   messagesContainer.appendChild(messageEl)
+}
+
+function updateAssistantMessage(requestId, delta) {
+  const message = messages.find(m => m.role === 'assistant' && m.requestId === requestId)
+  if (!message) return
+
+  message.content += delta
+
+  const messageEl = getPageEl(`[data-request-id="${requestId}"]`)
+  if (!messageEl) return
+
+  const contentEl = messageEl.querySelector('.chat-message-content')
+  if (contentEl) {
+    contentEl.innerHTML = formatMessageContent(message.content)
+  }
+
+  scrollToBottom()
+}
+
+function finalizeAssistantMessage(requestId, content) {
+  const message = messages.find(m => m.role === 'assistant' && m.requestId === requestId)
+  if (!message) return
+
+  message.content = content
+
+  const messageEl = getPageEl(`[data-request-id="${requestId}"]`)
+  if (!messageEl) return
+
+  const contentEl = messageEl.querySelector('.chat-message-content')
+  if (contentEl) {
+    contentEl.innerHTML = formatMessageContent(content)
+  }
+}
+
+function removeMessageById(messageId) {
+  messages = messages.filter(m => m.id !== messageId)
+  const messageEl = getPageEl(`[data-id="${messageId}"]`)
+  if (messageEl) {
+    messageEl.remove()
+  }
 }
 
 /**
@@ -520,7 +488,7 @@ function formatTime(timestamp) {
  * 滚动到底部
  */
 function scrollToBottom() {
-  const messagesContainer = document.getElementById('chat-messages')
+  const messagesContainer = getPageEl('#chat-messages')
   if (messagesContainer) {
     messagesContainer.scrollTop = messagesContainer.scrollHeight
   }
@@ -533,10 +501,24 @@ function showLoading() {
   isLoading = true
   updateSendButton()
 
-  const statusEl = document.getElementById('agent-status')
-  if (statusEl) {
-    statusEl.textContent = '正在思考...'
-  }
+  const messagesContainer = getPageEl('#chat-messages')
+  if (!messagesContainer) return
+
+  const loadingEl = document.createElement('div')
+  loadingEl.className = 'chat-message chat-message-loading'
+  loadingEl.id = 'chat-loading'
+  loadingEl.innerHTML = `
+    <div class="chat-message-avatar">${ICONS.ai}</div>
+    <div class="chat-message-body">
+      <div class="chat-loading-dots">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+    </div>
+  `
+  messagesContainer.appendChild(loadingEl)
+  scrollToBottom()
 }
 
 /**
@@ -546,9 +528,9 @@ function hideLoading() {
   isLoading = false
   updateSendButton()
 
-  const statusEl = document.getElementById('agent-status')
-  if (statusEl) {
-    statusEl.textContent = '准备就绪'
+  const loadingEl = getPageEl('#chat-loading')
+  if (loadingEl) {
+    loadingEl.remove()
   }
 }
 
@@ -560,7 +542,7 @@ function clearChat() {
 
   if (confirm('确定要清空当前对话吗？')) {
     messages = []
-    const messagesContainer = document.getElementById('chat-messages')
+    const messagesContainer = getPageEl('#chat-messages')
     if (messagesContainer) {
       messagesContainer.innerHTML = `
         <div class="chat-welcome">
@@ -581,13 +563,65 @@ function loadMessages() {
   messages = []
 }
 
+async function setupStreamListeners() {
+  if (streamUnlisteners.length > 0) return
+
+  const chunkUnlisten = await listen('chat-stream-chunk', (event) => {
+    const payload = event.payload
+    const requestId = payload?.request_id || payload?.requestId
+    if (!requestId) return
+
+    updateAssistantMessage(requestId, payload.delta || '')
+  })
+
+  const doneUnlisten = await listen('chat-stream-done', (event) => {
+    const payload = event.payload
+    const requestId = payload?.request_id || payload?.requestId
+    if (!requestId) return
+
+    finalizeAssistantMessage(requestId, payload.content || '')
+    isLoading = false
+    setAgentStatus('准备就绪')
+    updateSendButton()
+  })
+
+  const errorUnlisten = await listen('chat-stream-error', (event) => {
+    const payload = event.payload
+    const requestId = payload?.request_id || payload?.requestId
+    if (requestId) {
+      finalizeAssistantMessage(requestId, `错误: ${payload.error || '未知错误'}`)
+    }
+
+    isLoading = false
+    setAgentStatus('发送失败')
+    updateSendButton()
+  })
+
+  streamUnlisteners = [chunkUnlisten, doneUnlisten, errorUnlisten]
+}
+
+function setAgentStatus(text) {
+  const statusEl = getPageEl('#agent-status')
+  if (statusEl) {
+    statusEl.textContent = text
+  }
+}
+
+function getPageEl(selector) {
+  return pageRoot?.querySelector(selector) || null
+}
+
 export function cleanup() {
-  unlistenChunk?.()
-  unlistenDone?.()
-  unlistenError?.()
-  unlistenChunk = null
-  unlistenDone = null
-  unlistenError = null
-  activeStreamRequestId = null
-  streamingMessageId = null
+  streamUnlisteners.forEach((unlisten) => {
+    try {
+      unlisten()
+    } catch (_) {}
+  })
+  streamUnlisteners = []
+  currentAgentCode = 'general_chat'
+  currentAgentName = '通用助手'
+  messages = []
+  isLoading = false
+  agents = []
+  pageRoot = null
 }

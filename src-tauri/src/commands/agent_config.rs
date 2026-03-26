@@ -246,16 +246,6 @@ pub async fn init_default_agent_configs(
 pub fn get_agent_types() -> Vec<AgentTypeInfo> {
     vec![
         AgentTypeInfo {
-            code: "general_chat".to_string(),
-            name: "通用助手".to_string(),
-            description: "通用 AI 对话助手，可进行普通问答、讨论创作思路和提供写作建议。".to_string(),
-        },
-        AgentTypeInfo {
-            code: "novel_info_generator".to_string(),
-            name: "小说基础信息生成".to_string(),
-            description: "根据一句或一段小说需求描述，自动生成标题、简介、风格、目标读者和预估篇幅等基础信息。".to_string(),
-        },
-        AgentTypeInfo {
             code: "novel_outline".to_string(),
             name: "小说大纲生成".to_string(),
             description: "根据用户输入的故事概念，生成详细的小说大纲，包括主要情节、角色设定和章节规划。".to_string(),

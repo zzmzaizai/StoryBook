@@ -7,7 +7,6 @@ use crate::ai::agent::traits::AgentHandler;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// Agent 注册表
 pub struct AgentRegistry {
     handlers: HashMap<String, Arc<dyn AgentHandler>>,
 }
@@ -23,15 +22,14 @@ impl AgentRegistry {
 
     fn register_builtin_agents(&mut self) {
         self.register(Arc::new(GeneralChatHandler));
+        self.register(Arc::new(NovelInfoGeneratorHandler));
         self.register(Arc::new(NovelOutlineHandler));
         self.register(Arc::new(ChapterTimelineHandler));
         self.register(Arc::new(CharacterDesignHandler));
-        self.register(Arc::new(NovelInfoGeneratorHandler));
     }
 
     pub fn register(&mut self, handler: Arc<dyn AgentHandler>) {
-        let code = handler.code().to_string();
-        self.handlers.insert(code, handler);
+        self.handlers.insert(handler.code().to_string(), handler);
     }
 
     pub fn get(&self, agent_code: &str) -> Option<Arc<dyn AgentHandler>> {

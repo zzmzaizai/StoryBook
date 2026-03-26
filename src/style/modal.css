@@ -446,12 +446,12 @@
 
 .create-novel-form .length-type-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--space-sm);
 }
 
 .create-novel-form .length-type-option {
-  padding: var(--space-md);
+  padding: var(--space-xs);
   border: 2px solid var(--border-primary);
   border-radius: var(--radius-md);
   cursor: pointer;

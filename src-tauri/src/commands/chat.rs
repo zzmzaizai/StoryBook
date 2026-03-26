@@ -2,7 +2,7 @@
 //!
 //! 提供与 Agent 聊天的功能
 
-use crate::ai::agent::factory::AgentService;
+use crate::ai::agent::service::AgentService;
 use crate::commands::AppState;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};

@@ -118,11 +118,11 @@ export function render(content, novelInfo) {
       description: content.querySelector('#novel-desc').value,
       status: parseInt(content.querySelector('#novel-status').value),
       style: parseInt(content.querySelector('#novel-style').value),
-      lengthType: parseInt(content.querySelector('#novel-length').value),
-      targetAudience: parseInt(content.querySelector('#novel-audience').value),
-      estimatedChapterCount: parseInt(content.querySelector('#novel-chapters').value) || null,
-      estimatedTotalWordCount: parseInt(content.querySelector('#novel-words').value) || null,
-      estimatedWordsPerChapter: parseInt(content.querySelector('#novel-words-per-chapter').value) || null,
+      length_type: parseInt(content.querySelector('#novel-length').value),
+      target_audience: parseInt(content.querySelector('#novel-audience').value),
+      estimated_chapter_count: parseInt(content.querySelector('#novel-chapters').value) || null,
+      estimated_total_word_count: parseInt(content.querySelector('#novel-words').value) || null,
+      estimated_words_per_chapter: parseInt(content.querySelector('#novel-words-per-chapter').value) || null,
     }
     try {
       await api.updateNovel(data)

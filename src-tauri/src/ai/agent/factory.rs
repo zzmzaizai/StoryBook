@@ -3,74 +3,44 @@
 //! 统一创建和管理 Agent 实例
 
 use crate::ai::agent::registry::AgentRegistry;
-use crate::entity::agent_config::AgentCodes;
 use crate::ai::agent::traits::{AgentContext, AgentExecutionContext, AgentHandler, AgentResult};
 use crate::ai::llm::service::LlmService;
 use crate::entity::agent_config;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
+use crate::repository::AgentConfigRepository;
+use sea_orm::DatabaseConnection;
 use serde_json::Value;
+use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
-/// Agent 工厂类
-///
-/// 负责创建 Agent 实例并执行调用
 pub struct AgentFactory {
     registry: AgentRegistry,
 }
 
+const NOVEL_INFO_GENERATOR_JSON_GUARD: &str = r#"你必须只返回一个合法 JSON 对象，并满足以下要求：
+- 不要输出 markdown 代码块
+- 不要输出解释说明、前言、后记
+- 不要输出 JSON 之外的任何文字
+- 所有字段必须使用双引号包裹的标准 JSON
+- 字段必须包含：title, description, style, target_audience, length_type, estimated_chapter_count, estimated_total_word_count, estimated_words_per_chapter, protagonist_name, protagonist_description, core_conflict, world_setting"#;
+
 impl AgentFactory {
-    /// 创建新的 Agent 工厂
     pub fn new() -> Self {
         Self {
             registry: AgentRegistry::new(),
         }
     }
 
-    /// 创建 Agent 并执行
-    ///
-    /// # 参数
-    /// - `db`: 数据库连接
-    /// - `agent_code`: Agent 代码
-    /// - `input`: 输入参数
-    ///
-    /// # 返回
-    /// Agent 执行结果
     pub async fn invoke(
         &self,
         db: &DatabaseConnection,
         agent_code: &str,
         input: Value,
     ) -> anyhow::Result<AgentResult> {
-        // 获取 Agent 配置
         let agent_config = self.load_agent_config(db, agent_code).await?;
-
-        // 获取 LLM 配置
         let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
-
-        // 获取 Agent Handler
-        let handler = self
-            .registry
-            .get(agent_code)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_code))?;
-
-        // 加载系统提示词
-        let system_prompt = if agent_config.use_system_prompt {
-            crate::ai::prompts::load_prompt(agent_code).await?
-        } else {
-            String::new()
-        };
-
-        // 构建执行上下文
-        let exec_ctx = AgentExecutionContext {
-            system_prompt,
-            custom_prompt: agent_config.custom_prompt.clone(),
-            extra_params: agent_config.extra_config.clone(),
-        };
-
-        // 构建 Agent 上下文
+        let handler = self.get_required_handler(agent_code)?;
+        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config).await?;
         let ctx = AgentContext::new(input);
-
-        // 执行 Agent
         let content = handler.execute(&llm_config, exec_ctx, ctx).await?;
 
         Ok(AgentResult {
@@ -81,9 +51,6 @@ impl AgentFactory {
         })
     }
 
-    /// 使用指定 LLM 执行 Agent
-    ///
-    /// 绕过数据库中的 LLM 绑定，直接使用指定的 LLM 配置
     pub async fn invoke_with_llm(
         &self,
         db: &DatabaseConnection,
@@ -91,36 +58,11 @@ impl AgentFactory {
         llm_config_id: i32,
         input: Value,
     ) -> anyhow::Result<AgentResult> {
-        // 获取 Agent 配置（仅用于提示词设置）
         let agent_config = self.load_agent_config(db, agent_code).await?;
-
-        // 获取指定的 LLM 配置
         let llm_config = LlmService::get_llm_by_id(db, llm_config_id).await?;
-
-        // 获取 Agent Handler
-        let handler = self
-            .registry
-            .get(agent_code)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_code))?;
-
-        // 加载系统提示词
-        let system_prompt = if agent_config.use_system_prompt {
-            crate::ai::prompts::load_prompt(agent_code).await?
-        } else {
-            String::new()
-        };
-
-        // 构建执行上下文
-        let exec_ctx = AgentExecutionContext {
-            system_prompt,
-            custom_prompt: agent_config.custom_prompt.clone(),
-            extra_params: agent_config.extra_config.clone(),
-        };
-
-        // 构建 Agent 上下文
+        let handler = self.get_required_handler(agent_code)?;
+        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config).await?;
         let ctx = AgentContext::new(input);
-
-        // 执行 Agent
         let content = handler.execute(&llm_config, exec_ctx, ctx).await?;
 
         Ok(AgentResult {
@@ -131,7 +73,6 @@ impl AgentFactory {
         })
     }
 
-    /// 流式执行 Agent
     pub async fn invoke_stream(
         &self,
         db: &DatabaseConnection,
@@ -141,24 +82,8 @@ impl AgentFactory {
     ) -> anyhow::Result<AgentResult> {
         let agent_config = self.load_agent_config(db, agent_code).await?;
         let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
-
-        let handler = self
-            .registry
-            .get(agent_code)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_code))?;
-
-        let system_prompt = if agent_config.use_system_prompt {
-            crate::ai::prompts::load_prompt(agent_code).await?
-        } else {
-            String::new()
-        };
-
-        let exec_ctx = AgentExecutionContext {
-            system_prompt,
-            custom_prompt: agent_config.custom_prompt.clone(),
-            extra_params: agent_config.extra_config.clone(),
-        };
-
+        let handler = self.get_required_handler(agent_code)?;
+        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config).await?;
         let ctx = AgentContext::new(input);
         let content = handler.execute_stream(&llm_config, exec_ctx, ctx, tx).await?;
 
@@ -170,33 +95,60 @@ impl AgentFactory {
         })
     }
 
-    /// 加载 Agent 配置
+    async fn build_exec_ctx(
+        &self,
+        agent_code: &str,
+        agent_config: &agent_config::Model,
+    ) -> anyhow::Result<AgentExecutionContext> {
+        let system_prompt = if agent_config.use_system_prompt {
+            crate::ai::prompts::load_prompt(agent_code).await?
+        } else {
+            String::new()
+        };
+
+        let system_prompt = if agent_code == agent_config::AgentCodes::NOVEL_INFO_GENERATOR {
+            if system_prompt.trim().is_empty() {
+                NOVEL_INFO_GENERATOR_JSON_GUARD.to_string()
+            } else {
+                format!("{}\n\n{}", system_prompt.trim(), NOVEL_INFO_GENERATOR_JSON_GUARD)
+            }
+        } else {
+            system_prompt
+        };
+
+        Ok(AgentExecutionContext {
+            system_prompt,
+            custom_prompt: agent_config.custom_prompt.clone(),
+            extra_params: agent_config.extra_config.clone(),
+        })
+    }
+
     async fn load_agent_config(
         &self,
         db: &DatabaseConnection,
         agent_code: &str,
     ) -> anyhow::Result<agent_config::Model> {
-        let config = agent_config::Entity::find()
-            .filter(agent_config::Column::AgentCode.eq(agent_code))
-            .filter(agent_config::Column::Enabled.eq(true))
-            .one(db)
+        let repo = AgentConfigRepository::new(Arc::new(db.clone()));
+        repo.find_by_agent_code(agent_code)
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Agent 配置不存在或已禁用: {}", agent_code))?;
-
-        Ok(config)
+            .filter(|config| config.enabled)
+            .ok_or_else(|| anyhow::anyhow!("Agent 配置不存在或已禁用: {}", agent_code))
     }
 
-    /// 获取 Agent Handler
+    fn get_required_handler(&self, agent_code: &str) -> anyhow::Result<Arc<dyn AgentHandler>> {
+        self.registry
+            .get(agent_code)
+            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_code))
+    }
+
     pub fn get_handler(&self, agent_code: &str) -> Option<Arc<dyn AgentHandler>> {
         self.registry.get(agent_code)
     }
 
-    /// 检查 Agent 是否存在
     pub fn has_agent(&self, agent_code: &str) -> bool {
         self.registry.has(agent_code)
     }
 
-    /// 获取所有可用的 Agent 代码
     pub fn list_agents(&self) -> Vec<String> {
         self.registry.list_codes()
     }
@@ -205,47 +157,5 @@ impl AgentFactory {
 impl Default for AgentFactory {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-use std::sync::Arc;
-
-/// Agent 服务
-///
-/// 提供 Agent 调用的静态方法
-pub struct AgentService;
-
-impl AgentService {
-    /// 调用 Agent
-    ///
-    /// 便捷方法，无需手动创建工厂实例
-    pub async fn invoke(
-        db: &DatabaseConnection,
-        agent_code: &str,
-        input: Value,
-    ) -> anyhow::Result<AgentResult> {
-        let factory = AgentFactory::new();
-        factory.invoke(db, agent_code, input).await
-    }
-
-    /// 使用指定 LLM 调用 Agent
-    pub async fn invoke_with_llm(
-        db: &DatabaseConnection,
-        agent_code: &str,
-        llm_config_id: i32,
-        input: Value,
-    ) -> anyhow::Result<AgentResult> {
-        let factory = AgentFactory::new();
-        factory.invoke_with_llm(db, agent_code, llm_config_id, input).await
-    }
-
-    pub async fn invoke_stream(
-        db: &DatabaseConnection,
-        agent_code: &str,
-        input: Value,
-        tx: UnboundedSender<String>,
-    ) -> anyhow::Result<AgentResult> {
-        let factory = AgentFactory::new();
-        factory.invoke_stream(db, agent_code, input, tx).await
     }
 }
