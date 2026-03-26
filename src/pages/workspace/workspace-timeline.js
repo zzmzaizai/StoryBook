@@ -13,7 +13,13 @@ let timelineCharactersEditor = null
 let timelineListComponent = null
 
 export async function loadTimelines(novelId) {
-  return { timelineList: [] }
+  try {
+    timelineList = await api.listTimelines(novelId)
+  } catch (e) {
+    console.error('加载时间线失败:', e)
+    timelineList = []
+  }
+  return { timelineList }
 }
 
 export function getTimelineList() {
@@ -58,46 +64,49 @@ export async function render(content, novelInfo) {
     renderItem: (tl) => {
       const div = document.createElement('div')
       div.className = 'timeline-list-item'
+      if (editingTimeline?.id === tl.id) {
+        div.classList.add('active')
+      }
+
+      const preview = tl.description || tl.timeline_outline || '暂未填写时间线概述'
       div.innerHTML = `
         <div class="timeline-item-header">
-          <span class="timeline-item-name">${tl.title || '未命名时间线'}</span>
           <div class="timeline-item-badges">
             <span class="timeline-chapter-badge-small">${tl.start_chapter_number || 1}</span>
             <span class="timeline-arrow-small">→</span>
             <span class="timeline-chapter-badge-small">${tl.end_chapter_number || 10}</span>
           </div>
-          <button class="btn-icon btn-icon-danger" data-action="delete-timeline" data-timeline-id="${tl.id}">
+          <button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete-timeline" data-timeline-id="${tl.id}" aria-label="删除时间线">
             ${ICONS.delete}
           </button>
         </div>
-        <p class="timeline-item-preview">${(tl.description || '暂无描述').substring(0, 60)}${(tl.description || '').length > 60 ? '...' : ''}</p>
+        <div class="timeline-item-title">${tl.title || '未命名时间线'}</div>
+        <p class="timeline-item-preview">${preview.substring(0, 72)}${preview.length > 72 ? '...' : ''}</p>
       `
+
+      const deleteBtn = div.querySelector('[data-action="delete-timeline"]')
+      deleteBtn?.addEventListener('click', async (e) => {
+        e.stopPropagation()
+        const confirmed = await confirm('确定要删除这个时间线吗？', '删除确认')
+        if (!confirmed) return
+
+        try {
+          await api.deleteTimeline(tl.id)
+          timelineList = timelineList.filter(t => t.id !== tl.id)
+          if (editingTimeline && editingTimeline.id === tl.id) {
+            editingTimeline = null
+            renderEditor(content, novelInfo)
+          }
+          toastSuccess('删除成功')
+          timelineListComponent.refresh()
+        } catch (err) {
+          toastError('删除失败: ' + err.message)
+        }
+      })
+
       return div
     },
-    onItemClick: (tl, index, el) => {
-      // 处理删除按钮
-      const deleteBtn = el.querySelector('[data-action="delete-timeline"]')
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', async (e) => {
-          e.stopPropagation()
-          const confirmed = await confirm('确定要删除这个时间线吗？', '删除确认')
-          if (confirmed) {
-            try {
-              await api.deleteTimeline(tl.id)
-              timelineList = timelineList.filter(t => t.id !== tl.id)
-              if (editingTimeline && editingTimeline.id === tl.id) {
-                editingTimeline = null
-                renderEditor(content, novelInfo)
-              }
-              toastSuccess('删除成功')
-              timelineListComponent.refresh()
-            } catch (err) {
-              toastError('删除失败: ' + err.message)
-            }
-          }
-        })
-      }
-
+    onItemClick: (tl) => {
       // 选中编辑
       editingTimeline = tl
       renderEditor(content, novelInfo)
@@ -166,24 +175,28 @@ function renderEditor(content, novelInfo) {
   }
 
   editorContent.innerHTML = `
-    <div class="meta-editor">
+    <div class="meta-editor timeline-editor-shell">
       <div class="meta-editor-header">
         <div>
           <h3 class="meta-editor-title">${editingTimeline.title || '未命名时间线'}</h3>
           <p class="meta-editor-desc">第${editingTimeline.start_chapter_number || 1}章 → 第${editingTimeline.end_chapter_number || 10}章</p>
         </div>
+        <div class="timeline-editor-header-actions">
+          <button id="ai-generate-timeline-btn" class="btn btn-secondary">${ICONS.sparkles}<span>AI生成</span></button>
+          <button id="save-timeline-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        </div>
       </div>
       <div class="timeline-editor-form">
-        <div class="form-grid">
-          <div class="form-group">
+        <div class="form-grid timeline-form-grid">
+          <div class="form-group timeline-field-title">
             <label class="form-label">时间线标题</label>
             <input id="timeline-title" class="form-input" value="${editingTimeline.title || ''}" />
           </div>
-          <div class="form-group">
+          <div class="form-group timeline-field-start">
             <label class="form-label">起始章节</label>
             <input id="timeline-start" class="form-input" type="number" value="${editingTimeline.start_chapter_number || 1}" />
           </div>
-          <div class="form-group">
+          <div class="form-group timeline-field-end">
             <label class="form-label">结束章节</label>
             <input id="timeline-end" class="form-input" type="number" value="${editingTimeline.end_chapter_number || 10}" />
           </div>
@@ -200,9 +213,6 @@ function renderEditor(content, novelInfo) {
             <div id="timeline-characters-editor" class="markdown-editor-container" style="height: 200px;"></div>
           </div>
         </div>
-      </div>
-      <div class="flex justify-end gap-md mt-md">
-        <button id="save-timeline-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
       </div>
     </div>
   `
@@ -271,6 +281,10 @@ function renderEditor(content, novelInfo) {
     } catch (err) {
       toastError('保存失败: ' + err.message)
     }
+  })
+
+  editorContent.querySelector('#ai-generate-timeline-btn')?.addEventListener('click', () => {
+    toastSuccess('AI生成功能开发中...')
   })
 }
 
