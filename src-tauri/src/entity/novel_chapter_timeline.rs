@@ -2,7 +2,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// 章节时间线实体
-/// 
+///
 /// 存储小说剧情时间线，用于规划章节发展
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "novel_chapter_timeline")]

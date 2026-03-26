@@ -85,7 +85,9 @@ impl AgentFactory {
         let handler = self.get_required_handler(agent_code)?;
         let exec_ctx = self.build_exec_ctx(agent_code, &agent_config).await?;
         let ctx = AgentContext::new(input);
-        let content = handler.execute_stream(&llm_config, exec_ctx, ctx, tx).await?;
+        let content = handler
+            .execute_stream(&llm_config, exec_ctx, ctx, tx)
+            .await?;
 
         Ok(AgentResult {
             content,
@@ -110,7 +112,11 @@ impl AgentFactory {
             if system_prompt.trim().is_empty() {
                 NOVEL_INFO_GENERATOR_JSON_GUARD.to_string()
             } else {
-                format!("{}\n\n{}", system_prompt.trim(), NOVEL_INFO_GENERATOR_JSON_GUARD)
+                format!(
+                    "{}\n\n{}",
+                    system_prompt.trim(),
+                    NOVEL_INFO_GENERATOR_JSON_GUARD
+                )
             }
         } else {
             system_prompt
@@ -139,18 +145,6 @@ impl AgentFactory {
         self.registry
             .get(agent_code)
             .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_code))
-    }
-
-    pub fn get_handler(&self, agent_code: &str) -> Option<Arc<dyn AgentHandler>> {
-        self.registry.get(agent_code)
-    }
-
-    pub fn has_agent(&self, agent_code: &str) -> bool {
-        self.registry.has(agent_code)
-    }
-
-    pub fn list_agents(&self) -> Vec<String> {
-        self.registry.list_codes()
     }
 }
 

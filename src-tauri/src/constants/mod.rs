@@ -1,8 +1,8 @@
-pub mod novel_meta;
 pub mod chapter_meta;
+pub mod novel_meta;
 
-pub use novel_meta::*;
 pub use chapter_meta::*;
+pub use novel_meta::*;
 
 use serde::{Deserialize, Serialize};
 

@@ -1,9 +1,9 @@
+use super::enums::NovelChapterStatus;
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use super::enums::NovelChapterStatus;
 
 /// 小说章节实体
-/// 
+///
 /// 存储小说的章节内容，包括章节号、标题、正文、字数统计等
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "chapters")]
@@ -33,6 +33,7 @@ pub struct Model {
 
 impl Model {
     /// 获取章节状态枚举值
+    #[allow(dead_code)]
     pub fn get_status(&self) -> NovelChapterStatus {
         match self.status {
             0 => NovelChapterStatus::Draft,

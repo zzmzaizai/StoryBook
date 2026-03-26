@@ -1,11 +1,11 @@
+use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, Set,
 };
 use std::sync::Arc;
-use chrono::Utc;
 
-use crate::entity::characters::{self, Entity as CharacterEntity, ActiveModel as ActiveCharacter};
+use crate::entity::characters::{self, ActiveModel as ActiveCharacter, Entity as CharacterEntity};
 
 pub struct CharacterRepository {
     db: Arc<DatabaseConnection>,
@@ -16,7 +16,11 @@ impl CharacterRepository {
         Self { db }
     }
 
-    pub async fn create(&self, novel_id: i32, name: String) -> Result<characters::Model, sea_orm::DbErr> {
+    pub async fn create(
+        &self,
+        novel_id: i32,
+        name: String,
+    ) -> Result<characters::Model, sea_orm::DbErr> {
         let now = Utc::now().to_rfc3339();
         let model = ActiveCharacter {
             novel_id: Set(novel_id),
@@ -40,7 +44,12 @@ impl CharacterRepository {
         CharacterEntity::find_by_id(id).one(&*self.db).await
     }
 
-    pub async fn find_by_novel(&self, novel_id: i32, page: u64, page_size: u64) -> Result<Vec<characters::Model>, sea_orm::DbErr> {
+    pub async fn find_by_novel(
+        &self,
+        novel_id: i32,
+        page: u64,
+        page_size: u64,
+    ) -> Result<Vec<characters::Model>, sea_orm::DbErr> {
         CharacterEntity::find()
             .filter(characters::Column::NovelId.eq(novel_id))
             .order_by_asc(characters::Column::SortOrder)
@@ -50,7 +59,11 @@ impl CharacterRepository {
             .await
     }
 
-    pub async fn find_all_by_novel(&self, novel_id: i32) -> Result<Vec<characters::Model>, sea_orm::DbErr> {
+    #[allow(dead_code)]
+    pub async fn find_all_by_novel(
+        &self,
+        novel_id: i32,
+    ) -> Result<Vec<characters::Model>, sea_orm::DbErr> {
         CharacterEntity::find()
             .filter(characters::Column::NovelId.eq(novel_id))
             .order_by_asc(characters::Column::SortOrder)
@@ -65,14 +78,18 @@ impl CharacterRepository {
             .await
     }
 
-    pub async fn update(&self, id: i32, params: CharacterUpdateParams) -> Result<characters::Model, sea_orm::DbErr> {
+    pub async fn update(
+        &self,
+        id: i32,
+        params: CharacterUpdateParams,
+    ) -> Result<characters::Model, sea_orm::DbErr> {
         let character = CharacterEntity::find_by_id(id)
             .one(&*self.db)
             .await?
             .ok_or(sea_orm::DbErr::RecordNotFound("角色不存在".to_string()))?;
 
         let mut active: ActiveCharacter = character.into();
-        
+
         if let Some(name) = params.name {
             active.name = Set(name);
         }

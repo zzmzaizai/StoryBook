@@ -6,6 +6,7 @@ import { renderSidebar, openMobileSidebar } from './components/sidebar.js'
 import { initTheme, registerEditorThemeUpdater } from './lib/theme.js'
 import { updateAllEditorsTheme } from './lib/markdown-editor.js'
 import { checkSecurityAccess } from './pages/security.js'
+import * as securityPage from './pages/security.js'
 
 import './style/variables.css'
 import './style/reset.css'
@@ -28,7 +29,7 @@ registerRoute('/characters', () => import('./pages/characters.js'))
 registerRoute('/llm-config', () => import('./pages/llm-config.js'))
 registerRoute('/agent-config', () => import('./pages/agent-config.js'))
 registerRoute('/chat', () => import('./pages/chat.js'))
-registerRoute('/security', () => import('./pages/security.js'))
+registerRoute('/security', async () => securityPage)
 registerRoute('/about', () => import('./pages/about.js'))
 
 setDefaultRoute('/dashboard')

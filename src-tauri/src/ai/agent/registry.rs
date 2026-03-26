@@ -35,27 +35,10 @@ impl AgentRegistry {
     pub fn get(&self, agent_code: &str) -> Option<Arc<dyn AgentHandler>> {
         self.handlers.get(agent_code).cloned()
     }
-
-    pub fn has(&self, agent_code: &str) -> bool {
-        self.handlers.contains_key(agent_code)
-    }
-
-    pub fn list_codes(&self) -> Vec<String> {
-        self.handlers.keys().cloned().collect()
-    }
-
-    pub fn list_handlers(&self) -> Vec<Arc<dyn AgentHandler>> {
-        self.handlers.values().cloned().collect()
-    }
 }
 
 impl Default for AgentRegistry {
     fn default() -> Self {
         Self::new()
     }
-}
-
-pub fn get_agent_handler(agent_code: &str) -> Option<Arc<dyn AgentHandler>> {
-    let registry = AgentRegistry::new();
-    registry.get(agent_code)
 }

@@ -1,11 +1,11 @@
+use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait,
-    QueryFilter, QueryOrder, Set,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, Set,
 };
 use std::sync::Arc;
-use chrono::Utc;
 
-use crate::entity::chapters::{self, Entity as ChapterEntity, ActiveModel as ActiveChapter};
+use crate::entity::chapters::{self, ActiveModel as ActiveChapter, Entity as ChapterEntity};
 
 pub struct ChapterRepository {
     db: Arc<DatabaseConnection>,
@@ -16,15 +16,19 @@ impl ChapterRepository {
         Self { db }
     }
 
-    pub async fn create(&self, novel_id: i32, chapter_name: String) -> Result<chapters::Model, sea_orm::DbErr> {
+    pub async fn create(
+        &self,
+        novel_id: i32,
+        chapter_name: String,
+    ) -> Result<chapters::Model, sea_orm::DbErr> {
         let now = Utc::now().to_rfc3339();
-        
+
         let max_chapter = ChapterEntity::find()
             .filter(chapters::Column::NovelId.eq(novel_id))
             .order_by_desc(chapters::Column::ChapterNumber)
             .one(&*self.db)
             .await?;
-        
+
         let chapter_number = match max_chapter {
             Some(ch) => ch.chapter_number + 1,
             None => 1,
@@ -50,7 +54,12 @@ impl ChapterRepository {
         ChapterEntity::find_by_id(id).one(&*self.db).await
     }
 
-    pub async fn find_by_novel(&self, novel_id: i32, page: u64, page_size: u64) -> Result<Vec<chapters::Model>, sea_orm::DbErr> {
+    pub async fn find_by_novel(
+        &self,
+        novel_id: i32,
+        page: u64,
+        page_size: u64,
+    ) -> Result<Vec<chapters::Model>, sea_orm::DbErr> {
         ChapterEntity::find()
             .filter(chapters::Column::NovelId.eq(novel_id))
             .order_by_asc(chapters::Column::ChapterNumber)
@@ -59,7 +68,11 @@ impl ChapterRepository {
             .await
     }
 
-    pub async fn find_all_by_novel(&self, novel_id: i32) -> Result<Vec<chapters::Model>, sea_orm::DbErr> {
+    #[allow(dead_code)]
+    pub async fn find_all_by_novel(
+        &self,
+        novel_id: i32,
+    ) -> Result<Vec<chapters::Model>, sea_orm::DbErr> {
         ChapterEntity::find()
             .filter(chapters::Column::NovelId.eq(novel_id))
             .order_by_asc(chapters::Column::ChapterNumber)
@@ -74,14 +87,18 @@ impl ChapterRepository {
             .await
     }
 
-    pub async fn update(&self, id: i32, params: ChapterUpdateParams) -> Result<chapters::Model, sea_orm::DbErr> {
+    pub async fn update(
+        &self,
+        id: i32,
+        params: ChapterUpdateParams,
+    ) -> Result<chapters::Model, sea_orm::DbErr> {
         let chapter = ChapterEntity::find_by_id(id)
             .one(&*self.db)
             .await?
             .ok_or(sea_orm::DbErr::RecordNotFound("章节不存在".to_string()))?;
 
         let mut active: ActiveChapter = chapter.into();
-        
+
         if let Some(chapter_name) = params.chapter_name {
             active.chapter_name = Set(chapter_name);
         }
@@ -108,6 +125,7 @@ impl ChapterRepository {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub async fn sum_word_count_by_novel(&self, novel_id: i32) -> Result<i64, sea_orm::DbErr> {
         let chapters = self.find_all_by_novel(novel_id).await?;
         Ok(chapters.iter().map(|c| c.word_count as i64).sum())

@@ -1,9 +1,9 @@
 //! Agent 配置仓储
-//! 
+//!
 //! 提供 Agent 配置的数据库操作，包括增删改查和 Agent 代码查询。
-//! 
+//!
 //! # 功能
-//! 
+//!
 //! - 创建 Agent 配置
 //! - 查询配置（单个、全部、按代码）
 //! - 更新配置
@@ -11,17 +11,19 @@
 //! - 启用/禁用配置
 //! - 初始化默认 Agent 配置
 
+use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait,
-    PaginatorTrait, QueryFilter, QueryOrder, Set, prelude::Json,
+    prelude::Json, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait,
+    QueryFilter, QueryOrder, Set,
 };
 use std::sync::Arc;
-use chrono::Utc;
 
-use crate::entity::agent_config::{self, Entity as AgentConfigEntity, ActiveModel as ActiveAgentConfig, AgentCodes};
+use crate::entity::agent_config::{
+    self, ActiveModel as ActiveAgentConfig, AgentCodes, Entity as AgentConfigEntity,
+};
 
 /// Agent 配置仓储
-/// 
+///
 /// 封装 Agent 配置相关的数据库操作
 pub struct AgentConfigRepository {
     db: Arc<DatabaseConnection>,
@@ -34,15 +36,18 @@ impl AgentConfigRepository {
     }
 
     /// 创建新的 Agent 配置
-    /// 
+    ///
     /// # 参数
-    /// 
+    ///
     /// - `params`: 创建参数
-    /// 
+    ///
     /// # 返回
-    /// 
+    ///
     /// 创建成功返回配置模型
-    pub async fn create(&self, params: AgentConfigCreateParams) -> Result<agent_config::Model, sea_orm::DbErr> {
+    pub async fn create(
+        &self,
+        params: AgentConfigCreateParams,
+    ) -> Result<agent_config::Model, sea_orm::DbErr> {
         let now = Utc::now().to_rfc3339();
 
         let model = ActiveAgentConfig {
@@ -63,15 +68,16 @@ impl AgentConfigRepository {
 
     /// 根据 ID 查询配置
     pub async fn find_by_id(&self, id: i32) -> Result<Option<agent_config::Model>, sea_orm::DbErr> {
-        AgentConfigEntity::find_by_id(id)
-            .one(&*self.db)
-            .await
+        AgentConfigEntity::find_by_id(id).one(&*self.db).await
     }
 
     /// 根据 Agent 代码查询配置
-    /// 
+    ///
     /// 用于根据 agent_code 路由到具体配置
-    pub async fn find_by_agent_code(&self, agent_code: &str) -> Result<Option<agent_config::Model>, sea_orm::DbErr> {
+    pub async fn find_by_agent_code(
+        &self,
+        agent_code: &str,
+    ) -> Result<Option<agent_config::Model>, sea_orm::DbErr> {
         AgentConfigEntity::find()
             .filter(agent_config::Column::AgentCode.eq(agent_code))
             .one(&*self.db)
@@ -79,7 +85,7 @@ impl AgentConfigRepository {
     }
 
     /// 查询所有配置
-    /// 
+    ///
     /// 按更新时间倒序排列
     pub async fn find_all(&self) -> Result<Vec<agent_config::Model>, sea_orm::DbErr> {
         AgentConfigEntity::find()
@@ -89,6 +95,7 @@ impl AgentConfigRepository {
     }
 
     /// 分页查询配置
+    #[allow(dead_code)]
     pub async fn find_paged(
         &self,
         page: u64,
@@ -119,7 +126,9 @@ impl AgentConfigRepository {
         let config = AgentConfigEntity::find_by_id(id)
             .one(&*self.db)
             .await?
-            .ok_or(sea_orm::DbErr::RecordNotFound("Agent 配置不存在".to_string()))?;
+            .ok_or(sea_orm::DbErr::RecordNotFound(
+                "Agent 配置不存在".to_string(),
+            ))?;
 
         let mut active: ActiveAgentConfig = config.into();
 
@@ -154,53 +163,76 @@ impl AgentConfigRepository {
 
     /// 删除配置
     pub async fn delete(&self, id: i32) -> Result<(), sea_orm::DbErr> {
-        AgentConfigEntity::delete_by_id(id)
-            .exec(&*self.db)
-            .await?;
+        AgentConfigEntity::delete_by_id(id).exec(&*self.db).await?;
         Ok(())
     }
 
     /// 统计配置数量
+    #[allow(dead_code)]
     pub async fn count(&self) -> Result<u64, sea_orm::DbErr> {
         AgentConfigEntity::find().count(&*self.db).await
     }
 
     /// 启用配置
     pub async fn enable(&self, id: i32) -> Result<agent_config::Model, sea_orm::DbErr> {
-        self.update(id, AgentConfigUpdateParams {
-            enabled: Some(true),
-            ..Default::default()
-        }).await
+        self.update(
+            id,
+            AgentConfigUpdateParams {
+                enabled: Some(true),
+                ..Default::default()
+            },
+        )
+        .await
     }
 
     /// 禁用配置
     pub async fn disable(&self, id: i32) -> Result<agent_config::Model, sea_orm::DbErr> {
-        self.update(id, AgentConfigUpdateParams {
-            enabled: Some(false),
-            ..Default::default()
-        }).await
+        self.update(
+            id,
+            AgentConfigUpdateParams {
+                enabled: Some(false),
+                ..Default::default()
+            },
+        )
+        .await
     }
 
     /// 绑定 LLM 配置
-    /// 
+    ///
     /// 将指定 Agent 绑定到特定的 LLM 配置
-    pub async fn bind_llm(&self, id: i32, llm_config_id: Option<i32>) -> Result<agent_config::Model, sea_orm::DbErr> {
-        self.update(id, AgentConfigUpdateParams {
-            llm_config_id,
-            ..Default::default()
-        }).await
+    pub async fn bind_llm(
+        &self,
+        id: i32,
+        llm_config_id: Option<i32>,
+    ) -> Result<agent_config::Model, sea_orm::DbErr> {
+        self.update(
+            id,
+            AgentConfigUpdateParams {
+                llm_config_id,
+                ..Default::default()
+            },
+        )
+        .await
     }
 
     /// 设置自定义提示词
-    pub async fn set_custom_prompt(&self, id: i32, custom_prompt: Option<String>) -> Result<agent_config::Model, sea_orm::DbErr> {
-        self.update(id, AgentConfigUpdateParams {
-            custom_prompt,
-            ..Default::default()
-        }).await
+    pub async fn set_custom_prompt(
+        &self,
+        id: i32,
+        custom_prompt: Option<String>,
+    ) -> Result<agent_config::Model, sea_orm::DbErr> {
+        self.update(
+            id,
+            AgentConfigUpdateParams {
+                custom_prompt,
+                ..Default::default()
+            },
+        )
+        .await
     }
 
     /// 初始化默认 Agent 配置
-    /// 
+    ///
     /// 为所有预定义的 Agent 创建默认配置
     pub async fn init_default_agents(&self) -> Result<(), sea_orm::DbErr> {
         for code in AgentCodes::all() {
@@ -216,7 +248,8 @@ impl AgentConfigRepository {
                     custom_prompt: None,
                     use_system_prompt: true,
                     extra_config: None,
-                }).await?;
+                })
+                .await?;
             }
         }
         Ok(())

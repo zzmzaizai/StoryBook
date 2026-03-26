@@ -1,9 +1,9 @@
 //! LLM 配置仓储
-//! 
+//!
 //! 提供 LLM 配置的数据库操作，包括增删改查和默认配置管理。
-//! 
+//!
 //! # 功能
-//! 
+//!
 //! - 创建 LLM 配置
 //! - 查询配置（单个、全部、默认）
 //! - 更新配置
@@ -11,17 +11,17 @@
 //! - 设置默认配置
 //! - 启用/禁用配置
 
+use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait,
-    PaginatorTrait, QueryFilter, QueryOrder, Set, prelude::Json,
+    prelude::Json, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait,
+    QueryFilter, QueryOrder, Set,
 };
 use std::sync::Arc;
-use chrono::Utc;
 
-use crate::entity::llm_config::{self, Entity as LlmConfigEntity, ActiveModel as ActiveLlmConfig};
+use crate::entity::llm_config::{self, ActiveModel as ActiveLlmConfig, Entity as LlmConfigEntity};
 
 /// LLM 配置仓储
-/// 
+///
 /// 封装 LLM 配置相关的数据库操作
 pub struct LlmConfigRepository {
     db: Arc<DatabaseConnection>,
@@ -34,15 +34,18 @@ impl LlmConfigRepository {
     }
 
     /// 创建新的 LLM 配置
-    /// 
+    ///
     /// # 参数
-    /// 
+    ///
     /// - `params`: 创建参数
-    /// 
+    ///
     /// # 返回
-    /// 
+    ///
     /// 创建成功返回配置模型
-    pub async fn create(&self, params: LlmConfigCreateParams) -> Result<llm_config::Model, sea_orm::DbErr> {
+    pub async fn create(
+        &self,
+        params: LlmConfigCreateParams,
+    ) -> Result<llm_config::Model, sea_orm::DbErr> {
         let now = Utc::now().to_rfc3339();
 
         // 如果设置为默认，先清除其他默认配置
@@ -68,13 +71,11 @@ impl LlmConfigRepository {
 
     /// 根据 ID 查询配置
     pub async fn find_by_id(&self, id: i32) -> Result<Option<llm_config::Model>, sea_orm::DbErr> {
-        LlmConfigEntity::find_by_id(id)
-            .one(&*self.db)
-            .await
+        LlmConfigEntity::find_by_id(id).one(&*self.db).await
     }
 
     /// 查询所有配置
-    /// 
+    ///
     /// 按更新时间倒序排列
     pub async fn find_all(&self) -> Result<Vec<llm_config::Model>, sea_orm::DbErr> {
         LlmConfigEntity::find()
@@ -84,6 +85,7 @@ impl LlmConfigRepository {
     }
 
     /// 分页查询配置
+    #[allow(dead_code)]
     pub async fn find_paged(
         &self,
         page: u64,
@@ -97,7 +99,7 @@ impl LlmConfigRepository {
     }
 
     /// 获取默认 LLM 配置
-    /// 
+    ///
     /// 返回标记为默认且已启用的配置
     pub async fn find_default(&self) -> Result<Option<llm_config::Model>, sea_orm::DbErr> {
         LlmConfigEntity::find()
@@ -108,6 +110,7 @@ impl LlmConfigRepository {
     }
 
     /// 获取所有启用的配置
+    #[allow(dead_code)]
     pub async fn find_enabled(&self) -> Result<Vec<llm_config::Model>, sea_orm::DbErr> {
         LlmConfigEntity::find()
             .filter(llm_config::Column::Enabled.eq(true))
@@ -165,14 +168,12 @@ impl LlmConfigRepository {
 
     /// 删除配置
     pub async fn delete(&self, id: i32) -> Result<(), sea_orm::DbErr> {
-        LlmConfigEntity::delete_by_id(id)
-            .exec(&*self.db)
-            .await?;
+        LlmConfigEntity::delete_by_id(id).exec(&*self.db).await?;
         Ok(())
     }
 
     /// 设置默认配置
-    /// 
+    ///
     /// 将指定配置设为默认，并清除其他配置的默认标记
     pub async fn set_default(&self, id: i32) -> Result<llm_config::Model, sea_orm::DbErr> {
         // 先清除所有默认标记
@@ -209,24 +210,33 @@ impl LlmConfigRepository {
     }
 
     /// 统计配置数量
+    #[allow(dead_code)]
     pub async fn count(&self) -> Result<u64, sea_orm::DbErr> {
         LlmConfigEntity::find().count(&*self.db).await
     }
 
     /// 启用配置
     pub async fn enable(&self, id: i32) -> Result<llm_config::Model, sea_orm::DbErr> {
-        self.update(id, LlmConfigUpdateParams {
-            enabled: Some(true),
-            ..Default::default()
-        }).await
+        self.update(
+            id,
+            LlmConfigUpdateParams {
+                enabled: Some(true),
+                ..Default::default()
+            },
+        )
+        .await
     }
 
     /// 禁用配置
     pub async fn disable(&self, id: i32) -> Result<llm_config::Model, sea_orm::DbErr> {
-        self.update(id, LlmConfigUpdateParams {
-            enabled: Some(false),
-            ..Default::default()
-        }).await
+        self.update(
+            id,
+            LlmConfigUpdateParams {
+                enabled: Some(false),
+                ..Default::default()
+            },
+        )
+        .await
     }
 }
 

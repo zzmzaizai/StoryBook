@@ -10,8 +10,15 @@ use tauri::State;
 use super::AppState;
 
 #[tauri::command]
-pub async fn create_novel(state: State<'_, AppState>, title: String) -> Result<novels::Model, String> {
-    state.novels().create(title).await.map_err(|e| e.to_string())
+pub async fn create_novel(
+    state: State<'_, AppState>,
+    title: String,
+) -> Result<novels::Model, String> {
+    state
+        .novels()
+        .create(title)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -20,7 +27,11 @@ pub async fn list_novels(
     page: u64,
     page_size: u64,
 ) -> Result<Vec<novels::Model>, String> {
-    state.novels().find_all(page, page_size).await.map_err(|e| e.to_string())
+    state
+        .novels()
+        .find_all(page, page_size)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -29,11 +40,19 @@ pub async fn count_novels(state: State<'_, AppState>) -> Result<u64, String> {
 }
 
 #[tauri::command]
-pub async fn get_novel(state: State<'_, AppState>, id: i32) -> Result<Option<novels::Model>, String> {
-    state.novels().find_by_id(id).await.map_err(|e| e.to_string())
+pub async fn get_novel(
+    state: State<'_, AppState>,
+    id: i32,
+) -> Result<Option<novels::Model>, String> {
+    state
+        .novels()
+        .find_by_id(id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_novel(
     state: State<'_, AppState>,
     id: i32,
@@ -62,7 +81,11 @@ pub async fn update_novel(
         estimated_words_per_chapter,
         status: Some(status),
     };
-    state.novels().update(id, params).await.map_err(|e| e.to_string())
+    state
+        .novels()
+        .update(id, params)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -109,14 +132,16 @@ pub async fn ai_generate_novel_info(
 
     let normalized_content = normalize_json_like_content(&cleaned_content);
 
-    let json_content = extract_json_object(&normalized_content)
-        .ok_or_else(|| {
-            eprintln!(
-                "[ai_generate_novel_info] extract_json_failed cleaned_content={}",
-                cleaned_content
-            );
-            format!("AI response did not contain valid JSON object. Original content: {}", cleaned_content)
-        })?;
+    let json_content = extract_json_object(&normalized_content).ok_or_else(|| {
+        eprintln!(
+            "[ai_generate_novel_info] extract_json_failed cleaned_content={}",
+            cleaned_content
+        );
+        format!(
+            "AI response did not contain valid JSON object. Original content: {}",
+            cleaned_content
+        )
+    })?;
 
     let parsed_value: Value = serde_json::from_str(&json_content)
         .map_err(|e| {
@@ -129,15 +154,16 @@ pub async fn ai_generate_novel_info(
             format!("Failed to parse AI response JSON: {}. Original content: {}", e, cleaned_content)
         })?;
 
-    serde_json::from_value(parsed_value)
-        .map_err(|e| {
-            eprintln!(
-                "[ai_generate_novel_info] convert_fields_failed error={} cleaned_content={}",
-                e,
-                cleaned_content
-            );
-            format!("Failed to convert AI response fields: {}. Original content: {}", e, cleaned_content)
-        })
+    serde_json::from_value(parsed_value).map_err(|e| {
+        eprintln!(
+            "[ai_generate_novel_info] convert_fields_failed error={} cleaned_content={}",
+            e, cleaned_content
+        );
+        format!(
+            "Failed to convert AI response fields: {}. Original content: {}",
+            e, cleaned_content
+        )
+    })
 }
 
 fn extract_json_object(content: &str) -> Option<String> {
@@ -153,10 +179,8 @@ fn extract_json_object(content: &str) -> Option<String> {
 
 fn normalize_json_like_content(content: &str) -> String {
     content
-        .replace('“', "\"")
-        .replace('”', "\"")
-        .replace('‘', "'")
-        .replace('’', "'")
+        .replace(['“', '”'], "\"")
+        .replace(['‘', '’'], "'")
         .replace('，', ",")
         .replace('：', ":")
 }
@@ -169,7 +193,10 @@ mod tests {
     fn extracts_json_from_markdown_wrapper() {
         let content = "```json\n{\"title\":\"test\"}\n```";
 
-        assert_eq!(extract_json_object(content).as_deref(), Some("{\"title\":\"test\"}"));
+        assert_eq!(
+            extract_json_object(content).as_deref(),
+            Some("{\"title\":\"test\"}")
+        );
     }
 
     #[test]

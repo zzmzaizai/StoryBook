@@ -1,10 +1,10 @@
 //! 数据库模块
-//! 
+//!
 //! 提供数据库初始化、表结构创建和数据迁移功能。
 //! 使用 SQLite 作为数据存储引擎，通过 Sea-ORM 进行 ORM 操作。
-//! 
+//!
 //! # 数据表结构
-//! 
+//!
 //! | 表名 | 说明 |
 //! |------|------|
 //! | `novels` | 小说主表 |
@@ -18,37 +18,40 @@
 //! | `novel_chapter_timeline` | 时间线表 |
 //! | `llm_config` | LLM 配置表 |
 //! | `agent_config` | Agent 配置表 |
-//! 
+//!
 //! # 使用示例
-//! 
+//!
 //! ```rust
 //! use crate::storage::StorageManager;
 //! use crate::db::init_db;
-//! 
+//!
 //! let storage = StorageManager::new()?;
 //! let db = init_db(&storage).await?;
 //! ```
 
-use sea_orm::{Database, DatabaseConnection, Statement, ConnectionTrait, EntityTrait, Set, ActiveModelTrait, PaginatorTrait};
-use chrono::Utc;
 use crate::storage::StorageManager;
+use chrono::Utc;
+use sea_orm::{
+    ActiveModelTrait, ConnectionTrait, Database, DatabaseConnection, EntityTrait, PaginatorTrait,
+    Set, Statement,
+};
 
 /// 初始化数据库连接和表结构
-/// 
+///
 /// 创建 SQLite 数据库连接，并初始化所有必要的数据表。
 /// 数据库文件存储在 `~/.storybook/db/database.db`。
-/// 
+///
 /// # 参数
-/// 
+///
 /// - `storage`: 存储管理器实例，用于获取数据库路径
-/// 
+///
 /// # 返回
-/// 
+///
 /// - `Ok(DatabaseConnection)`: 成功返回数据库连接
 /// - `Err(DbErr)`: 数据库操作失败
-/// 
+///
 /// # 初始化流程
-/// 
+///
 /// 1. 创建数据库连接（如果文件不存在会自动创建）
 /// 2. 创建 `novels` 表（小说主表）
 /// 3. 执行 novels 表迁移（添加新字段）
@@ -61,9 +64,9 @@ use crate::storage::StorageManager;
 /// 10. 创建 `novel_chapter_version` 表（章节版本）
 /// 11. 创建 `novel_chapter_timeline` 表（时间线）
 /// 12. 初始化种子数据（如果是新数据库）
-/// 
+///
 /// # 示例
-/// 
+///
 /// ```rust
 /// let storage = StorageManager::new()?;
 /// let db = init_db(&storage).await?;
@@ -96,8 +99,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 执行 novels 表迁移（添加新字段）
     migrate_novels_table(&db).await?;
@@ -119,8 +124,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 创建角色表
     // 存储小说中的角色信息，包括姓名、年龄、性格、角色属性等
@@ -141,8 +148,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 创建小说元数据表
     // 存储小说的自定义元数据属性
@@ -158,8 +167,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 创建小说设置表
     // 存储小说的配置项
@@ -174,8 +185,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 创建章节元数据表
     // 存储章节的自定义属性
@@ -190,8 +203,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 创建章节历史表
     // 存储章节的历史版本记录
@@ -211,8 +226,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 创建章节版本表
     // 存储章节的 AI 生成版本
@@ -231,8 +248,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 创建时间线表
     // 存储小说的时间线大纲
@@ -252,8 +271,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 创建 LLM 配置表
     // 存储大语言模型的配置信息，支持多个 Provider 和 Model
@@ -273,8 +294,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 创建 Agent 配置表
     // 存储 AI Agent 的配置信息，支持绑定指定 LLM 或使用默认 LLM
@@ -294,8 +317,10 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
-        "#.to_string(),
-    )).await?;
+        "#
+        .to_string(),
+    ))
+    .await?;
 
     // 初始化种子数据
     init_seed_data(&db).await?;
@@ -307,16 +332,16 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
 }
 
 /// 迁移 novels 表结构
-/// 
+///
 /// 检查并添加 novels 表中可能缺失的字段。
 /// 这是为了兼容旧版本的数据库结构。
-/// 
+///
 /// # 参数
-/// 
+///
 /// - `db`: 数据库连接
-/// 
+///
 /// # 迁移的字段
-/// 
+///
 /// - `description` - 小说描述
 /// - `image` - 封面图片路径
 /// - `original_description` - 原始描述
@@ -353,23 +378,21 @@ async fn migrate_novels_table(db: &DatabaseConnection) -> Result<(), sea_orm::Db
             "SELECT COUNT(*) FROM pragma_table_info('novels') WHERE name='{}'",
             column_name
         );
-        
+
         let result: i64 = db
-            .query_one(Statement::from_string(
-                db.get_database_backend(),
-                check_sql,
-            ))
+            .query_one(Statement::from_string(db.get_database_backend(), check_sql))
             .await?
             .map(|row| row.try_get::<i64>("", "COUNT(*)").unwrap_or(0))
             .unwrap_or(0);
 
         // 如果字段不存在，使用 ALTER TABLE 添加
         if result == 0 {
-            let alter_sql = format!("ALTER TABLE novels ADD COLUMN {} {}", column_name, column_def);
-            db.execute(Statement::from_string(
-                db.get_database_backend(),
-                alter_sql,
-            )).await?;
+            let alter_sql = format!(
+                "ALTER TABLE novels ADD COLUMN {} {}",
+                column_name, column_def
+            );
+            db.execute(Statement::from_string(db.get_database_backend(), alter_sql))
+                .await?;
         }
     }
 
@@ -377,24 +400,24 @@ async fn migrate_novels_table(db: &DatabaseConnection) -> Result<(), sea_orm::Db
 }
 
 /// 初始化种子数据
-/// 
+///
 /// 如果数据库是新建的（novels 表为空），则插入示例数据。
 /// 包括示例小说、章节和角色数据。
-/// 
+///
 /// # 参数
-/// 
+///
 /// - `db`: 数据库连接
-/// 
+///
 /// # 种子数据
-/// 
+///
 /// - 小说：从 `seeds` 模块获取的示例小说
 /// - 章节：每个小说的示例章节
 /// - 角色：每个小说的示例角色
 async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
-    use crate::entity::novels::Entity as Novels;
-    use crate::entity::novels::ActiveModel as ActiveNovel;
     use crate::entity::chapters::ActiveModel as ActiveChapter;
     use crate::entity::characters::ActiveModel as ActiveCharacter;
+    use crate::entity::novels::ActiveModel as ActiveNovel;
+    use crate::entity::novels::Entity as Novels;
 
     // 检查是否已有数据，避免重复插入
     let novels_count: u64 = Novels::find().count(db).await?;
@@ -404,7 +427,7 @@ async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
 
     // 获取当前时间戳
     let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-    
+
     // 获取小说种子数据
     let novel_seeds = crate::seeds::get_novel_seeds();
     let mut novel_ids: Vec<i32> = Vec::new();
@@ -479,16 +502,16 @@ async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
 }
 
 /// 初始化默认 Agent 配置
-/// 
+///
 /// 如果 agent_config 表为空，则插入默认的 Agent 配置。
 /// 包括小说大纲生成、章节时间线规划、角色设计等 Agent。
-/// 
+///
 /// # 参数
-/// 
+///
 /// - `db`: 数据库连接
-/// 
+///
 /// # 默认 Agent 列表
-/// 
+///
 /// | Agent Code | 名称 | 说明 |
 /// |------------|------|------|
 /// | novel_outline | 小说大纲生成 | 生成小说的整体大纲 |
@@ -497,9 +520,9 @@ async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
 /// | chapter_content | 章节内容生成 | 生成章节内容 |
 /// | chapter_polish | 章节润色优化 | 润色和优化章节 |
 async fn init_agent_configs(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
-    use crate::entity::agent_config::Entity as AgentConfig;
     use crate::entity::agent_config::ActiveModel as ActiveAgentConfig;
     use crate::entity::agent_config::AgentCodes;
+    use crate::entity::agent_config::Entity as AgentConfig;
 
     // 检查是否已有数据，避免重复插入
     let count: u64 = AgentConfig::find().count(db).await?;

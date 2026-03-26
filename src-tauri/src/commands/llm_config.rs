@@ -2,12 +2,12 @@
 //!
 //! 提供 LLM 配置的增删改查接口，供前端调用。
 
+use sea_orm::prelude::Json;
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use sea_orm::prelude::Json;
 
 use crate::commands::AppState;
-use crate::repository::{LlmConfigRepository, LlmConfigCreateParams, LlmConfigUpdateParams};
+use crate::repository::{LlmConfigCreateParams, LlmConfigRepository, LlmConfigUpdateParams};
 
 /// LLM 配置响应体
 #[derive(Serialize)]
@@ -153,14 +153,9 @@ pub async fn update_llm_config(
 
 /// 删除 LLM 配置
 #[tauri::command]
-pub async fn delete_llm_config(
-    state: State<'_, AppState>,
-    id: i32,
-) -> Result<(), String> {
+pub async fn delete_llm_config(state: State<'_, AppState>, id: i32) -> Result<(), String> {
     let repo = LlmConfigRepository::new(state.db.clone());
-    repo.delete(id)
-        .await
-        .map_err(|e| e.to_string())
+    repo.delete(id).await.map_err(|e| e.to_string())
 }
 
 /// 设置默认 LLM 配置

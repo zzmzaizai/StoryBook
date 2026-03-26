@@ -2,7 +2,9 @@
 //!
 //! 统一创建不同 provider 的 LLM 客户端
 
-use crate::ai::llm::types::{LlmCompletionParams, LlmCompletionResult, LlmProvider, LlmRuntimeConfig};
+use crate::ai::llm::types::{
+    LlmCompletionParams, LlmCompletionResult, LlmProvider, LlmRuntimeConfig,
+};
 use crate::entity::llm_config;
 use futures::StreamExt;
 use rig::client::CompletionClient;
@@ -59,7 +61,9 @@ pub trait LlmClient: Send + Sync {
         params: LlmCompletionParams,
         tx: UnboundedSender<String>,
     ) -> anyhow::Result<LlmCompletionResult>;
+    #[allow(dead_code)]
     fn provider(&self) -> &str;
+    #[allow(dead_code)]
     fn model(&self) -> &str;
 }
 
@@ -82,9 +86,10 @@ impl OpenAiCompatibleClient {
             builder = builder.base_url(&base_url);
         }
 
-        builder.build().map_err(|e| anyhow::anyhow!("创建 LLM client 失败: {}", e))
+        builder
+            .build()
+            .map_err(|e| anyhow::anyhow!("创建 LLM client 失败: {}", e))
     }
-
 }
 
 #[async_trait::async_trait]

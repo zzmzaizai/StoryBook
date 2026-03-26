@@ -12,11 +12,14 @@ pub struct PromptConfig {
     /// 系统提示词
     pub system_prompt: String,
     /// 可选的用户提示词模板
+    #[allow(dead_code)]
     pub user_template: Option<String>,
     /// 输出格式说明
+    #[allow(dead_code)]
     pub output_format: Option<String>,
     /// 额外的配置参数
     #[serde(flatten)]
+    #[allow(dead_code)]
     pub extra: HashMap<String, serde_json::Value>,
 }
 
@@ -44,6 +47,7 @@ pub async fn load_prompt(agent_code: &str) -> anyhow::Result<String> {
 }
 
 /// 加载指定 Agent 的完整提示词配置
+#[allow(dead_code)]
 pub async fn load_prompt_config(agent_code: &str) -> anyhow::Result<PromptConfig> {
     load_prompt_from_file(agent_code).await
 }
@@ -141,6 +145,7 @@ fn get_builtin_prompt(agent_code: &str) -> PromptConfig {
 /// 初始化提示词缓存
 ///
 /// 在应用启动时调用，加载所有提示词到内存
+#[allow(dead_code)]
 pub async fn init_prompt_cache() -> anyhow::Result<()> {
     let mut cache = HashMap::new();
 
@@ -163,6 +168,7 @@ pub async fn init_prompt_cache() -> anyhow::Result<()> {
 }
 
 /// 重新加载提示词缓存
+#[allow(dead_code)]
 pub async fn reload_prompt_cache() -> anyhow::Result<()> {
     init_prompt_cache().await
 }

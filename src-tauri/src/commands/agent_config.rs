@@ -2,12 +2,12 @@
 //!
 //! 提供 Agent 配置的增删改查接口，供前端调用。
 
+use sea_orm::prelude::Json;
 use serde::{Deserialize, Serialize};
 use tauri::State;
-use sea_orm::prelude::Json;
 
 use crate::commands::AppState;
-use crate::repository::{AgentConfigRepository, AgentConfigCreateParams, AgentConfigUpdateParams};
+use crate::repository::{AgentConfigCreateParams, AgentConfigRepository, AgentConfigUpdateParams};
 
 /// Agent 配置响应体
 #[derive(Serialize)]
@@ -166,14 +166,9 @@ pub async fn update_agent_config(
 
 /// 删除 Agent 配置
 #[tauri::command]
-pub async fn delete_agent_config(
-    state: State<'_, AppState>,
-    id: i32,
-) -> Result<(), String> {
+pub async fn delete_agent_config(state: State<'_, AppState>, id: i32) -> Result<(), String> {
     let repo = AgentConfigRepository::new(state.db.clone());
-    repo.delete(id)
-        .await
-        .map_err(|e| e.to_string())
+    repo.delete(id).await.map_err(|e| e.to_string())
 }
 
 /// 启用 Agent 配置
@@ -232,13 +227,9 @@ pub async fn set_agent_custom_prompt(
 
 /// 初始化默认 Agent 配置
 #[tauri::command]
-pub async fn init_default_agent_configs(
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+pub async fn init_default_agent_configs(state: State<'_, AppState>) -> Result<(), String> {
     let repo = AgentConfigRepository::new(state.db.clone());
-    repo.init_default_agents()
-        .await
-        .map_err(|e| e.to_string())
+    repo.init_default_agents().await.map_err(|e| e.to_string())
 }
 
 /// 获取所有 Agent 类型定义
@@ -248,7 +239,9 @@ pub fn get_agent_types() -> Vec<AgentTypeInfo> {
         AgentTypeInfo {
             code: "novel_outline".to_string(),
             name: "小说大纲生成".to_string(),
-            description: "根据用户输入的故事概念，生成详细的小说大纲，包括主要情节、角色设定和章节规划。".to_string(),
+            description:
+                "根据用户输入的故事概念，生成详细的小说大纲，包括主要情节、角色设定和章节规划。"
+                    .to_string(),
         },
         AgentTypeInfo {
             code: "chapter_timeline".to_string(),
@@ -263,7 +256,8 @@ pub fn get_agent_types() -> Vec<AgentTypeInfo> {
         AgentTypeInfo {
             code: "chapter_content".to_string(),
             name: "章节内容生成".to_string(),
-            description: "根据大纲和上下文，撰写小说章节内容，保持风格一致性和情节连贯性。".to_string(),
+            description: "根据大纲和上下文，撰写小说章节内容，保持风格一致性和情节连贯性。"
+                .to_string(),
         },
         AgentTypeInfo {
             code: "chapter_polish".to_string(),

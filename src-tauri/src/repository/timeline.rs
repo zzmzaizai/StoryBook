@@ -1,11 +1,13 @@
+use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait,
-    QueryFilter, QueryOrder, Set, PaginatorTrait,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, Set,
 };
 use std::sync::Arc;
-use chrono::Utc;
 
-use crate::entity::novel_chapter_timeline::{self, Entity as TimelineEntity, ActiveModel as ActiveTimeline};
+use crate::entity::novel_chapter_timeline::{
+    self, ActiveModel as ActiveTimeline, Entity as TimelineEntity,
+};
 
 pub struct TimelineRepository {
     db: Arc<DatabaseConnection>,
@@ -16,7 +18,11 @@ impl TimelineRepository {
         Self { db }
     }
 
-    pub async fn create(&self, novel_id: i32, title: String) -> Result<novel_chapter_timeline::Model, sea_orm::DbErr> {
+    pub async fn create(
+        &self,
+        novel_id: i32,
+        title: String,
+    ) -> Result<novel_chapter_timeline::Model, sea_orm::DbErr> {
         let now = Utc::now().to_rfc3339();
         let model = ActiveTimeline {
             novel_id: Set(novel_id),
@@ -35,11 +41,17 @@ impl TimelineRepository {
         model.insert(&*self.db).await
     }
 
-    pub async fn find_by_id(&self, id: i32) -> Result<Option<novel_chapter_timeline::Model>, sea_orm::DbErr> {
+    pub async fn find_by_id(
+        &self,
+        id: i32,
+    ) -> Result<Option<novel_chapter_timeline::Model>, sea_orm::DbErr> {
         TimelineEntity::find_by_id(id).one(&*self.db).await
     }
 
-    pub async fn find_by_novel(&self, novel_id: i32) -> Result<Vec<novel_chapter_timeline::Model>, sea_orm::DbErr> {
+    pub async fn find_by_novel(
+        &self,
+        novel_id: i32,
+    ) -> Result<Vec<novel_chapter_timeline::Model>, sea_orm::DbErr> {
         TimelineEntity::find()
             .filter(novel_chapter_timeline::Column::NovelId.eq(novel_id))
             .order_by_asc(novel_chapter_timeline::Column::StartChapterNumber)
@@ -47,7 +59,12 @@ impl TimelineRepository {
             .await
     }
 
-    pub async fn find_by_novel_paged(&self, novel_id: i32, page: u64, page_size: u64) -> Result<(Vec<novel_chapter_timeline::Model>, u64), sea_orm::DbErr> {
+    pub async fn find_by_novel_paged(
+        &self,
+        novel_id: i32,
+        page: u64,
+        page_size: u64,
+    ) -> Result<(Vec<novel_chapter_timeline::Model>, u64), sea_orm::DbErr> {
         let paginator = TimelineEntity::find()
             .filter(novel_chapter_timeline::Column::NovelId.eq(novel_id))
             .order_by_asc(novel_chapter_timeline::Column::StartChapterNumber)
@@ -66,14 +83,18 @@ impl TimelineRepository {
             .await
     }
 
-    pub async fn update(&self, id: i32, params: TimelineUpdateParams) -> Result<novel_chapter_timeline::Model, sea_orm::DbErr> {
+    pub async fn update(
+        &self,
+        id: i32,
+        params: TimelineUpdateParams,
+    ) -> Result<novel_chapter_timeline::Model, sea_orm::DbErr> {
         let timeline = TimelineEntity::find_by_id(id)
             .one(&*self.db)
             .await?
             .ok_or(sea_orm::DbErr::RecordNotFound("时间线不存在".to_string()))?;
 
         let mut active: ActiveTimeline = timeline.into();
-        
+
         if let Some(title) = params.title {
             active.title = Set(title);
         }

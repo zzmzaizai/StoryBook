@@ -18,11 +18,7 @@ impl LlmExecutor {
         Ok(Self { client })
     }
 
-    pub async fn complete(
-        &self,
-        system_prompt: &str,
-        user_prompt: &str,
-    ) -> anyhow::Result<String> {
+    pub async fn complete(&self, system_prompt: &str, user_prompt: &str) -> anyhow::Result<String> {
         let result = self
             .client
             .complete(LlmCompletionParams {

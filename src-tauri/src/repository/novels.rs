@@ -1,13 +1,13 @@
+use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, DatabaseConnection, EntityTrait, PaginatorTrait,
-    QueryOrder, Set, ColumnTrait, QueryFilter, DeleteResult,
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, Set,
 };
 use std::sync::Arc;
-use chrono::Utc;
 
-use crate::entity::novels::{self, Entity as NovelEntity, ActiveModel as ActiveNovel};
 use crate::entity::chapters::Entity as ChapterEntity;
 use crate::entity::characters::Entity as CharacterEntity;
+use crate::entity::novels::{self, ActiveModel as ActiveNovel, Entity as NovelEntity};
 
 pub struct NovelRepository {
     db: Arc<DatabaseConnection>,
@@ -45,7 +45,11 @@ impl NovelRepository {
         NovelEntity::find_by_id(id).one(&*self.db).await
     }
 
-    pub async fn find_all(&self, page: u64, page_size: u64) -> Result<Vec<novels::Model>, sea_orm::DbErr> {
+    pub async fn find_all(
+        &self,
+        page: u64,
+        page_size: u64,
+    ) -> Result<Vec<novels::Model>, sea_orm::DbErr> {
         NovelEntity::find()
             .order_by_desc(novels::Column::UpdatedAt)
             .paginate(&*self.db, page_size)
@@ -53,7 +57,11 @@ impl NovelRepository {
             .await
     }
 
-    pub async fn update(&self, id: i32, params: NovelUpdateParams) -> Result<novels::Model, sea_orm::DbErr> {
+    pub async fn update(
+        &self,
+        id: i32,
+        params: NovelUpdateParams,
+    ) -> Result<novels::Model, sea_orm::DbErr> {
         let novel = NovelEntity::find_by_id(id)
             .one(&*self.db)
             .await?

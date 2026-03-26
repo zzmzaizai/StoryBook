@@ -1,9 +1,9 @@
+use super::enums::{CharacterGender, CharacterRoleAttribute, CharacterType};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use super::enums::{CharacterRoleAttribute, CharacterGender, CharacterType};
 
 /// 小说角色实体
-/// 
+///
 /// 存储小说中的角色信息，包括姓名、性格、属性等
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "characters")]
@@ -37,6 +37,7 @@ pub struct Model {
 
 impl Model {
     /// 获取角色属性枚举值
+    #[allow(dead_code)]
     pub fn get_role_attribute(&self) -> CharacterRoleAttribute {
         match self.role_attribute {
             1 => CharacterRoleAttribute::Protagonist,
@@ -50,6 +51,7 @@ impl Model {
     }
 
     /// 获取角色性别枚举值
+    #[allow(dead_code)]
     pub fn get_gender(&self) -> CharacterGender {
         match self.gender {
             1 => CharacterGender::Male,
@@ -60,6 +62,7 @@ impl Model {
     }
 
     /// 获取角色类型枚举值
+    #[allow(dead_code)]
     pub fn get_character_type(&self) -> CharacterType {
         match self.character_type {
             1 => CharacterType::Human,

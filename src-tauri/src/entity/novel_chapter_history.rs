@@ -1,8 +1,10 @@
+#![allow(dead_code)]
+
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// 章节历史记录实体
-/// 
+///
 /// 存储章节的历史版本，用于版本回溯和对比
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "novel_chapter_history")]

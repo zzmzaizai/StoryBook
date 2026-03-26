@@ -1,8 +1,10 @@
+#![allow(dead_code)]
+
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// 章节版本实体
-/// 
+///
 /// 存储章节的不同版本，支持AI辅助修改建议
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "novel_chapter_version")]

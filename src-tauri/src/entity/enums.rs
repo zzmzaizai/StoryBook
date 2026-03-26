@@ -1,5 +1,6 @@
-use serde::{Deserialize, Serialize};
+#![allow(dead_code)]
 
+use serde::{Deserialize, Serialize};
 
 /// 小说风格枚举
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]

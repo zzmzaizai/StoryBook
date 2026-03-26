@@ -41,7 +41,7 @@ impl LlmRuntimeConfig {
         self.api_key
             .as_deref()
             .unwrap_or_default()
-            .split(|c| matches!(c, ',' | '，' | ';' | '\n' | '\r'))
+            .split([',', '，', ';', '\n', '\r'])
             .map(str::trim)
             .filter(|value| !value.is_empty())
             .map(ToOwned::to_owned)

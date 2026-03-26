@@ -1,24 +1,27 @@
-pub mod novels;
+pub mod agent_config;
 pub mod chapters;
 pub mod characters;
-pub mod timeline;
-pub mod meta;
-pub mod llm_config;
-pub mod agent_config;
 pub mod chat;
+pub mod llm_config;
+pub mod meta;
+pub mod novels;
+pub mod timeline;
 
-pub use novels::*;
+pub use agent_config::*;
 pub use chapters::*;
 pub use characters::*;
-pub use timeline::*;
-pub use meta::*;
-pub use llm_config::*;
-pub use agent_config::*;
 pub use chat::*;
+pub use llm_config::*;
+pub use meta::*;
+pub use novels::*;
+pub use timeline::*;
 
-use std::sync::Arc;
+use crate::repository::{
+    AgentConfigRepository, ChapterRepository, CharacterRepository, LlmConfigRepository,
+    MetaRepository, NovelRepository, TimelineRepository,
+};
 use sea_orm::DatabaseConnection;
-use crate::repository::{NovelRepository, ChapterRepository, CharacterRepository, TimelineRepository, MetaRepository, LlmConfigRepository, AgentConfigRepository};
+use std::sync::Arc;
 
 pub struct AppState {
     pub db: Arc<DatabaseConnection>,
@@ -45,10 +48,12 @@ impl AppState {
         MetaRepository::new(self.db.clone())
     }
 
+    #[allow(dead_code)]
     pub fn llm_configs(&self) -> LlmConfigRepository {
         LlmConfigRepository::new(self.db.clone())
     }
 
+    #[allow(dead_code)]
     pub fn agent_configs(&self) -> AgentConfigRepository {
         AgentConfigRepository::new(self.db.clone())
     }

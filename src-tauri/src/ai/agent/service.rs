@@ -9,6 +9,7 @@ use sea_orm::DatabaseConnection;
 use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct NovelOutlineParams {
     pub title: Option<String>,
@@ -20,6 +21,7 @@ pub struct NovelOutlineParams {
     pub target_length: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ChapterTimelineParams {
     pub outline: String,
@@ -28,6 +30,7 @@ pub struct ChapterTimelineParams {
     pub current_arc_goal: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct CharacterDesignParams {
     pub story_background: String,
@@ -64,9 +67,12 @@ impl AgentService {
         input: Value,
         tx: UnboundedSender<String>,
     ) -> anyhow::Result<AgentResult> {
-        AgentFactory::new().invoke_stream(db, agent_code, input, tx).await
+        AgentFactory::new()
+            .invoke_stream(db, agent_code, input, tx)
+            .await
     }
 
+    #[allow(dead_code)]
     pub async fn generate_novel_outline(
         db: &DatabaseConnection,
         params: NovelOutlineParams,
@@ -74,17 +80,29 @@ impl AgentService {
         Self::invoke(db, AgentCodes::NOVEL_OUTLINE, serde_json::to_value(params)?).await
     }
 
+    #[allow(dead_code)]
     pub async fn generate_chapter_timeline(
         db: &DatabaseConnection,
         params: ChapterTimelineParams,
     ) -> anyhow::Result<AgentResult> {
-        Self::invoke(db, AgentCodes::CHAPTER_TIMELINE, serde_json::to_value(params)?).await
+        Self::invoke(
+            db,
+            AgentCodes::CHAPTER_TIMELINE,
+            serde_json::to_value(params)?,
+        )
+        .await
     }
 
+    #[allow(dead_code)]
     pub async fn design_character(
         db: &DatabaseConnection,
         params: CharacterDesignParams,
     ) -> anyhow::Result<AgentResult> {
-        Self::invoke(db, AgentCodes::CHARACTER_DESIGN, serde_json::to_value(params)?).await
+        Self::invoke(
+            db,
+            AgentCodes::CHARACTER_DESIGN,
+            serde_json::to_value(params)?,
+        )
+        .await
     }
 }

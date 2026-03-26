@@ -9,6 +9,7 @@ use tauri::{AppHandle, Emitter, State};
 use tokio::sync::mpsc;
 
 /// 聊天请求
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChatRequest {
     /// Agent 代码

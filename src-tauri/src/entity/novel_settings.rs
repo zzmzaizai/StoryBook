@@ -1,8 +1,10 @@
+#![allow(dead_code)]
+
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// 小说设置实体
-/// 
+///
 /// 存储小说的相关设置项，以键值对形式保存配置
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "novel_settings")]

@@ -1,9 +1,9 @@
+use super::enums::{NovelLengthType, NovelStatus, NovelStyle, TargetAudience};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
-use super::enums::{NovelStyle, NovelStatus, NovelLengthType, TargetAudience};
 
 /// 小说实体
-/// 
+///
 /// 存储小说的基本信息，包括标题、描述、风格、状态等
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "novels")]
@@ -45,6 +45,7 @@ pub struct Model {
 
 impl Model {
     /// 获取小说风格枚举值
+    #[allow(dead_code)]
     pub fn get_style(&self) -> NovelStyle {
         match self.style {
             1 => NovelStyle::Urban,
@@ -62,6 +63,7 @@ impl Model {
     }
 
     /// 获取小说状态枚举值
+    #[allow(dead_code)]
     pub fn get_status(&self) -> NovelStatus {
         match self.status {
             1 => NovelStatus::Concept,
@@ -73,6 +75,7 @@ impl Model {
     }
 
     /// 获取篇幅长度类型枚举值
+    #[allow(dead_code)]
     pub fn get_length_type(&self) -> NovelLengthType {
         match self.length_type {
             1 => NovelLengthType::SuperLong,
@@ -85,6 +88,7 @@ impl Model {
     }
 
     /// 获取目标读者群体枚举值
+    #[allow(dead_code)]
     pub fn get_target_audience(&self) -> TargetAudience {
         match self.target_audience {
             1 => TargetAudience::Male,

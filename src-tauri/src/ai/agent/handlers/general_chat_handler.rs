@@ -67,12 +67,7 @@ impl AgentHandler for GeneralChatHandler {
             String::new()
         };
 
-        let prompt = format!(
-            "{}{}{}",
-            input.message,
-            history_context,
-            extra_context
-        );
+        let prompt = format!("{}{}{}", input.message, history_context, extra_context);
 
         Ok(prompt)
     }

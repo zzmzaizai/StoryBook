@@ -10,6 +10,7 @@ use tokio::sync::mpsc::UnboundedSender;
 #[derive(Debug, Clone)]
 pub struct AgentContext {
     pub input: Value,
+    #[allow(dead_code)]
     pub metadata: Option<Value>,
 }
 
@@ -21,6 +22,7 @@ impl AgentContext {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_metadata(input: Value, metadata: Value) -> Self {
         Self {
             input,
@@ -40,10 +42,12 @@ impl AgentContext {
 pub struct AgentExecutionContext {
     pub system_prompt: String,
     pub custom_prompt: Option<String>,
+    #[allow(dead_code)]
     pub extra_params: Option<Value>,
 }
 
 impl AgentExecutionContext {
+    #[allow(dead_code)]
     pub fn new(system_prompt: String) -> Self {
         Self {
             system_prompt,
@@ -54,9 +58,12 @@ impl AgentExecutionContext {
 
     pub fn merge_custom_prompt(&self) -> String {
         match &self.custom_prompt {
-            Some(custom) if !custom.trim().is_empty() => format!("{}
+            Some(custom) if !custom.trim().is_empty() => format!(
+                "{}
 
-{}", self.system_prompt, custom),
+{}",
+                self.system_prompt, custom
+            ),
             _ => self.system_prompt.clone(),
         }
     }
@@ -65,7 +72,9 @@ impl AgentExecutionContext {
 #[async_trait::async_trait]
 pub trait AgentHandler: Send + Sync {
     fn code(&self) -> &'static str;
+    #[allow(dead_code)]
     fn name(&self) -> &'static str;
+    #[allow(dead_code)]
     fn description(&self) -> &'static str;
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String>;
 
@@ -95,7 +104,9 @@ pub trait AgentHandler: Send + Sync {
         let user_prompt = self.build_user_prompt(ctx).await?;
         let system_prompt = exec_ctx.merge_custom_prompt();
         let executor = LlmExecutor::from_config(llm)?;
-        executor.stream_complete(&system_prompt, &user_prompt, tx).await
+        executor
+            .stream_complete(&system_prompt, &user_prompt, tx)
+            .await
     }
 }
 

@@ -1,7 +1,7 @@
-use tauri::State;
+use super::AppState;
 use crate::entity::chapters;
 use crate::repository::ChapterUpdateParams;
-use super::AppState;
+use tauri::State;
 
 #[tauri::command]
 pub async fn create_chapter(
@@ -9,7 +9,11 @@ pub async fn create_chapter(
     novel_id: i32,
     chapter_name: String,
 ) -> Result<chapters::Model, String> {
-    state.chapters().create(novel_id, chapter_name).await.map_err(|e| e.to_string())
+    state
+        .chapters()
+        .create(novel_id, chapter_name)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -19,17 +23,19 @@ pub async fn list_chapters(
     page: u64,
     page_size: u64,
 ) -> Result<serde_json::Value, String> {
-    let items = state.chapters()
+    let items = state
+        .chapters()
         .find_by_novel(novel_id, page, page_size)
         .await
         .map_err(|e| e.to_string())?;
 
-    let total_count = state.chapters()
+    let total_count = state
+        .chapters()
         .count_by_novel(novel_id)
         .await
         .map_err(|e| e.to_string())?;
 
-    let total_pages = (total_count + page_size - 1) / page_size;
+    let total_pages = total_count.div_ceil(page_size);
 
     Ok(serde_json::json!({
         "items": items,
@@ -42,8 +48,15 @@ pub async fn list_chapters(
 }
 
 #[tauri::command]
-pub async fn get_chapter(state: State<'_, AppState>, id: i32) -> Result<Option<chapters::Model>, String> {
-    state.chapters().find_by_id(id).await.map_err(|e| e.to_string())
+pub async fn get_chapter(
+    state: State<'_, AppState>,
+    id: i32,
+) -> Result<Option<chapters::Model>, String> {
+    state
+        .chapters()
+        .find_by_id(id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -60,7 +73,11 @@ pub async fn save_chapter(
         status: Some(status),
         increment_version: Some(true),
     };
-    state.chapters().update(id, params).await.map_err(|e| e.to_string())
+    state
+        .chapters()
+        .update(id, params)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

@@ -1,9 +1,9 @@
 //! LLM 配置实体
-//! 
+//!
 //! 存储大语言模型的配置信息，支持多个 Provider 和 Model。
-//! 
+//!
 //! # 字段说明
-//! 
+//!
 //! | 字段 | 类型 | 说明 |
 //! |------|------|------|
 //! | id | i32 | 自增主键 |
@@ -20,7 +20,7 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// LLM 配置实体
-/// 
+///
 /// 用于存储大语言模型的配置信息，支持多 Provider、多 Model。
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
 #[sea_orm(table_name = "llm_config")]
@@ -45,7 +45,7 @@ pub struct Model {
     pub base_url: Option<String>,
 
     /// 额外配置（JSON 格式）
-    /// 
+    ///
     /// 可包含：
     /// - temperature: 温度参数
     /// - max_tokens: 最大输出 token 数
@@ -54,7 +54,7 @@ pub struct Model {
     pub extra_config: Option<Json>,
 
     /// 是否为默认 LLM
-    /// 
+    ///
     /// 业务层应保证只有一个默认配置
     pub is_default: bool,
 

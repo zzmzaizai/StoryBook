@@ -1,8 +1,8 @@
-use tauri::State;
+use super::AppState;
+use crate::constants::{ChapterMetaConstants, MetaPropertyDto};
 use crate::entity::novel_chapter_timeline;
 use crate::repository::TimelineUpdateParams;
-use crate::constants::{ChapterMetaConstants, MetaPropertyDto};
-use super::AppState;
+use tauri::State;
 
 #[tauri::command]
 pub async fn create_timeline(
@@ -10,7 +10,11 @@ pub async fn create_timeline(
     novel_id: i32,
     title: String,
 ) -> Result<novel_chapter_timeline::Model, String> {
-    state.timelines().create(novel_id, title).await.map_err(|e| e.to_string())
+    state
+        .timelines()
+        .create(novel_id, title)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -18,7 +22,11 @@ pub async fn list_timelines(
     state: State<'_, AppState>,
     novel_id: i32,
 ) -> Result<Vec<novel_chapter_timeline::Model>, String> {
-    state.timelines().find_by_novel(novel_id).await.map_err(|e| e.to_string())
+    state
+        .timelines()
+        .find_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -28,12 +36,14 @@ pub async fn list_timelines_paged(
     page: u64,
     page_size: u64,
 ) -> Result<serde_json::Value, String> {
-    let (items, total_pages) = state.timelines()
+    let (items, total_pages) = state
+        .timelines()
         .find_by_novel_paged(novel_id, page, page_size)
         .await
         .map_err(|e| e.to_string())?;
 
-    let total_count = state.timelines()
+    let total_count = state
+        .timelines()
         .count_by_novel(novel_id)
         .await
         .map_err(|e| e.to_string())?;
@@ -49,11 +59,19 @@ pub async fn list_timelines_paged(
 }
 
 #[tauri::command]
-pub async fn get_timeline(state: State<'_, AppState>, id: i32) -> Result<Option<novel_chapter_timeline::Model>, String> {
-    state.timelines().find_by_id(id).await.map_err(|e| e.to_string())
+pub async fn get_timeline(
+    state: State<'_, AppState>,
+    id: i32,
+) -> Result<Option<novel_chapter_timeline::Model>, String> {
+    state
+        .timelines()
+        .find_by_id(id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn update_timeline(
     state: State<'_, AppState>,
     id: i32,
@@ -74,12 +92,20 @@ pub async fn update_timeline(
         characters_description,
         chapter_metas,
     };
-    state.timelines().update(id, params).await.map_err(|e| e.to_string())
+    state
+        .timelines()
+        .update(id, params)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn delete_timeline(state: State<'_, AppState>, id: i32) -> Result<(), String> {
-    state.timelines().delete(id).await.map_err(|e| e.to_string())
+    state
+        .timelines()
+        .delete(id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

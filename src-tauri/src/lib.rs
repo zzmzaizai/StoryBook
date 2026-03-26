@@ -8,11 +8,11 @@ mod seeds;
 mod storage;
 mod tray;
 
-use std::sync::Arc;
-use tauri::Manager;
 use commands::AppState;
 use db::init_db;
+use std::sync::Arc;
 use storage::StorageManager;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,18 +23,18 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let handle = app.handle().clone();
-            
+
             tauri::async_runtime::block_on(async {
                 let storage = StorageManager::new().expect("存储目录初始化失败");
                 storage.init_directories().expect("目录结构创建失败");
-                
+
                 let db = init_db(&storage).await.expect("数据库初始化失败");
                 handle.manage(AppState { db: Arc::new(db) });
                 handle.manage(storage);
             });
-            
+
             tray::setup_tray(app.handle())?;
-            
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -110,7 +110,12 @@ pub fn run() {
                 }
             }
 
-            if let tauri::RunEvent::WindowEvent { label, event: tauri::WindowEvent::CloseRequested { api, .. }, .. } = event {
+            if let tauri::RunEvent::WindowEvent {
+                label,
+                event: tauri::WindowEvent::CloseRequested { api, .. },
+                ..
+            } = event
+            {
                 api.prevent_close();
                 if let Some(window) = app.get_webview_window(&label) {
                     let _ = window.hide();
