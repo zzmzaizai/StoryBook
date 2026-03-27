@@ -5,6 +5,7 @@
  */
 import { icon } from '../lib/icons.js'
 import { invoke } from '@tauri-apps/api/core'
+import '../style/virtual-list.css'
 
 let configs = []
 let llmConfigs = []
@@ -34,8 +35,10 @@ export async function render() {
           <button id="init-btn" class="btn btn-success btn-sm">${icon('refresh', 16)}<span>初始化默认</span></button>
         </div>
         
-        <div id="agent-list" class="agent-list">
-          <div class="text-center text-tertiary p-lg">加载中...</div>
+        <div id="agent-list-mount" class="agent-list-mount">
+          <div id="agent-list" class="agent-list">
+            <div class="text-center text-tertiary p-lg">加载中...</div>
+          </div>
         </div>
       </div>
       
@@ -122,20 +125,23 @@ function renderList(root) {
     return `
       <div class="agent-item ${selectedId === config.id ? 'active' : ''}" data-id="${config.id}">
         <div class="agent-item-header">
-          <span class="agent-item-name">${escapeHtml(config.name)}</span>
-          <span class="badge badge-sm ${config.enabled ? 'badge-success' : 'badge-secondary'}">${config.enabled ? '启用' : '禁用'}</span>
+          <div class="agent-item-name-row">
+            <span class="agent-item-name">${escapeHtml(config.name)}</span>
+          </div>
+          <div class="agent-item-actions">
+            <button class="agent-item-toggle-btn ${config.enabled ? 'is-enabled' : 'is-disabled'}" data-action="toggle" data-id="${config.id}" title="${config.enabled ? '禁用' : '启用'}">
+              ${config.enabled ? icon('check-circle', 15) : icon('x-circle', 15)}
+            </button>
+          </div>
         </div>
         <div class="agent-item-type">${agentType?.name || config.agent_code}</div>
         ${config.description ? `<div class="agent-item-desc">${escapeHtml(config.description)}</div>` : ''}
         <div class="agent-item-meta">
+          <span class="badge badge-sm ${config.enabled ? 'badge-success' : 'badge-secondary'}">${config.enabled ? '启用' : '禁用'}</span>
           <span class="badge badge-sm ${config.use_system_prompt ? 'badge-info' : 'badge-warning'}">${config.use_system_prompt ? '系统提示词' : '自定义提示词'}</span>
           ${llmConfig ? `<span class="badge badge-sm">${escapeHtml(llmConfig.name)}</span>` : '<span class="badge badge-sm badge-secondary">默认 LLM</span>'}
-        </div>
-        <div class="agent-item-actions">
-          <button class="btn-icon" data-action="toggle" data-id="${config.id}" title="${config.enabled ? '禁用' : '启用'}">
-            ${config.enabled ? icon('check-circle', 15) : icon('x-circle', 15)}
-          </button>
-          <button class="btn-icon btn-icon-danger" data-action="delete" data-id="${config.id}" title="删除">
+          <span class="agent-item-meta-spacer"></span>
+          <button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete" data-id="${config.id}" title="删除">
             ${icon('delete', 14)}
           </button>
         </div>

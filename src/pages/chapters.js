@@ -92,23 +92,24 @@ export async function render() {
       const div = document.createElement('div')
       div.className = `chapter-list-item ${selectedChapterId === item.id ? 'active' : ''}`
       div.dataset.id = item.id
-      div.innerHTML = `
-        <div class="chapter-item-header">
-          <div class="chapter-item-number-wrap">
-            <div class="chapter-item-number">${item.chapter_number}</div>
-            ${item.version > 1 ? `<div class="chapter-item-version">v${item.version}</div>` : ''}
+        div.innerHTML = `
+          <div class="chapter-item-header">
+            <div class="chapter-item-number-wrap">
+              <div class="chapter-item-number">${item.chapter_number}</div>
+              ${item.version > 1 ? `<div class="chapter-item-version">v${item.version}</div>` : ''}
+            </div>
+            <div class="chapter-item-title">${item.chapter_name || '未命名章节'}</div>
           </div>
-          <div class="chapter-item-title">${item.chapter_name || '未命名章节'}</div>
-        </div>
-        <div class="chapter-item-meta">
-          <span class="badge badge-sm ${getStatusBadgeClass(item.status)}">${ENUMS.NovelChapterStatus[item.status] || '起草'}</span>
-          <span class="chapter-item-words">${formatWordCount(item.word_count)}</span>
-          <span class="chapter-item-spacer"></span>
-          <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
-            ${icon('delete', 14)}
-          </button>
-        </div>
-      `
+          <div class="chapter-item-meta">
+            <div class="chapter-item-meta-tags">
+              <span class="badge badge-sm ${getStatusBadgeClass(item.status)}">${ENUMS.NovelChapterStatus[item.status] || '起草'}</span>
+              <span class="chapter-item-words">${formatWordCount(item.word_count)}</span>
+            </div>
+            <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
+              ${icon('delete', 14)}
+            </button>
+          </div>
+        `
       
       const deleteBtn = div.querySelector('[data-action="delete"]')
       if (deleteBtn) {

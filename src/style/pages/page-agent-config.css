@@ -2,15 +2,20 @@
 
 .agent-layout {
   display: grid;
-  grid-template-columns: 350px 1fr;
+  grid-template-columns: 330px 1fr;
   gap: var(--space-lg);
-  min-height: calc(100vh - 200px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .agent-list-card {
+  height: 100%;
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .agent-list-header {
@@ -31,18 +36,45 @@
   margin-bottom: var(--space-md);
 }
 
-.agent-list {
+.agent-list-mount {
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.agent-list {
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-secondary) transparent;
+}
+
+.agent-list::-webkit-scrollbar {
+  width: 1px;
+}
+
+.agent-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agent-list::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 999px;
 }
 
 .agent-item {
-  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.2s ease;
   margin-bottom: var(--space-xs);
   border: 1px solid transparent;
+  min-width: 0;
 }
 
 .agent-item:hover {
@@ -55,24 +87,41 @@
 }
 
 .agent-item-header {
-  margin-bottom: var(--space-xs);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+}
+
+.agent-item-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
 }
 
 .agent-item-name {
   font-weight: 600;
   color: var(--text-primary);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .agent-item-type {
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
-  margin-bottom: var(--space-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.agent-item-remark {
+.agent-item-desc {
   font-size: var(--font-size-sm);
   color: var(--text-tertiary);
-  margin-bottom: var(--space-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -81,24 +130,62 @@
 }
 
 .agent-item-meta {
-  margin-bottom: var(--space-xs);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  min-width: 0;
 }
 
 .agent-item-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-xs);
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  flex-shrink: 0;
 }
 
-.agent-item:hover .agent-item-actions {
-  opacity: 1;
+.agent-item-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.agent-item-toggle-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.agent-item-toggle-btn.is-enabled {
+  color: var(--success);
+}
+
+.agent-item-toggle-btn.is-disabled {
+  color: var(--text-tertiary);
+}
+
+.agent-item-toggle-btn:hover {
+  transform: scale(1.06);
+}
+
+.agent-item-meta-spacer {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Agent编辑器 */
 .agent-editor-card {
+  height: 100%;
   padding: var(--space-lg);
   overflow-y: auto;
+  min-height: 0;
 }
 
 .agent-editor-header {

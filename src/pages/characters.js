@@ -97,11 +97,12 @@ export async function render() {
           <div class="character-item-name">${displayName}</div>
         </div>
         <div class="character-item-meta">
-          <span class="badge badge-sm">${ENUMS.CharacterRoleAttribute[item.role_attribute] || '角色'}</span>
-          <span class="badge badge-sm badge-secondary">${ENUMS.CharacterGender[item.gender] || '未知'}</span>
-          <span class="badge badge-sm badge-secondary">${ENUMS.CharacterType[item.character_type] || '人类'}</span>
-          ${item.age ? `<span class="badge badge-sm badge-secondary">${item.age}岁</span>` : ''}
-          <span class="character-item-spacer"></span>
+          <div class="character-item-meta-tags">
+            <span class="badge badge-sm">${ENUMS.CharacterRoleAttribute[item.role_attribute] || '角色'}</span>
+            <span class="badge badge-sm badge-secondary">${ENUMS.CharacterGender[item.gender] || '未知'}</span>
+            <span class="badge badge-sm badge-secondary">${ENUMS.CharacterType[item.character_type] || '人类'}</span>
+            ${item.age ? `<span class="badge badge-sm badge-secondary">${item.age}岁</span>` : ''}
+          </div>
           <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
             ${icon('delete', 14)}
           </button>

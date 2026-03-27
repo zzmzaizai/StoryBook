@@ -6,6 +6,7 @@
   gap: var(--space-lg);
   flex: 1;
   min-height: 0;
+  overflow: hidden;
 }
 
 .chapter-list-card {
@@ -41,24 +42,74 @@
   overflow: hidden;
 }
 
-.chapter-item {
+.chapter-list-mount .paged-list-container {
+  height: 100%;
+  min-height: 0;
   display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm);
+  flex-direction: column;
+}
+
+.chapter-list-mount .paged-list-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-secondary) transparent;
+}
+
+.chapter-list-mount .paged-list-content::-webkit-scrollbar {
+  width: 1px;
+}
+
+.chapter-list-mount .paged-list-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chapter-list-mount .paged-list-content::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 999px;
+}
+
+.chapter-list-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 8px;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background 0.2s ease;
-  margin-bottom: var(--space-xs);
+  transition: background-color 0.15s ease;
   position: relative;
 }
 
-.chapter-item:hover {
+.chapter-list-item:hover {
   background: var(--bg-tertiary);
 }
 
-.chapter-item.active {
-  background: var(--accent-alpha);
+.chapter-list-item:hover .list-item-delete-btn {
+  opacity: 1;
+}
+
+.chapter-list-item.active {
+  background: var(--accent-muted);
+}
+
+.chapter-list-item.active .list-item-delete-btn {
+  opacity: 1;
+}
+
+.chapter-item-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.chapter-item-number-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
 }
 
 .chapter-item-number {
@@ -67,65 +118,78 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--text-secondary);
   flex-shrink: 0;
 }
 
-.chapter-item.active .chapter-item-number {
+.chapter-list-item.active .chapter-item-number {
   background: var(--accent);
   color: white;
 }
 
-.chapter-item-content {
-  flex: 1;
-  min-width: 0;
+.chapter-item-version {
+  font-size: 9px;
+  color: var(--text-tertiary);
+  line-height: 1;
 }
 
 .chapter-item-title {
-  font-size: var(--font-size-sm);
+  flex: 1;
+  min-width: 0;
   font-weight: 500;
   color: var(--text-primary);
+  font-size: var(--font-size-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 28px;
 }
 
 .chapter-item-meta {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-xs);
+  padding-left: 36px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  min-width: 0;
+}
+
+.chapter-item-meta-tags {
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  margin-top: 2px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.chapter-item-meta > .list-item-delete-btn {
+  justify-self: end;
+  align-self: center;
 }
 
 .chapter-item-words {
-  font-size: var(--font-size-xs);
   color: var(--text-tertiary);
-}
-
-.chapter-item-version {
-  font-size: var(--font-size-xs);
-  color: var(--accent);
-  padding: 1px 4px;
-  background: var(--accent-alpha);
-  border-radius: var(--radius-sm);
-}
-
-.chapter-delete-btn {
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.chapter-item:hover .chapter-delete-btn {
-  opacity: 1;
 }
 
 /* 章节编辑器 */
 .chapter-editor-card {
+  height: 100%;
   padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#chapter-editor {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
