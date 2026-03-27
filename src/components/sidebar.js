@@ -1,5 +1,5 @@
 import { navigate, getCurrentRoute } from '../router.js'
-import { toggleTheme, getTheme } from '../lib/theme.js'
+import { toggleTheme, getThemeDisplayLabel, getThemeMode, getThemeToggleIcon } from '../lib/theme.js'
 import { icon } from '../lib/icons.js'
 import { version as APP_VERSION } from '../../package.json'
 import { store } from '../state/store.js'
@@ -47,7 +47,9 @@ let _collapsed = false
 
 export function renderSidebar(el) {
   const current = getCurrentRoute()
-  const isDark = getTheme() === 'dark'
+  const themeMode = getThemeMode()
+  const themeLabel = getThemeDisplayLabel()
+  const themeIcon = getThemeToggleIcon()
   const focusNovelId = store.currentNovelId
   const focusNovelName = store.currentNovelName
 
@@ -90,9 +92,9 @@ export function renderSidebar(el) {
 
   html += `
     <div class="sidebar-footer">
-      <div class="nav-item" id="btn-theme-toggle" title="${isDark ? '日间模式' : '夜间模式'}">
-        ${isDark ? icon('sun', 16) : icon('moon', 16)}
-        <span class="nav-item-label">${isDark ? '日间模式' : '夜间模式'}</span>
+      <div class="nav-item" id="btn-theme-toggle" title="当前：${themeLabel}（点击切换）" data-theme-mode="${themeMode}">
+        ${icon(themeIcon, 16)}
+        <span class="nav-item-label">${themeLabel}</span>
       </div>
       ${!_collapsed ? `
         <div class="sidebar-meta">
