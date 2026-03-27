@@ -2,15 +2,20 @@
 
 .llm-layout {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 330px 1fr;
   gap: var(--space-lg);
-  min-height: calc(100vh - 200px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .llm-list-card {
+  height: 100%;
   padding: var(--space-md);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .llm-list-header {
@@ -31,18 +36,45 @@
   margin-bottom: var(--space-md);
 }
 
-.llm-list {
+.llm-list-mount {
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.llm-list {
+  height: 100%;
+  min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-secondary) transparent;
+}
+
+.llm-list::-webkit-scrollbar {
+  width: 1px;
+}
+
+.llm-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.llm-list::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 999px;
 }
 
 .llm-item {
-  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: background 0.2s ease;
   margin-bottom: var(--space-xs);
   border: 1px solid transparent;
+  min-width: 0;
 }
 
 .llm-item:hover {
@@ -56,47 +88,125 @@
 
 .llm-item-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: var(--space-sm);
-  margin-bottom: var(--space-xs);
+  min-width: 0;
+}
+
+.llm-item-name-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  flex: 1;
+  min-width: 0;
 }
 
 .llm-item-name {
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.llm-item-model {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin-bottom: var(--space-xs);
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.llm-item-default-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.llm-item-default-toggle:hover:not(:disabled) {
+  color: #f59e0b;
+  transform: scale(1.06);
+}
+
+.llm-item-default-toggle:disabled {
+  cursor: default;
+}
+
+.llm-item-default-toggle svg {
+  width: 15px;
+  height: 15px;
+  stroke: currentColor;
+  fill: none;
+}
+
+.llm-item-default-toggle.is-default {
+  color: #f59e0b;
+}
+
+.llm-item-default-toggle.is-default svg {
+  fill: currentColor;
+}
+
 .llm-item-meta {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
   gap: var(--space-xs);
-  margin-bottom: var(--space-xs);
+  min-width: 0;
 }
 
 .llm-item-actions {
   display: flex;
+  align-items: center;
   gap: var(--space-xs);
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  flex-shrink: 0;
 }
 
-.llm-item:hover .llm-item-actions {
-  opacity: 1;
+.llm-item-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.llm-item-toggle-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.llm-item-toggle-btn.is-enabled {
+  color: var(--success);
+}
+
+.llm-item-toggle-btn.is-disabled {
+  color: var(--text-tertiary);
+}
+
+.llm-item-toggle-btn:hover {
+  transform: scale(1.06);
+}
+
+.llm-item-meta-spacer {
+  flex: 1;
+  min-width: 0;
 }
 
 /* LLM编辑器 */
 .llm-editor-card {
+  height: 100%;
   padding: var(--space-lg);
   overflow-y: auto;
+  min-height: 0;
 }
 
 .llm-editor-header {

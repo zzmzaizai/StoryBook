@@ -1,11 +1,11 @@
 use chrono::Utc;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::entity::novel_settings::{self, ActiveModel as ActiveNovelSetting, Entity as NovelSettings};
+use crate::entity::novel_settings::{
+    self, ActiveModel as ActiveNovelSetting, Entity as NovelSettings,
+};
 
 pub struct NovelSettingsRepository {
     db: Arc<DatabaseConnection>,
@@ -31,7 +31,10 @@ impl NovelSettingsRepository {
             .collect())
     }
 
-    pub async fn get_prompt_context(&self, novel_id: i32) -> Result<Option<String>, sea_orm::DbErr> {
+    pub async fn get_prompt_context(
+        &self,
+        novel_id: i32,
+    ) -> Result<Option<String>, sea_orm::DbErr> {
         let settings = self.get_settings_map(novel_id).await?;
         if settings.is_empty() {
             return Ok(None);
@@ -52,13 +55,21 @@ impl NovelSettingsRepository {
 
         let lines: Vec<String> = ordered
             .into_iter()
-            .filter_map(|(key, label)| settings.get(key).filter(|v| !v.trim().is_empty()).map(|v| format!("- {}：{}", label, v.trim())))
+            .filter_map(|(key, label)| {
+                settings
+                    .get(key)
+                    .filter(|v| !v.trim().is_empty())
+                    .map(|v| format!("- {}：{}", label, v.trim()))
+            })
             .collect();
 
         if lines.is_empty() {
             Ok(None)
         } else {
-            Ok(Some(format!("当前小说写作设置如下，请在回答时尽量保持一致：\n{}", lines.join("\n"))))
+            Ok(Some(format!(
+                "当前小说写作设置如下，请在回答时尽量保持一致：\n{}",
+                lines.join("\n")
+            )))
         }
     }
 

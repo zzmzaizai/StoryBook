@@ -8,8 +8,8 @@
 //! |------|------|------|
 //! | id | i32 | 自增主键 |
 //! | name | String | 配置名称，如 "OpenAI GPT-4o" |
-//! | provider | String | 提供商：openai / anthropic / deepseek / openrouter / ollama |
-//! | model | String | 模型名称：gpt-4o-mini / claude-3-5-sonnet / deepseek-chat |
+//! | provider | String | 提供商：openai / anthropic / gemini / ollama |
+//! | model | String | 模型名称：gpt-4o-mini / claude-3-5-sonnet / gemini-2.5-pro |
 //! | api_key | Option<String> | API 密钥（可加密存储） |
 //! | base_url | Option<String> | 自定义网关/兼容服务地址 |
 //! | extra_config | Option<Json> | 额外配置：温度、max_tokens、top_p 等 |
@@ -32,10 +32,10 @@ pub struct Model {
     /// 配置名称，如 "OpenAI GPT-4o"
     pub name: String,
 
-    /// 提供商：openai / anthropic / deepseek / openrouter / ollama
+    /// 提供商：openai / anthropic / gemini / ollama
     pub provider: String,
 
-    /// 模型名称：gpt-4o-mini / claude-3-5-sonnet / deepseek-chat
+    /// 模型名称：gpt-4o-mini / claude-3-5-sonnet / gemini-2.5-pro
     pub model: String,
 
     /// API 密钥（建议加密存储）

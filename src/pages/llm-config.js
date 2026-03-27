@@ -5,13 +5,14 @@
  */
 import { ICONS } from '../lib/icons.js'
 import { invoke } from '@tauri-apps/api/core'
+import '../style/virtual-list.css'
 
 // 支持的 Provider 列表
 const PROVIDER_OPTIONS = [
-  { value: 'openai', label: 'OpenAI / 兼容网关', baseUrl: 'https://api.openai.com/v1' },
-  { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1' },
-  { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1' },
-  { value: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434/v1' },
+  { value: 'openai', label: 'OpenAI Chat Completions', baseUrl: 'https://api.openai.com/v1' },
+  { value: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com' },
+  { value: 'gemini', label: 'Gemini', baseUrl: 'https://generativelanguage.googleapis.com' },
+  { value: 'ollama', label: 'Ollama', baseUrl: 'http://localhost:11434' },
 ]
 
 let configs = []
@@ -39,8 +40,10 @@ export async function render() {
           <button id="create-btn" class="btn btn-primary btn-sm">${ICONS.plus}<span>新增配置</span></button>
         </div>
         
-        <div id="llm-list" class="llm-list">
-          <div class="text-center text-tertiary p-lg">加载中...</div>
+        <div id="llm-list-mount" class="llm-list-mount">
+          <div id="llm-list" class="llm-list">
+            <div class="text-center text-tertiary p-lg">加载中...</div>
+          </div>
         </div>
       </div>
       
@@ -101,22 +104,24 @@ function renderList(root) {
   listEl.innerHTML = configs.map(config => `
     <div class="llm-item ${selectedId === config.id ? 'active' : ''}" data-id="${config.id}">
       <div class="llm-item-header">
-        <span class="llm-item-name">${escapeHtml(config.name)}</span>
-        ${config.is_default ? `<span class="badge badge-warning badge-sm">默认</span>` : ''}
+        <div class="llm-item-name-row">
+          <span class="llm-item-name">${escapeHtml(config.name)}</span>
+        </div>
+        <div class="llm-item-actions">
+          <button class="llm-item-default-toggle ${config.is_default ? 'is-default' : ''}" data-action="default" data-id="${config.id}" title="${config.is_default ? '当前默认配置' : '设为默认'}" ${config.is_default ? 'disabled' : ''}>
+            ${ICONS.star}
+          </button>
+          <button class="llm-item-toggle-btn ${config.enabled ? 'is-enabled' : 'is-disabled'}" data-action="toggle" data-id="${config.id}" title="${config.enabled ? '禁用' : '启用'}">
+            ${config.enabled ? ICONS['check-circle'] : ICONS['x-circle']}
+          </button>
+        </div>
       </div>
-      <div class="llm-item-model">${escapeHtml(config.model)}</div>
       <div class="llm-item-meta">
-        <span class="badge badge-sm">${escapeHtml(config.provider)}</span>
         <span class="badge badge-sm ${config.enabled ? 'badge-success' : 'badge-secondary'}">${config.enabled ? '启用' : '禁用'}</span>
-      </div>
-      <div class="llm-item-actions">
-        <button class="btn-icon" data-action="toggle" data-id="${config.id}" title="${config.enabled ? '禁用' : '启用'}">
-          ${config.enabled ? ICONS.toggleRight : ICONS.toggleLeft}
-        </button>
-        <button class="btn-icon" data-action="default" data-id="${config.id}" title="设为默认" ${config.is_default ? 'disabled' : ''}>
-          ${ICONS.star}
-        </button>
-        <button class="btn-icon btn-icon-danger" data-action="delete" data-id="${config.id}" title="删除">
+        <span class="badge badge-sm">${escapeHtml(config.provider)}</span>
+        <span class="badge badge-sm badge-secondary">${escapeHtml(config.model)}</span>
+        <span class="llm-item-meta-spacer"></span>
+        <button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete" data-id="${config.id}" title="删除">
           ${ICONS.delete}
         </button>
       </div>
@@ -244,7 +249,6 @@ function renderCreateForm(editorEl, root) {
             <option value="">请选择提供商</option>
             ${providerOptions}
           </select>
-          <span class="form-hint">当前后端只支持 OpenAI Chat Completions 兼容接口；Claude/Gemini 请通过兼容网关接入</span>
         </div>
         <div class="form-group">
           <label class="form-label">模型 <span class="text-danger">*</span></label>
@@ -252,7 +256,7 @@ function renderCreateForm(editorEl, root) {
         </div>
       </div>
       
-      <div class="form-group">
+      <div class="form-group" id="api-key-group">
         <label class="form-label">API 密钥</label>
         <div id="api-key-list" class="api-key-list">
           ${renderApiKeyItems([], false)}
@@ -322,7 +326,6 @@ function renderEditForm(editorEl, config, root) {
             <option value="">请选择提供商</option>
             ${providerOptions}
           </select>
-          <span class="form-hint">当前后端只支持 OpenAI Chat Completions 兼容接口；Claude/Gemini 请通过兼容网关接入</span>
         </div>
         <div class="form-group">
           <label class="form-label">模型 <span class="text-danger">*</span></label>
@@ -330,7 +333,7 @@ function renderEditForm(editorEl, config, root) {
         </div>
       </div>
       
-      <div class="form-group">
+      <div class="form-group" id="api-key-group">
         <label class="form-label">API 密钥</label>
         <div id="api-key-list" class="api-key-list">
           ${renderApiKeyItems(apiKeys, true)}
@@ -380,6 +383,12 @@ function setupFormEvents(editorEl, root, isCreate) {
   const providerSelect = editorEl.querySelector('#provider')
   const baseUrlInput = editorEl.querySelector('#base-url')
   const apiKeyList = editorEl.querySelector('#api-key-list')
+  const apiKeyGroup = editorEl.querySelector('#api-key-group')
+
+  const syncProviderFields = (provider) => {
+    if (!apiKeyGroup) return
+    apiKeyGroup.style.display = provider === 'ollama' ? 'none' : ''
+  }
 
   providerSelect?.addEventListener('change', (e) => {
     const provider = e.target.value
@@ -387,7 +396,10 @@ function setupFormEvents(editorEl, root, isCreate) {
     if (providerInfo && baseUrlInput && !baseUrlInput.value) {
       baseUrlInput.value = providerInfo.baseUrl
     }
+    syncProviderFields(provider)
   })
+
+  syncProviderFields(providerSelect?.value || '')
 
   apiKeyList?.addEventListener('click', (e) => {
     const item = e.target.closest('.api-key-item')

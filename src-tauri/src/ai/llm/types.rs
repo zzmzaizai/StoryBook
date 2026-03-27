@@ -4,11 +4,9 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LlmProvider {
     OpenAi,
-    DeepSeek,
-    OpenRouter,
-    Ollama,
     Anthropic,
     Gemini,
+    Ollama,
     Other(String),
 }
 
@@ -16,11 +14,9 @@ impl From<&str> for LlmProvider {
     fn from(value: &str) -> Self {
         match value.to_lowercase().as_str() {
             "openai" => Self::OpenAi,
-            "deepseek" => Self::DeepSeek,
-            "openrouter" => Self::OpenRouter,
-            "ollama" => Self::Ollama,
             "anthropic" => Self::Anthropic,
             "gemini" => Self::Gemini,
+            "ollama" => Self::Ollama,
             other => Self::Other(other.to_string()),
         }
     }
@@ -37,7 +33,7 @@ pub struct LlmRuntimeConfig {
 }
 
 impl LlmRuntimeConfig {
-    fn api_keys(&self) -> Vec<String> {
+    pub fn api_keys(&self) -> Vec<String> {
         self.api_key
             .as_deref()
             .unwrap_or_default()
@@ -49,23 +45,31 @@ impl LlmRuntimeConfig {
     }
 
     pub fn effective_api_key(&self) -> String {
-        let api_keys = self.api_keys();
+        self.random_api_key(None)
+    }
 
-        match api_keys.len() {
+    pub fn random_api_key(&self, exclude: Option<&str>) -> String {
+        let api_keys = self.api_keys();
+        let available_keys: Vec<&String> = api_keys
+            .iter()
+            .filter(|key| exclude.is_none_or(|excluded| key.as_str() != excluded))
+            .collect();
+
+        match available_keys.len() {
             0 => self
                 .api_key
                 .as_deref()
                 .unwrap_or_default()
                 .trim()
                 .to_string(),
-            1 => api_keys[0].clone(),
+            1 => available_keys[0].clone().to_string(),
             len => {
                 let nanos = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .map(|duration| duration.as_nanos())
                     .unwrap_or(0);
                 let index = (nanos % len as u128) as usize;
-                api_keys[index].clone()
+                available_keys[index].clone().to_string()
             }
         }
     }

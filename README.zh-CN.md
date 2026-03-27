@@ -73,11 +73,10 @@ StoryBook 是一款**功能强大**、**轻量高效**、**特性丰富**的跨�
 ### AI 能力
 
 - **🌐 多平台大模型支持**
-  - **OpenAI** - GPT-4o、GPT-4 Turbo、GPT-3.5、o1-preview、o1-mini
-  - **Anthropic** - Claude 3.5 Sonnet、Claude 3 Opus、Claude 3 Haiku
-  - **Google** - Gemini 1.5 Pro、Gemini 1.5 Flash、Gemini Pro
-  - **国产 AI** - DeepSeek、智谱 AI (GLM-4)、通义千问、Moonshot
-  - **本地 AI** - Ollama (Llama 3.2、Qwen 2.5、Mistral、CodeLlama)
+  - **OpenAI / Chat Completions 兼容** - OpenAI 以及任意兼容网关，统一通过自定义 `base_url` 接入
+  - **Anthropic 原生** - Claude 系列通过 Anthropic 原生 provider 接入
+  - **Gemini 原生** - Gemini 系列通过 Gemini 原生 provider 接入
+  - **本地 AI** - Ollama 通过 Rig 原生 provider 接入，且无需 API Key
 
 - **⚙️ 灵活配置**
   - 预设模式快速上手
@@ -243,6 +242,21 @@ npm run tauri build
 
 构建产物位于 `src-tauri/target/release/bundle/` 目录。
 
+### 本地 CI 检查
+
+在推送代码或提交 PR 前，建议先运行与 CI 对齐的本地检查：
+
+```bash
+npm run check:ci
+```
+
+该命令会依次执行以下四项检查：
+
+- `cargo fmt --all -- --check`
+- `cargo check`
+- `cargo clippy --all-targets -- -D warnings`
+- `npm run build`
+
 ## 配置说明
 
 ### LLM 配置
@@ -251,14 +265,10 @@ npm run tauri build
 
 | 提供商 | 类型 | 默认 API 地址 |
 |--------|------|---------------|
-| OpenAI | OpenAI | https://api.openai.com/v1 |
-| Anthropic | Anthropic | https://api.anthropic.com/v1 |
-| Google | Google | https://generativelanguage.googleapis.com/v1beta |
-| DeepSeek | OpenAI | https://api.deepseek.com/v1 |
-| Moonshot | OpenAI | https://api.moonshot.cn/v1 |
-| 智谱 AI | OpenAI | https://open.bigmodel.cn/api/paas/v4 |
-| 通义千问 | OpenAI | https://dashscope.aliyuncs.com/compatible-mode/v1 |
-| Ollama | Ollama | http://localhost:11434/v1 |
+| OpenAI | Chat Completions 兼容 | https://api.openai.com/v1 |
+| Anthropic | 原生 | https://api.anthropic.com |
+| Gemini | 原生 | https://generativelanguage.googleapis.com |
+| Ollama | Rig 原生 | http://localhost:11434 |
 
 ### 安全配置
 

@@ -160,7 +160,11 @@ pub async fn ai_generate_meta_stream(
         .get_prompt_context(novel_id)
         .await
         .map_err(|e| e.to_string())?;
-    let metas = state.meta().find_by_novel(novel_id).await.map_err(|e| e.to_string())?;
+    let metas = state
+        .meta()
+        .find_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let llm = LlmService::get_default_llm(&state.db)
         .await
@@ -235,11 +239,17 @@ pub async fn ai_generate_meta_stream(
         }
     });
 
-    match executor.stream_complete(&system_prompt, &user_prompt, tx).await {
+    match executor
+        .stream_complete(&system_prompt, &user_prompt, tx)
+        .await
+    {
         Ok(content) => {
             app.emit(
                 "meta-ai-stream-done",
-                MetaAiStreamDone { request_id, content },
+                MetaAiStreamDone {
+                    request_id,
+                    content,
+                },
             )
             .map_err(|e| e.to_string())?;
             Ok(())

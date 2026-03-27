@@ -73,11 +73,10 @@ Whether you're writing a short story, a full-length novel, a screenplay, or even
 ### AI Capabilities
 
 - **🌐 Multi-Provider LLM Support**
-  - **OpenAI** - GPT-4o, GPT-4 Turbo, GPT-3.5, o1-preview, o1-mini
-  - **Anthropic** - Claude 3.5 Sonnet, Claude 3 Opus, Claude 3 Haiku
-  - **Google** - Gemini 1.5 Pro, Gemini 1.5 Flash, Gemini Pro
-  - **Chinese AI** - DeepSeek, Zhipu AI (GLM-4), Qwen (通义千问), Moonshot
-  - **Local AI** - Ollama (Llama 3.2, Qwen 2.5, Mistral, CodeLlama)
+  - **OpenAI / Chat Completions Compatible** - OpenAI and any compatible gateway via custom `base_url`
+  - **Anthropic Native** - Claude models through the native Anthropic provider
+  - **Google Gemini Native** - Gemini models through the native Gemini provider
+  - **Local AI** - Ollama via Rig native provider without API key
 
 - **⚙️ Flexible Configuration**
   - Preset mode for quick setup
@@ -243,6 +242,21 @@ npm run tauri build
 
 Build artifacts are located in `src-tauri/target/release/bundle/`.
 
+### Local CI Check
+
+Before pushing code or opening a PR, run the local CI-equivalent checks:
+
+```bash
+npm run check:ci
+```
+
+This command runs the same four checks used by CI:
+
+- `cargo fmt --all -- --check`
+- `cargo check`
+- `cargo clippy --all-targets -- -D warnings`
+- `npm run build`
+
 ## Configuration
 
 ### LLM Configuration
@@ -251,14 +265,10 @@ The application supports multiple LLM providers:
 
 | Provider | Type | Default API Endpoint |
 |----------|------|---------------------|
-| OpenAI | OpenAI | https://api.openai.com/v1 |
-| Anthropic | Anthropic | https://api.anthropic.com/v1 |
-| Google | Google | https://generativelanguage.googleapis.com/v1beta |
-| DeepSeek | OpenAI | https://api.deepseek.com/v1 |
-| Moonshot | OpenAI | https://api.moonshot.cn/v1 |
-| Zhipu AI | OpenAI | https://open.bigmodel.cn/api/paas/v4 |
-| Qwen | OpenAI | https://dashscope.aliyuncs.com/compatible-mode/v1 |
-| Ollama | Ollama | http://localhost:11434/v1 |
+| OpenAI | Chat Completions Compatible | https://api.openai.com/v1 |
+| Anthropic | Native | https://api.anthropic.com |
+| Gemini | Native | https://generativelanguage.googleapis.com |
+| Ollama | Rig Native | http://localhost:11434 |
 
 ### Security Configuration
 

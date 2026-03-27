@@ -148,18 +148,19 @@ pub async fn ai_generate_timeline(
         .get_prompt_context(novel_id)
         .await
         .map_err(|e| e.to_string())?;
-    let metas = state.meta().find_by_novel(novel_id).await.map_err(|e| e.to_string())?;
+    let metas = state
+        .meta()
+        .find_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
     let timelines = state
         .timelines()
         .find_by_novel(novel_id)
         .await
         .map_err(|e| e.to_string())?;
 
-    let previous_timelines = build_previous_timeline_context(
-        &timelines,
-        timeline_id,
-        start_chapter_number,
-    );
+    let previous_timelines =
+        build_previous_timeline_context(&timelines, timeline_id, start_chapter_number);
 
     let metas_context = metas
         .iter()
@@ -236,8 +237,8 @@ pub async fn ai_generate_timeline(
         .trim()
         .to_string();
     let normalized_content = normalize_json_like_content(&cleaned_content);
-    let json_content = extract_json_object(&normalized_content)
-        .ok_or_else(|| "AI 未返回合法 JSON".to_string())?;
+    let json_content =
+        extract_json_object(&normalized_content).ok_or_else(|| "AI 未返回合法 JSON".to_string())?;
 
     serde_json::from_str::<GeneratedTimelinePayload>(&json_content).map_err(|e| e.to_string())
 }
@@ -288,9 +289,5 @@ fn extract_json_object(content: &str) -> Option<String> {
 }
 
 fn normalize_json_like_content(content: &str) -> String {
-    content
-        .replace('“', "\"")
-        .replace('”', "\"")
-        .replace('‘', "'")
-        .replace('’', "'")
+    content.replace(['“', '”'], "\"").replace(['‘', '’'], "'")
 }

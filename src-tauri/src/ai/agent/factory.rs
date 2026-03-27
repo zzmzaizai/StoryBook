@@ -36,11 +36,15 @@ impl AgentFactory {
         agent_code: &str,
         input: Value,
     ) -> anyhow::Result<AgentResult> {
-        let settings_context = crate::ai::agent::settings_context::load_settings_context_from_input(db, &input).await?;
+        let settings_context =
+            crate::ai::agent::settings_context::load_settings_context_from_input(db, &input)
+                .await?;
         let agent_config = self.load_agent_config(db, agent_code).await?;
         let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
         let handler = self.get_required_handler(agent_code)?;
-        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config, settings_context).await?;
+        let exec_ctx = self
+            .build_exec_ctx(agent_code, &agent_config, settings_context)
+            .await?;
         let ctx = AgentContext::new(input);
         let content = handler.execute(&llm_config, exec_ctx, ctx).await?;
 
@@ -59,11 +63,15 @@ impl AgentFactory {
         llm_config_id: i32,
         input: Value,
     ) -> anyhow::Result<AgentResult> {
-        let settings_context = crate::ai::agent::settings_context::load_settings_context_from_input(db, &input).await?;
+        let settings_context =
+            crate::ai::agent::settings_context::load_settings_context_from_input(db, &input)
+                .await?;
         let agent_config = self.load_agent_config(db, agent_code).await?;
         let llm_config = LlmService::get_llm_by_id(db, llm_config_id).await?;
         let handler = self.get_required_handler(agent_code)?;
-        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config, settings_context).await?;
+        let exec_ctx = self
+            .build_exec_ctx(agent_code, &agent_config, settings_context)
+            .await?;
         let ctx = AgentContext::new(input);
         let content = handler.execute(&llm_config, exec_ctx, ctx).await?;
 
@@ -82,11 +90,15 @@ impl AgentFactory {
         input: Value,
         tx: UnboundedSender<String>,
     ) -> anyhow::Result<AgentResult> {
-        let settings_context = crate::ai::agent::settings_context::load_settings_context_from_input(db, &input).await?;
+        let settings_context =
+            crate::ai::agent::settings_context::load_settings_context_from_input(db, &input)
+                .await?;
         let agent_config = self.load_agent_config(db, agent_code).await?;
         let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
         let handler = self.get_required_handler(agent_code)?;
-        let exec_ctx = self.build_exec_ctx(agent_code, &agent_config, settings_context).await?;
+        let exec_ctx = self
+            .build_exec_ctx(agent_code, &agent_config, settings_context)
+            .await?;
         let ctx = AgentContext::new(input);
         let content = handler
             .execute_stream(&llm_config, exec_ctx, ctx, tx)

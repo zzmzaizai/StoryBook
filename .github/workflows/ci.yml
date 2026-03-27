@@ -60,17 +60,5 @@ jobs:
             libgtk-3-dev \
             libayatana-appindicator3-dev
 
-      - name: Rust 格式检查
-        working-directory: src-tauri
-        run: cargo fmt --all -- --check
-
-      - name: Rust 编译检查
-        working-directory: src-tauri
-        run: cargo check
-
-      - name: Rust Lint
-        working-directory: src-tauri
-        run: cargo clippy --all-targets -- -D warnings
-
-      - name: 前端构建验证
-        run: npm run build
+      - name: 运行本地 CI 等价检查
+        run: npm run check:ci

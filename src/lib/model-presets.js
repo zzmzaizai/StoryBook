@@ -16,9 +16,8 @@ export const PROVIDER_PRESETS = [
   { key: 'qtcool', label: '晴辰云', badge: '官方', baseUrl: 'https://gpt.qt.cool/v1', api: 'openai-completions', site: 'https://gpt.qt.cool/', desc: 'GPT-5 全系列开箱即用，更多模型持续接入中。每日签到送额度 · 邀请送余额 · 充值最低 3 折消耗 · 未消耗包退' },
   { key: 'openai', label: 'OpenAI 官方', baseUrl: 'https://api.openai.com/v1', api: 'openai-completions' },
   { key: 'anthropic', label: 'Anthropic 官方', baseUrl: 'https://api.anthropic.com', api: 'anthropic-messages' },
-  { key: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', api: 'openai-completions' },
   { key: 'google', label: 'Google Gemini', baseUrl: 'https://generativelanguage.googleapis.com/v1beta', api: 'google-gemini' },
-  { key: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://127.0.0.1:11434/v1', api: 'openai-completions' },
+  { key: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://127.0.0.1:11434', api: 'openai-completions' },
   { key: 'custom', label: '自定义', baseUrl: '', api: 'openai-completions' },
 ]
 
@@ -48,10 +47,6 @@ export const MODEL_PRESETS = {
     { id: 'claude-sonnet-4-5-20250514', name: 'Claude Sonnet 4.5', contextWindow: 200000 },
     { id: 'claude-haiku-3-5-20241022', name: 'Claude Haiku 3.5', contextWindow: 200000 },
     { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', contextWindow: 200000 },
-  ],
-  deepseek: [
-    { id: 'deepseek-chat', name: 'DeepSeek V3', contextWindow: 64000 },
-    { id: 'deepseek-reasoner', name: 'DeepSeek R1', contextWindow: 64000, reasoning: true },
   ],
   google: [
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', contextWindow: 1000000, reasoning: true },
