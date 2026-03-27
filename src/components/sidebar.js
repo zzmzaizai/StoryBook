@@ -79,7 +79,7 @@ export function renderSidebar(el) {
     for (const item of section.items) {
       const active = current === item.route ? ' active' : ''
       html += `<div class="nav-item${active}" data-route="${item.route}" title="${item.label}">
-        ${ICONS[item.icon] || ''}
+        ${icon(item.icon) || ''}
         <span class="nav-item-label">${item.label}</span>
       </div>`
     }

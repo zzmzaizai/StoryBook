@@ -25,11 +25,12 @@
 //! setup_tray(app.handle())?;
 //! ```
 
+use crate::app_window::focus_main_window;
 use tauri::{
     image::Image,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager,
+    AppHandle,
 };
 
 /// 设置系统托盘
@@ -105,11 +106,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
             // 托盘图标事件处理
             // 双击托盘图标时显示主窗口
             if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
-                if let Some(window) = tray.app_handle().get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.unminimize();
-                    let _ = window.set_focus();
-                }
+                focus_main_window(tray.app_handle());
             }
         })
         .build(app)?;
@@ -136,11 +133,7 @@ fn handle_menu_event(app: &AppHandle, id: &str) {
     match id {
         // 显示主窗口
         "show" => {
-            if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show(); // 显示窗口
-                let _ = window.unminimize(); // 取消最小化
-                let _ = window.set_focus(); // 设置焦点
-            }
+            focus_main_window(app);
         }
         // 退出应用
         "quit" => {
