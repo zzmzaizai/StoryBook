@@ -1,14 +1,14 @@
-import { ICONS } from '../../lib/icons.js'
+import { icon } from '../../lib/icons.js'
 
 export function render(content, novelInfo) {
   content.innerHTML = `
     <div class="card">
-      <h3 class="card-title">${ICONS.workflow} 写作流程</h3>
+      <h3 class="card-title">${icon('workflow', 16)} 写作流程</h3>
       <p class="text-secondary mb-lg">按照以下步骤完成小说创作</p>
       
       <div class="workflow-steps">
         <div class="workflow-step completed">
-          <div class="workflow-step-icon">${ICONS.check}</div>
+          <div class="workflow-step-icon">${icon('check', 16)}</div>
           <div class="workflow-step-content">
             <h4>创建小说</h4>
             <p>设置小说基本信息</p>
@@ -17,7 +17,7 @@ export function render(content, novelInfo) {
         </div>
         
         <div class="workflow-step completed">
-          <div class="workflow-step-icon">${ICONS.check}</div>
+          <div class="workflow-step-icon">${icon('check', 16)}</div>
           <div class="workflow-step-content">
             <h4>设定世界观</h4>
             <p>定义故事背景与规则</p>

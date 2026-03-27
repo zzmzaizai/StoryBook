@@ -1,5 +1,5 @@
 import { api, ENUMS } from '../../api/tauri.js'
-import { ICONS } from '../../lib/icons.js'
+import { icon } from '../../lib/icons.js'
 import { toastSuccess, toastError } from '../../lib/toast.js'
 
 export function render(content, novelInfo) {
@@ -77,7 +77,7 @@ export function render(content, novelInfo) {
               <h3 class="workspace-basic-panel__title">基础设定</h3>
               <p class="workspace-basic-panel__hint">定义作品标题、简介与市场定位，这些设定会直接影响后续 AI 生成和创作节奏。</p>
             </div>
-            <button id="save-basic-btn" class="btn btn-primary workspace-basic-save-btn">${ICONS.save}<span>保存基础信息</span></button>
+            <button id="save-basic-btn" class="btn btn-primary workspace-basic-save-btn">${icon('save', 16)}<span>保存基础信息</span></button>
           </div>
 
           <div class="workspace-basic-form-grid">

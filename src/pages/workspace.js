@@ -4,7 +4,7 @@
 import { store } from '../state/store.js'
 import { api } from '../api/tauri.js'
 import { navigate } from '../router.js'
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { createTabs } from '../lib/tabs.js'
 import '../style/editor.css'
 import '../style/tabs.css'
@@ -51,7 +51,7 @@ export async function render() {
       <div id="tab-content" class="workspace-content"></div>
     ` : `
       <div class="empty-state">
-        <div class="empty-state-icon">${ICONS.novels}</div>
+        <div class="empty-state-icon">${icon('novels', 20)}</div>
         <div class="empty-state-title">未选择小说</div>
         <div class="empty-state-desc">请先从小说列表选择一部小说</div>
         <button class="btn btn-primary mt-lg" id="go-novels">选择小说</button>
@@ -71,10 +71,10 @@ export async function render() {
   tabsComponent = createTabs({
     containerId: 'workspace-tabs',
     tabs: [
-      { key: 'basic', label: '基础', icon: ICONS.edit, color: '#6366f1' },
-      { key: 'meta', label: '元数据', icon: ICONS.meta, color: '#8b5cf6' },
-      { key: 'timeline', label: '时间线', icon: ICONS.timeline, color: '#3b82f6' },
-      { key: 'workflow', label: '流程', icon: ICONS.workflow, color: '#f59e0b' }
+      { key: 'basic', label: '基础', icon: icon('edit', 16), color: '#6366f1' },
+      { key: 'meta', label: '元数据', icon: icon('meta', 16), color: '#8b5cf6' },
+      { key: 'timeline', label: '时间线', icon: icon('timeline', 16), color: '#3b82f6' },
+      { key: 'workflow', label: '流程', icon: icon('workflow', 16), color: '#f59e0b' }
     ],
     activeKey: activeTab,
     onChange: (key) => {

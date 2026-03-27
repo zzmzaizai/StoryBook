@@ -3,7 +3,7 @@
  * 
  * 管理 AI Agent 配置，支持自定义提示词和 LLM 绑定
  */
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { invoke } from '@tauri-apps/api/core'
 
 let configs = []
@@ -25,13 +25,13 @@ export async function render() {
     <div class="agent-layout">
       <div class="card agent-list-card">
         <div class="agent-list-header">
-          <h3 class="card-title">${ICONS.ai} Agent 列表</h3>
+          <h3 class="card-title">${icon('ai', 16)} Agent 列表</h3>
           <span class="agent-count" id="config-count">加载中...</span>
         </div>
         
         <div class="agent-toolbar">
-          <button id="create-btn" class="btn btn-primary btn-sm">${ICONS.plus}<span>新增配置</span></button>
-          <button id="init-btn" class="btn btn-success btn-sm">${ICONS.refresh}<span>初始化默认</span></button>
+          <button id="create-btn" class="btn btn-primary btn-sm">${icon('plus', 16)}<span>新增配置</span></button>
+          <button id="init-btn" class="btn btn-success btn-sm">${icon('refresh', 16)}<span>初始化默认</span></button>
         </div>
         
         <div id="agent-list" class="agent-list">
@@ -42,7 +42,7 @@ export async function render() {
       <div class="card agent-editor-card">
         <div id="agent-editor">
           <div class="empty-state">
-            <div class="empty-state-icon">${ICONS.ai}</div>
+            <div class="empty-state-icon">${icon('ai', 20)}</div>
             <div class="empty-state-title">选择 Agent</div>
             <div class="empty-state-desc">从左侧列表选择 Agent 进行编辑，或点击新增创建配置</div>
           </div>
@@ -133,10 +133,10 @@ function renderList(root) {
         </div>
         <div class="agent-item-actions">
           <button class="btn-icon" data-action="toggle" data-id="${config.id}" title="${config.enabled ? '禁用' : '启用'}">
-            ${config.enabled ? ICONS.toggleRight : ICONS.toggleLeft}
+            ${config.enabled ? icon('check-circle', 15) : icon('x-circle', 15)}
           </button>
           <button class="btn-icon btn-icon-danger" data-action="delete" data-id="${config.id}" title="删除">
-            ${ICONS.delete}
+            ${icon('delete', 14)}
           </button>
         </div>
       </div>
@@ -204,7 +204,7 @@ function renderEditor(root) {
   if (!config) {
     editorEl.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">${ICONS.ai}</div>
+        <div class="empty-state-icon">${icon('ai', 20)}</div>
         <div class="empty-state-title">选择 Agent</div>
         <div class="empty-state-desc">从左侧列表选择 Agent 进行编辑</div>
       </div>
@@ -229,7 +229,7 @@ function renderCreateForm(editorEl, root) {
     <div class="agent-editor-header">
       <h3 class="card-title">创建 Agent 配置</h3>
       <div class="agent-editor-actions">
-        <button id="save-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        <button id="save-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
         <button id="cancel-btn" class="btn btn-secondary">取消</button>
       </div>
     </div>
@@ -297,7 +297,7 @@ function renderEditForm(editorEl, config, root) {
     <div class="agent-editor-header">
       <h3 class="card-title">${escapeHtml(config.name)}</h3>
       <div class="agent-editor-actions">
-        <button id="save-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        <button id="save-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
         <button id="cancel-btn" class="btn btn-secondary">取消</button>
       </div>
     </div>

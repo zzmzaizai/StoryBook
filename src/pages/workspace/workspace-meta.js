@@ -1,5 +1,5 @@
 import { api } from '../../api/tauri.js'
-import { ICONS } from '../../lib/icons.js'
+import { icon } from '../../lib/icons.js'
 import { toastSuccess, toastError } from '../../lib/toast.js'
 import { confirm } from '../../lib/modal.js'
 import { Modal } from '../../lib/modal.js'
@@ -50,7 +50,7 @@ export async function render(content, novelInfo) {
       <div class="card meta-editor-card">
         <div id="meta-editor-content">
           <div class="empty-state">
-            <div class="empty-state-icon">${ICONS.meta}</div>
+            <div class="empty-state-icon">${icon('meta', 20)}</div>
             <div class="empty-state-title">选择元数据</div>
             <div class="empty-state-desc">从左侧列表选择元数据进行编辑</div>
           </div>
@@ -65,7 +65,7 @@ export async function render(content, novelInfo) {
     containerId: 'meta-tabs',
     tabs: [
       { key: 'added', label: `已添加(${metaDataList.length})`, color: '#10b981' },
-      { key: 'available', label: `可添加(${unaddedProps.length})`, icon: ICONS.plus, color: '#6366f1' }
+      { key: 'available', label: `可添加(${unaddedProps.length})`, icon: icon('plus', 16), color: '#6366f1' }
     ],
     activeKey: activeMetaTab,
     onChange: (key) => {
@@ -116,7 +116,7 @@ function renderMetaList(content, novelInfo) {
           <div class="meta-item-header">
             <span class="meta-item-name">${meta.property_name}</span>
             <button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete-meta" data-meta-id="${meta.id}" aria-label="删除元数据">
-              ${ICONS.delete}
+              ${icon('delete', 14)}
             </button>
           </div>
           <p class="meta-item-preview">${previewText}</p>
@@ -138,7 +138,7 @@ function renderMetaList(content, novelInfo) {
               if (editorContent) {
                 editorContent.innerHTML = `
                   <div class="empty-state">
-                    <div class="empty-state-icon">${ICONS.meta}</div>
+                    <div class="empty-state-icon">${icon('meta', 20)}</div>
                     <div class="empty-state-title">选择元数据</div>
                     <div class="empty-state-desc">从左侧列表选择元数据进行编辑</div>
                   </div>
@@ -190,7 +190,7 @@ function renderMetaList(content, novelInfo) {
         div.innerHTML = `
           <div class="meta-item-header">
             <span class="meta-item-name">${prop.property_name}</span>
-            <button class="list-item-add-btn" data-action="add-meta" aria-label="添加元数据">${ICONS.plus}</button>
+            <button class="list-item-add-btn" data-action="add-meta" aria-label="添加元数据">${icon('plus', 12)}</button>
           </div>
           <p class="meta-item-preview">${prop.property_description || ''}</p>
         `
@@ -258,7 +258,7 @@ function renderMetaPreview(content, prop, novelInfo) {
         </div>
       </div>
       <div class="meta-preview-note">
-        <button id="add-preview-meta-btn" class="meta-preview-note__icon" aria-label="立即添加这个元数据">${ICONS.plus}</button>
+        <button id="add-preview-meta-btn" class="meta-preview-note__icon" aria-label="立即添加这个元数据">${icon('plus', 14)}</button>
         <div>
           <div class="meta-preview-note__title">立即添加这个元数据</div>
           <div class="meta-preview-note__desc">添加后，这个元数据会进入“已添加”列表，并可在这里继续编辑具体内容。</div>
@@ -292,8 +292,8 @@ function renderEditor(content, novelInfo) {
       </div>
       <div id="meta-md-editor" class="markdown-editor-container" style="height: 350px;"></div>
       <div class="flex justify-end gap-md mt-md">
-        <button id="ai-generate-btn" class="btn btn-secondary">${ICONS.sparkles}<span>AI生成</span></button>
-        <button id="save-meta-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        <button id="ai-generate-btn" class="btn btn-secondary">${icon('sparkles', 16)}<span>AI生成</span></button>
+        <button id="save-meta-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
       </div>
     </div>
   `

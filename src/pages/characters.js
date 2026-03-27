@@ -1,7 +1,7 @@
 import { api, ENUMS } from '../api/tauri.js'
 import { store } from '../state/store.js'
 import { navigate } from '../router.js'
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
@@ -26,7 +26,7 @@ export async function render() {
         <p class="page-subtitle">管理小说角色</p>
       </div>
       <div class="empty-state">
-        <div class="empty-state-icon">${ICONS.characters}</div>
+        <div class="empty-state-icon">${icon('characters', 20)}</div>
         <div class="empty-state-title">未选择小说</div>
         <div class="empty-state-desc">请先从小说列表选择一部小说</div>
         <button class="btn btn-primary mt-lg" id="go-novels">选择小说</button>
@@ -47,14 +47,14 @@ export async function render() {
     <div class="characters-layout">
       <div class="card character-list-card">
         <div class="character-list-header">
-          <h3 class="card-title">${ICONS.characters} 角色列表</h3>
+          <h3 class="card-title">${icon('characters', 16)} 角色列表</h3>
           <span class="character-count" id="character-count">加载中...</span>
         </div>
 
         <div class="character-toolbar">
-          <button id="create-character-btn" class="btn btn-primary btn-sm">${ICONS.plus}</button>
+          <button id="create-character-btn" class="btn btn-primary btn-sm">${icon('plus', 16)}</button>
           <div class="search-box search-box-sm">
-            <span class="search-icon">${ICONS.search}</span>
+            <span class="search-icon">${icon('search', 16)}</span>
             <input id="search-character" class="search-input" placeholder="搜索角色..." value="${searchKeyword}" />
           </div>
         </div>
@@ -103,7 +103,7 @@ export async function render() {
           ${item.age ? `<span class="badge badge-sm badge-secondary">${item.age}岁</span>` : ''}
           <span class="character-item-spacer"></span>
           <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
-            ${ICONS.delete}
+            ${icon('delete', 14)}
           </button>
         </div>
       `
@@ -168,7 +168,7 @@ async function renderCharacterEditor(root) {
       <div class="character-editor-header">
         <h3 class="card-title">创建角色</h3>
         <div class="character-editor-actions">
-          <button id="save-character-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+          <button id="save-character-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
         </div>
       </div>
 
@@ -257,7 +257,7 @@ async function renderCharacterEditor(root) {
   if (!character) {
     editorEl.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">${ICONS.characters}</div>
+        <div class="empty-state-icon">${icon('characters', 20)}</div>
         <div class="empty-state-title">选择角色</div>
         <div class="empty-state-desc">从左侧列表选择角色进行编辑</div>
       </div>
@@ -276,7 +276,7 @@ async function renderCharacterEditor(root) {
     <div class="character-editor-header">
       <h3 class="card-title">${character.name}</h3>
       <div class="character-editor-actions">
-        <button id="save-character-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        <button id="save-character-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
       </div>
     </div>
 

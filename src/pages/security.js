@@ -2,7 +2,7 @@
  * 安全设置页面
  * 访问密码管理 & 无视风险模式
  */
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { toastSuccess, toastError, toastWarning } from '../lib/toast.js'
 import { getSetting, setSetting, deleteSetting } from '../lib/store.js'
 import { createModal } from '../lib/modal.js'
@@ -297,8 +297,8 @@ function renderSecurityContent(container, status) {
   let html = ''
 
   const stateIcon = status.hasPassword
-    ? (status.mustChangePassword ? ICONS.alert : ICONS.check)
-    : (status.ignoreRisk ? ICONS.alert : ICONS.info)
+    ? (status.mustChangePassword ? icon('alert-circle', 16) : icon('check', 16))
+    : (status.ignoreRisk ? icon('alert-circle', 16) : icon('info', 16))
   const stateText = status.hasPassword
     ? (status.mustChangePassword ? '使用默认密码（需修改）' : '已设置自定义密码')
     : (status.ignoreRisk ? '无视风险模式（无密码）' : '未设置密码')
@@ -360,7 +360,7 @@ function renderSecurityContent(container, status) {
   html += `
     <div class="config-section">
       <div class="config-section-title" style="display:flex;align-items:center;gap:6px">
-        ${ICONS.alert}
+        ${icon('alert-circle', 16)}
         无视风险模式
       </div>
       <div class="ignore-risk-card ${status.ignoreRisk ? 'enabled' : ''}">

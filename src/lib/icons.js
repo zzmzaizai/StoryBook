@@ -143,10 +143,54 @@ const PATHS = {
  * @returns {string} SVG HTML 字符串
  */
 export function icon(name, size = 16, className) {
-  const paths = PATHS[name]
+  const normalizedName = normalizeIconName(name)
+  const paths = PATHS[normalizedName]
   if (!paths) return ''
   const cls = className ? ` class="${className}"` : ''
   return `<svg${cls} width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.125em;flex-shrink:0">${paths}</svg>`
+}
+
+function normalizeIconName(name) {
+  if (typeof name !== 'string') return ''
+  if (name in PATHS) return name
+
+  const aliasMap = {
+    eyeOff: 'eye-off',
+    starFilled: 'star-filled',
+    chevronLeft: 'chevron-left',
+    chevronRight: 'chevron-right',
+    chevronDown: 'chevron-down',
+    chevronUp: 'chevron-up',
+    alertCircle: 'alert-circle',
+    alertTriangle: 'alert-triangle',
+    checkCircle: 'check-circle',
+    xCircle: 'x-circle',
+    messageCircle: 'message-circle',
+    messageSquare: 'message-square',
+    refreshCw: 'refresh-cw',
+    fileText: 'file-text',
+    folderPlus: 'folder-plus',
+    plusCircle: 'plus-circle',
+    minusCircle: 'minus-circle',
+    moreVertical: 'more-vertical',
+    externalLink: 'external-link',
+    gitBranch: 'git-branch',
+    thumbsUp: 'thumbsUp',
+    thumbsDown: 'thumbsDown',
+  }
+
+  if (aliasMap[name] && aliasMap[name] in PATHS) {
+    return aliasMap[name]
+  }
+
+  const kebab = name
+    .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+    .replace(/_/g, '-')
+    .toLowerCase()
+
+  if (kebab in PATHS) return kebab
+
+  return name
 }
 
 /**
@@ -192,17 +236,17 @@ export function getIconNames() {
  * @returns {boolean}
  */
 export function hasIcon(name) {
-  return name in PATHS
+  return normalizeIconName(name) in PATHS
 }
 
 /**
  * 兼容旧版 API - 返回图标对象
- * @deprecated 请使用 icon() 函数
+ * @deprecated 仅为兼容旧代码保留；新代码必须使用 icon() 函数
  */
 export const ICONS = new Proxy({}, {
   get(_, name) {
-    if (name in PATHS) {
-      return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${PATHS[name]}</svg>`
+    if (typeof name === 'string' && hasIcon(name)) {
+      return icon(name)
     }
     return ''
   }

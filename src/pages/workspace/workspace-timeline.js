@@ -1,5 +1,5 @@
 import { api } from '../../api/tauri.js'
-import { ICONS } from '../../lib/icons.js'
+import { icon } from '../../lib/icons.js'
 import { toastSuccess, toastError } from '../../lib/toast.js'
 import { confirm } from '../../lib/modal.js'
 import { Modal } from '../../lib/modal.js'
@@ -32,8 +32,8 @@ export async function render(content, novelInfo) {
     <div class="meta-layout">
       <div class="card meta-list-card">
         <div class="flex justify-between items-center mb-md">
-          <h3 class="card-title">${ICONS.timeline} 时间线列表</h3>
-          <button id="add-timeline-btn" class="btn btn-primary btn-sm">${ICONS.plus}<span>添加</span></button>
+          <h3 class="card-title">${icon('timeline', 16)} 时间线列表</h3>
+          <button id="add-timeline-btn" class="btn btn-primary btn-sm">${icon('plus', 16)}<span>添加</span></button>
         </div>
         <div id="timeline-list-mount" class="meta-list-mount"></div>
       </div>
@@ -41,7 +41,7 @@ export async function render(content, novelInfo) {
       <div class="card meta-editor-card">
         <div id="timeline-editor-content">
           <div class="empty-state">
-            <div class="empty-state-icon">${ICONS.timeline}</div>
+            <div class="empty-state-icon">${icon('timeline', 20)}</div>
             <div class="empty-state-title">选择时间线</div>
             <div class="empty-state-desc">从左侧列表选择时间线进行编辑</div>
           </div>
@@ -78,7 +78,7 @@ export async function render(content, novelInfo) {
             <span class="timeline-chapter-badge-small">${tl.end_chapter_number || 10}</span>
           </div>
           <button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete-timeline" data-timeline-id="${tl.id}" aria-label="删除时间线">
-            ${ICONS.delete}
+            ${icon('delete', 14)}
           </button>
         </div>
         <div class="timeline-item-title">${tl.title || '未命名时间线'}</div>
@@ -183,8 +183,8 @@ function renderEditor(content, novelInfo) {
           <p class="meta-editor-desc">第${editingTimeline.start_chapter_number || 1}章 → 第${editingTimeline.end_chapter_number || 10}章</p>
         </div>
         <div class="timeline-editor-header-actions">
-          <button id="ai-generate-timeline-btn" class="btn btn-secondary">${ICONS.sparkles}<span>AI生成</span></button>
-          <button id="save-timeline-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+          <button id="ai-generate-timeline-btn" class="btn btn-secondary">${icon('sparkles', 16)}<span>AI生成</span></button>
+          <button id="save-timeline-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
         </div>
       </div>
       <div class="timeline-editor-form">

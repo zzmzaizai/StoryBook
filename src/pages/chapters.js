@@ -1,7 +1,7 @@
 import { api, ENUMS } from '../api/tauri.js'
 import { store } from '../state/store.js'
 import { navigate } from '../router.js'
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { createMarkdownEditor, destroyEditor } from '../lib/markdown-editor.js'
 import { createModal, confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
@@ -29,7 +29,7 @@ export async function render() {
         <p class="page-subtitle">编辑小说章节</p>
       </div>
       <div class="empty-state">
-        <div class="empty-state-icon">${ICONS.chapters}</div>
+        <div class="empty-state-icon">${icon('chapters', 20)}</div>
         <div class="empty-state-title">未选择小说</div>
         <div class="empty-state-desc">请先从小说列表选择一部小说</div>
         <button class="btn btn-primary mt-lg" id="go-novels">选择小说</button>
@@ -50,14 +50,14 @@ export async function render() {
     <div class="chapters-layout">
       <div class="card chapter-list-card">
         <div class="chapter-list-header">
-          <h3 class="card-title">${ICONS.chapters} 章节列表</h3>
+          <h3 class="card-title">${icon('chapters', 16)} 章节列表</h3>
           <span class="chapter-count" id="chapter-count">加载中...</span>
         </div>
 
         <div class="chapter-toolbar">
-          <button id="create-chapter-btn" class="btn btn-primary btn-sm">${ICONS.plus}</button>
+          <button id="create-chapter-btn" class="btn btn-primary btn-sm">${icon('plus', 16)}</button>
           <div class="search-box search-box-sm">
-            <span class="search-icon">${ICONS.search}</span>
+            <span class="search-icon">${icon('search', 16)}</span>
             <input id="search-chapter" class="search-input" placeholder="搜索章节..." value="${searchKeyword}" />
           </div>
         </div>
@@ -105,7 +105,7 @@ export async function render() {
           <span class="chapter-item-words">${formatWordCount(item.word_count)}</span>
           <span class="chapter-item-spacer"></span>
           <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
-            ${ICONS.delete}
+            ${icon('delete', 14)}
           </button>
         </div>
       `
@@ -184,7 +184,7 @@ async function renderChapterEditor(root) {
       <div class="chapter-editor-header">
         <h3 class="card-title">创建章节</h3>
         <div class="chapter-editor-actions">
-          <button id="save-chapter-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+          <button id="save-chapter-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
         </div>
       </div>
 
@@ -264,7 +264,7 @@ async function renderChapterEditor(root) {
   if (!chapter) {
     editorEl.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">${ICONS.chapters}</div>
+        <div class="empty-state-icon">${icon('chapters', 20)}</div>
         <div class="empty-state-title">选择章节</div>
         <div class="empty-state-desc">从左侧列表选择章节进行编辑</div>
       </div>
@@ -282,7 +282,7 @@ async function renderChapterEditor(root) {
         <div class="chapter-version-badge">v${chapter.version}</div>
       </div>
       <div class="chapter-editor-actions">
-        <button id="save-chapter-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        <button id="save-chapter-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
       </div>
     </div>
 

@@ -2,7 +2,7 @@
  * 关于页面
  */
 import { version as APP_VERSION } from '../../package.json'
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 
 export async function render() {
   const el = document.createElement('div')
@@ -28,39 +28,39 @@ export async function render() {
       
       <div class="about-grid">
         <div class="about-section">
-          <div class="section-icon">${ICONS.sparkles}</div>
+          <div class="section-icon">${icon('sparkles', 20)}</div>
           <h3 class="section-title">功能特性</h3>
           <ul class="feature-list">
             <li>
-              <span class="feature-icon">${ICONS.novels}</span>
+              <span class="feature-icon">${icon('novels', 18)}</span>
               <div class="feature-content">
                 <span class="feature-name">项目管理</span>
                 <span class="feature-desc">多小说项目支持，轻松切换管理</span>
               </div>
             </li>
             <li>
-              <span class="feature-icon">${ICONS.chapters}</span>
+              <span class="feature-icon">${icon('chapters', 18)}</span>
               <div class="feature-content">
                 <span class="feature-name">章节编辑</span>
                 <span class="feature-desc">富文本编辑器，版本历史追踪</span>
               </div>
             </li>
             <li>
-              <span class="feature-icon">${ICONS.characters}</span>
+              <span class="feature-icon">${icon('characters', 18)}</span>
               <div class="feature-content">
                 <span class="feature-name">角色管理</span>
                 <span class="feature-desc">角色档案、关系图谱一目了然</span>
               </div>
             </li>
             <li>
-              <span class="feature-icon">${ICONS.ai}</span>
+              <span class="feature-icon">${icon('ai', 18)}</span>
               <div class="feature-content">
                 <span class="feature-name">AI 辅助</span>
                 <span class="feature-desc">智能写作助手，激发创作灵感</span>
               </div>
             </li>
             <li>
-              <span class="feature-icon">${ICONS.lock}</span>
+              <span class="feature-icon">${icon('lock', 18)}</span>
               <div class="feature-content">
                 <span class="feature-name">安全保护</span>
                 <span class="feature-desc">密码保护，保护您的创作隐私</span>
@@ -70,7 +70,7 @@ export async function render() {
         </div>
         
         <div class="about-section">
-          <div class="section-icon">${ICONS.settings}</div>
+          <div class="section-icon">${icon('settings', 20)}</div>
           <h3 class="section-title">技术架构</h3>
           <div class="tech-grid">
             <div class="tech-item">
@@ -103,28 +103,28 @@ export async function render() {
       
       <div class="about-info-cards">
         <div class="info-card">
-          <div class="info-icon">${ICONS['file-text']}</div>
+          <div class="info-icon">${icon('file-text', 18)}</div>
           <div class="info-content">
             <h4 class="info-title">许可证</h4>
             <p class="info-text">MIT License - 开源免费使用</p>
           </div>
         </div>
         <div class="info-card">
-          <div class="info-icon">${ICONS.monitor}</div>
+          <div class="info-icon">${icon('monitor', 18)}</div>
           <div class="info-content">
             <h4 class="info-title">系统要求</h4>
             <p class="info-text">Windows 10+ / macOS 10.15+ / Linux</p>
           </div>
         </div>
         <div class="info-card">
-          <div class="info-icon">${ICONS.history}</div>
+          <div class="info-icon">${icon('history', 18)}</div>
           <div class="info-content">
             <h4 class="info-title">更新日志</h4>
             <p class="info-text">查看版本更新历史与新功能</p>
           </div>
         </div>
         <div class="info-card">
-          <div class="info-icon">${ICONS['help-circle']}</div>
+          <div class="info-icon">${icon('help-circle', 18)}</div>
           <div class="info-content">
             <h4 class="info-title">帮助支持</h4>
             <p class="info-text">使用文档与常见问题解答</p>

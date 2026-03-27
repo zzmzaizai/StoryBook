@@ -1,6 +1,6 @@
 import { navigate, getCurrentRoute } from '../router.js'
 import { toggleTheme, getTheme } from '../lib/theme.js'
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { version as APP_VERSION } from '../../package.json'
 import { store } from '../state/store.js'
 
@@ -91,7 +91,7 @@ export function renderSidebar(el) {
   html += `
     <div class="sidebar-footer">
       <div class="nav-item" id="btn-theme-toggle" title="${isDark ? '日间模式' : '夜间模式'}">
-        ${isDark ? ICONS.sun : ICONS.moon}
+        ${isDark ? icon('sun', 16) : icon('moon', 16)}
         <span class="nav-item-label">${isDark ? '日间模式' : '夜间模式'}</span>
       </div>
       ${!_collapsed ? `
@@ -101,7 +101,7 @@ export function renderSidebar(el) {
       ` : ''}
     </div>
     <button class="sidebar-collapse-btn" id="btn-sidebar-toggle" title="${_collapsed ? '展开' : '收起'}">
-      ${_collapsed ? ICONS['chevron-right'] : ICONS['chevron-left']}
+      ${_collapsed ? icon('chevron-right', 16) : icon('chevron-left', 16)}
     </button>
   `
 

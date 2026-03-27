@@ -1,5 +1,5 @@
 import { Modal } from '../lib/modal.js'
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { ENUMS, api } from '../api/tauri.js'
 
 export class CreateNovelModal {
@@ -73,7 +73,7 @@ export class CreateNovelModal {
           <div class="novel-create-panel__hint">先定义故事名字、气质与目标读者</div>
         </div>
         <button id="ai-generate-btn" class="novel-create-ai-trigger" type="button">
-          ${ICONS.sparkles}<span>AI 灵感生成</span>
+          ${icon('sparkles', 16)}<span>AI 灵感生成</span>
         </button>
       </div>
 
@@ -155,13 +155,13 @@ export class CreateNovelModal {
 
   getLengthIcon(type) {
     const icons = {
-      1: ICONS.book,
-      2: ICONS.book,
-      3: ICONS.book,
-      4: ICONS['file-text'],
-      5: ICONS.clock,
+      1: icon('book', 16),
+      2: icon('book', 16),
+      3: icon('book', 16),
+      4: icon('file-text', 16),
+      5: icon('clock', 16),
     }
-    return icons[type] || ICONS.book
+    return icons[type] || icon('book', 16)
   }
 
   getLengthDesc(type) {
@@ -246,7 +246,7 @@ export class CreateNovelModal {
     aiBtn.type = 'button'
     aiBtn.id = 'footer-ai-generate-btn'
     aiBtn.className = 'novel-create-footer-ai'
-    aiBtn.innerHTML = `${ICONS.sparkles}<span>AI 创建小说</span>`
+    aiBtn.innerHTML = `${icon('sparkles', 16)}<span>AI 创建小说</span>`
     aiBtn.addEventListener('click', () => this.showAiGenerateModal())
 
     const rightGroup = document.createElement('div')

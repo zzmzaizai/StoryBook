@@ -1,7 +1,7 @@
 import { api, ENUMS } from '../api/tauri.js'
 import { store } from '../state/store.js'
 import { navigate } from '../router.js'
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { renderSidebar } from '../components/sidebar.js'
 import { showCreateNovelModal } from '../components/create-novel-modal.js'
 
@@ -24,7 +24,7 @@ export async function render() {
       <div class="flex justify-between items-center gap-lg flex-wrap">
         <div class="flex gap-md items-center flex-wrap">
           <div class="search-box">
-            <span class="search-icon">${ICONS.search}</span>
+            <span class="search-icon">${icon('search', 16)}</span>
             <input id="search-title" class="search-input" placeholder="搜索小说标题..." />
           </div>
           <select id="filter-status" class="form-input" style="width: 120px;">
@@ -35,18 +35,18 @@ export async function render() {
             <option value="">全部风格</option>
             ${Object.entries(ENUMS.NovelStyle).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
           </select>
-          <button id="search-btn" class="btn btn-primary">${ICONS.search}<span>搜索</span></button>
+          <button id="search-btn" class="btn btn-primary">${icon('search', 16)}<span>搜索</span></button>
         </div>
-        <button id="create-novel-btn" class="btn btn-primary">${ICONS.plus}<span>新建小说</span></button>
+        <button id="create-novel-btn" class="btn btn-primary">${icon('plus', 16)}<span>新建小说</span></button>
       </div>
     </div>
     
     <div id="novel-grid" class="novel-grid"></div>
     
     <div id="pagination" class="flex justify-center gap-md mt-xl" style="display: none;">
-      <button id="prev-page" class="btn btn-secondary" disabled>${ICONS.chevronLeft}<span>上一页</span></button>
+      <button id="prev-page" class="btn btn-secondary" disabled>${icon('chevron-left', 16)}<span>上一页</span></button>
       <span id="page-info" class="flex items-center text-secondary">第 1 页</span>
-      <button id="next-page" class="btn btn-secondary"><span>下一页</span>${ICONS.chevronRight}</button>
+      <button id="next-page" class="btn btn-secondary"><span>下一页</span>${icon('chevron-right', 16)}</button>
     </div>
   `
 
@@ -147,7 +147,7 @@ async function load(root) {
     if (list.length === 0 && count === 0) {
       grid.innerHTML = `
         <div class="empty-state" style="grid-column: 1 / -1;">
-          <div class="empty-state-icon">${ICONS.novels}</div>
+          <div class="empty-state-icon">${icon('novels', 20)}</div>
           <div class="empty-state-title">暂无项目</div>
           <div class="empty-state-desc">创建你的第一个小说项目开始创作之旅</div>
         </div>
@@ -161,7 +161,7 @@ async function load(root) {
       const isFocus = item.id === store.currentNovelId
       return `
       <div class="novel-card card${isFocus ? ' novel-card-focus' : ''}" data-id="${item.id}">
-        ${isFocus ? `<div class="novel-focus-badge">${ICONS.starFilled}</div>` : ''}
+        ${isFocus ? `<div class="novel-focus-badge">${icon('star-filled', 16)}</div>` : ''}
         <div class="novel-cover">
           <div class="novel-cover-placeholder" style="background: linear-gradient(135deg, ${getGradient(item.style)});">
             <span class="novel-cover-text">${(item.title || 'N').charAt(0)}</span>
@@ -178,13 +178,13 @@ async function load(root) {
           <div class="novel-footer">
             <div class="novel-stats">
               <span class="novel-stat">
-                <span class="icon-sm">${ICONS.edit}</span>
+                <span class="icon-sm">${icon('edit', 14)}</span>
                 ${formatWordCount(item.total_word_count || 0)}
               </span>
             </div>
             <div class="novel-actions">
               <button class="btn-icon btn-icon-danger" data-action="delete" title="删除">
-                ${ICONS.delete}
+                ${icon('delete', 14)}
               </button>
             </div>
           </div>
@@ -198,7 +198,7 @@ async function load(root) {
     console.error('加载小说列表失败:', e)
     grid.innerHTML = `
       <div class="error-state" style="grid-column: 1 / -1; text-align: center; padding: var(--space-xl);">
-        <div class="error-icon" style="color: var(--danger);">${ICONS.alertCircle}</div>
+        <div class="error-icon" style="color: var(--danger);">${icon('alert-circle', 18)}</div>
         <p style="margin-top: var(--space-md); color: var(--text-secondary);">加载失败: ${e}</p>
         <button class="btn btn-secondary" style="margin-top: var(--space-md);" id="retry-btn">重试</button>
       </div>

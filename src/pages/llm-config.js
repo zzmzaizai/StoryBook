@@ -3,7 +3,7 @@
  * 
  * 管理大语言模型配置，支持多个 Provider 和 Model
  */
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { invoke } from '@tauri-apps/api/core'
 import '../style/virtual-list.css'
 
@@ -32,12 +32,12 @@ export async function render() {
     <div class="llm-layout">
       <div class="card llm-list-card">
         <div class="llm-list-header">
-          <h3 class="card-title">${ICONS.settings} 配置列表</h3>
+          <h3 class="card-title">${icon('settings', 16)} 配置列表</h3>
           <span class="llm-count" id="config-count">加载中...</span>
         </div>
         
         <div class="llm-toolbar">
-          <button id="create-btn" class="btn btn-primary btn-sm">${ICONS.plus}<span>新增配置</span></button>
+          <button id="create-btn" class="btn btn-primary btn-sm">${icon('plus', 16)}<span>新增配置</span></button>
         </div>
         
         <div id="llm-list-mount" class="llm-list-mount">
@@ -50,7 +50,7 @@ export async function render() {
       <div class="card llm-editor-card">
         <div id="llm-editor">
           <div class="empty-state">
-            <div class="empty-state-icon">${ICONS.settings}</div>
+            <div class="empty-state-icon">${icon('settings', 20)}</div>
             <div class="empty-state-title">选择配置</div>
             <div class="empty-state-desc">从左侧列表选择配置进行编辑，或点击新增创建配置</div>
           </div>
@@ -109,10 +109,10 @@ function renderList(root) {
         </div>
         <div class="llm-item-actions">
           <button class="llm-item-default-toggle ${config.is_default ? 'is-default' : ''}" data-action="default" data-id="${config.id}" title="${config.is_default ? '当前默认配置' : '设为默认'}" ${config.is_default ? 'disabled' : ''}>
-            ${ICONS.star}
+            ${icon('star', 15)}
           </button>
           <button class="llm-item-toggle-btn ${config.enabled ? 'is-enabled' : 'is-disabled'}" data-action="toggle" data-id="${config.id}" title="${config.enabled ? '禁用' : '启用'}">
-            ${config.enabled ? ICONS['check-circle'] : ICONS['x-circle']}
+            ${config.enabled ? icon('check-circle', 15) : icon('x-circle', 15)}
           </button>
         </div>
       </div>
@@ -122,7 +122,7 @@ function renderList(root) {
         <span class="badge badge-sm badge-secondary">${escapeHtml(config.model)}</span>
         <span class="llm-item-meta-spacer"></span>
         <button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete" data-id="${config.id}" title="删除">
-          ${ICONS.delete}
+          ${icon('delete', 14)}
         </button>
       </div>
     </div>
@@ -190,7 +190,7 @@ function renderEditor(root) {
   if (!config) {
     editorEl.innerHTML = `
       <div class="empty-state">
-        <div class="empty-state-icon">${ICONS.settings}</div>
+        <div class="empty-state-icon">${icon('settings', 20)}</div>
         <div class="empty-state-title">选择配置</div>
         <div class="empty-state-desc">从左侧列表选择配置进行编辑</div>
       </div>
@@ -206,8 +206,8 @@ function renderApiKeyItems(apiKeys, isEditMode) {
     return `
       <div class="api-key-item" data-index="0">
         <input type="password" class="form-input api-key-input" placeholder="sk-..." />
-        <button class="btn-icon api-key-toggle" type="button" title="显示">${ICONS.eye}</button>
-        <button class="btn-icon api-key-add" type="button" title="添加">${ICONS.plus}</button>
+        <button class="btn-icon api-key-toggle" type="button" title="显示">${icon('eye', 16)}</button>
+        <button class="btn-icon api-key-add" type="button" title="添加">${icon('plus', 16)}</button>
       </div>
     `
   }
@@ -215,9 +215,9 @@ function renderApiKeyItems(apiKeys, isEditMode) {
   return apiKeys.map((key, index) => `
     <div class="api-key-item" data-index="${index}">
       <input type="password" class="form-input api-key-input" placeholder="sk-..." value="${escapeHtml(key || '')}" />
-      <button class="btn-icon api-key-toggle" type="button" title="显示">${ICONS.eye}</button>
-      <button class="btn-icon api-key-remove" type="button" title="删除">${ICONS.x}</button>
-      ${index === apiKeys.length - 1 ? `<button class="btn-icon api-key-add" type="button" title="添加">${ICONS.plus}</button>` : ''}
+      <button class="btn-icon api-key-toggle" type="button" title="显示">${icon('eye', 16)}</button>
+      <button class="btn-icon api-key-remove" type="button" title="删除">${icon('x', 16)}</button>
+      ${index === apiKeys.length - 1 ? `<button class="btn-icon api-key-add" type="button" title="添加">${icon('plus', 16)}</button>` : ''}
     </div>
   `).join('')
 }
@@ -231,7 +231,7 @@ function renderCreateForm(editorEl, root) {
     <div class="llm-editor-header">
       <h3 class="card-title">创建 LLM 配置</h3>
       <div class="llm-editor-actions">
-        <button id="save-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        <button id="save-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
         <button id="cancel-btn" class="btn btn-secondary">取消</button>
       </div>
     </div>
@@ -308,7 +308,7 @@ function renderEditForm(editorEl, config, root) {
     <div class="llm-editor-header">
       <h3 class="card-title">${escapeHtml(config.name)}</h3>
       <div class="llm-editor-actions">
-        <button id="save-btn" class="btn btn-primary">${ICONS.save}<span>保存</span></button>
+        <button id="save-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
         <button id="cancel-btn" class="btn btn-secondary">取消</button>
       </div>
     </div>
@@ -410,7 +410,7 @@ function setupFormEvents(editorEl, root, isCreate) {
       const toggleBtn = e.target.closest('.api-key-toggle')
       const isPassword = input.type === 'password'
       input.type = isPassword ? 'text' : 'password'
-      toggleBtn.innerHTML = isPassword ? ICONS.eyeOff : ICONS.eye
+      toggleBtn.innerHTML = isPassword ? icon('eye-off', 16) : icon('eye', 16)
       toggleBtn.title = isPassword ? '隐藏' : '显示'
     }
 
@@ -420,9 +420,9 @@ function setupFormEvents(editorEl, root, isCreate) {
       newItem.dataset.index = apiKeyList.children.length
       newItem.innerHTML = `
         <input type="password" class="form-input api-key-input" placeholder="sk-..." />
-        <button class="btn-icon api-key-toggle" type="button" title="显示">${ICONS.eye}</button>
-        <button class="btn-icon api-key-remove" type="button" title="删除">${ICONS.x}</button>
-        <button class="btn-icon api-key-add" type="button" title="添加">${ICONS.plus}</button>
+        <button class="btn-icon api-key-toggle" type="button" title="显示">${icon('eye', 16)}</button>
+        <button class="btn-icon api-key-remove" type="button" title="删除">${icon('x', 16)}</button>
+        <button class="btn-icon api-key-add" type="button" title="添加">${icon('plus', 16)}</button>
       `
       const prevAddBtn = item.querySelector('.api-key-add')
       if (prevAddBtn) prevAddBtn.remove()
@@ -434,7 +434,7 @@ function setupFormEvents(editorEl, root, isCreate) {
       if (items.length > 1) {
         const lastItem = items[items.length - 1]
         if (lastItem === item && items.length > 1) {
-          items[items.length - 2].innerHTML += `<button class="btn-icon api-key-add" type="button" title="添加">${ICONS.plus}</button>`
+          items[items.length - 2].innerHTML += `<button class="btn-icon api-key-add" type="button" title="添加">${icon('plus', 16)}</button>`
         }
         item.remove()
         apiKeyList.querySelectorAll('.api-key-item').forEach((el, idx) => el.dataset.index = idx)

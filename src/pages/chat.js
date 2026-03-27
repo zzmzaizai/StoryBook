@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { ICONS } from '../lib/icons.js'
+import { icon } from '../lib/icons.js'
 import { store } from '../state/store.js'
 
 /**
@@ -29,7 +29,7 @@ export async function render() {
       <!-- 侧边栏：Agent 选择 -->
       <aside class="chat-sidebar">
         <div class="chat-sidebar-header">
-          <h3>${ICONS.message} AI 助手</h3>
+          <h3>${icon('message', 16)} AI 助手</h3>
         </div>
         <div class="chat-agent-list" id="agent-list">
           <!-- Agent 列表将在这里渲染 -->
@@ -41,7 +41,7 @@ export async function render() {
         <!-- 聊天头部 -->
         <header class="chat-header">
           <div class="chat-header-info">
-            <span class="chat-header-icon">${ICONS.ai}</span>
+            <span class="chat-header-icon">${icon('ai', 18)}</span>
             <div class="chat-header-text">
               <h2 id="current-agent-name">${currentAgentName}</h2>
               <span class="chat-header-status" id="agent-status">准备就绪</span>
@@ -49,10 +49,10 @@ export async function render() {
           </div>
           <div class="chat-header-actions">
             <button class="btn-icon" id="clear-chat" title="清空对话">
-              ${ICONS.trash}
+              ${icon('trash', 16)}
             </button>
             <button class="btn-icon" id="chat-settings" title="设置">
-              ${ICONS.settings}
+              ${icon('settings', 16)}
             </button>
           </div>
         </header>
@@ -60,7 +60,7 @@ export async function render() {
         <!-- 消息列表 -->
         <div class="chat-messages" id="chat-messages">
           <div class="chat-welcome">
-            <div class="chat-welcome-icon">${ICONS.sparkles}</div>
+            <div class="chat-welcome-icon">${icon('sparkles', 20)}</div>
             <h3>你好！我是 ${currentAgentName}</h3>
             <p>有什么我可以帮你的吗？</p>
           </div>
@@ -76,7 +76,7 @@ export async function render() {
               rows="1"
             ></textarea>
             <button class="chat-send-btn" id="send-btn" disabled>
-              ${ICONS.send}
+              ${icon('send', 16)}
             </button>
           </div>
           <div class="chat-input-hint">
@@ -123,7 +123,7 @@ async function loadAgents() {
         code: 'general_chat',
         name: '通用助手',
         description: '通用的 AI 助手，可以回答各种问题',
-        icon: ICONS.message,
+        icon: icon('message', 16),
         isDefault: true
       },
       ...agentConfigs
@@ -146,7 +146,7 @@ async function loadAgents() {
         code: 'general_chat',
         name: '通用助手',
         description: '通用的 AI 助手，可以回答各种问题',
-        icon: ICONS.message,
+        icon: icon('message', 16),
         isDefault: true
       }
     ]
@@ -159,12 +159,12 @@ async function loadAgents() {
  */
 function getAgentIcon(agentCode) {
   const iconMap = {
-    'novel_outline': ICONS.book,
-    'chapter_timeline': ICONS.timeline,
-    'character_design': ICONS.user,
-    'general_chat': ICONS.message
+    'novel_outline': icon('book', 16),
+    'chapter_timeline': icon('timeline', 16),
+    'character_design': icon('user', 16),
+    'general_chat': icon('message', 16)
   }
-  return iconMap[agentCode] || ICONS.ai
+  return iconMap[agentCode] || icon('ai', 16)
 }
 
 /**
@@ -369,7 +369,7 @@ function addErrorMessage(content) {
   errorEl.className = 'chat-message chat-message-error'
   errorEl.innerHTML = `
     <div class="chat-message-content">
-      <span class="chat-error-icon">${ICONS.alert}</span>
+      <span class="chat-error-icon">${icon('alert-circle', 16)}</span>
       <span>${content}</span>
     </div>
   `
@@ -409,7 +409,7 @@ function renderMessage(message) {
   } else {
     messageEl.innerHTML = `
       <div class="chat-message-avatar">
-        ${isUser ? ICONS.user : ICONS.ai}
+        ${isUser ? icon('user', 16) : icon('ai', 16)}
       </div>
       <div class="chat-message-body">
         <div class="chat-message-header">
@@ -510,7 +510,7 @@ function showLoading() {
   loadingEl.className = 'chat-message chat-message-loading'
   loadingEl.id = 'chat-loading'
   loadingEl.innerHTML = `
-    <div class="chat-message-avatar">${ICONS.ai}</div>
+    <div class="chat-message-avatar">${icon('ai', 16)}</div>
     <div class="chat-message-body">
       <div class="chat-loading-dots">
         <span></span>
@@ -548,7 +548,7 @@ function clearChat() {
     if (messagesContainer) {
       messagesContainer.innerHTML = `
         <div class="chat-welcome">
-          <div class="chat-welcome-icon">${ICONS.sparkles}</div>
+          <div class="chat-welcome-icon">${icon('sparkles', 20)}</div>
           <h3>你好！我是 ${currentAgentName}</h3>
           <p>有什么我可以帮你的吗？</p>
         </div>
