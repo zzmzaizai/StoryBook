@@ -91,7 +91,7 @@ async function applyThemeMode(themeMode, saveToStore = true) {
 
   applyResolvedTheme(resolvedTheme)
   setupSystemThemeListener()
-  await applyNativeTheme(normalizedMode)
+  await applyNativeTheme(normalizedMode, resolvedTheme)
 
   localStorage.setItem(THEME_LOCAL_KEY, normalizedMode)
 
@@ -136,6 +136,7 @@ function setupSystemThemeListener() {
     const resolvedTheme = resolveTheme('auto')
     currentResolvedTheme = resolvedTheme
     applyResolvedTheme(resolvedTheme)
+    applyNativeTheme('auto', resolvedTheme)
     THEME_CHANGE_LISTENERS.forEach(fn => {
       try {
         fn(resolvedTheme, currentThemeMode)
@@ -146,9 +147,9 @@ function setupSystemThemeListener() {
   mediaQuery.addEventListener('change', mediaQueryHandler)
 }
 
-async function applyNativeTheme(themeMode) {
+async function applyNativeTheme(themeMode, resolvedTheme = currentResolvedTheme) {
   try {
-    await setNativeTheme(themeMode)
+    await setNativeTheme(themeMode === 'auto' ? resolvedTheme : themeMode)
   } catch (e) {
     console.warn('设置原生窗口主题失败:', e)
   }
