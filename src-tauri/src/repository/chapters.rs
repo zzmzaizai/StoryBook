@@ -87,6 +87,19 @@ impl ChapterRepository {
             .await
     }
 
+    pub async fn get_next_chapter_number(&self, novel_id: i32) -> Result<i32, sea_orm::DbErr> {
+        let max_chapter = ChapterEntity::find()
+            .filter(chapters::Column::NovelId.eq(novel_id))
+            .order_by_desc(chapters::Column::ChapterNumber)
+            .one(&*self.db)
+            .await?;
+
+        Ok(match max_chapter {
+            Some(chapter) => chapter.chapter_number + 1,
+            None => 1,
+        })
+    }
+
     pub async fn update(
         &self,
         id: i32,
@@ -101,6 +114,9 @@ impl ChapterRepository {
 
         if let Some(chapter_name) = params.chapter_name {
             active.chapter_name = Set(chapter_name);
+        }
+        if let Some(chapter_number) = params.chapter_number {
+            active.chapter_number = Set(chapter_number);
         }
         if let Some(content) = params.content {
             let word_count = content.chars().count() as i32;
@@ -133,6 +149,7 @@ impl ChapterRepository {
 }
 
 pub struct ChapterUpdateParams {
+    pub chapter_number: Option<i32>,
     pub chapter_name: Option<String>,
     pub content: Option<String>,
     pub status: Option<i32>,

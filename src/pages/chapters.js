@@ -92,16 +92,18 @@ export async function render() {
       const div = document.createElement('div')
       div.className = `chapter-list-item ${selectedChapterId === item.id ? 'active' : ''}`
       div.dataset.id = item.id
-        div.innerHTML = `
+      div.innerHTML = `
+        <div class="chapter-item-number-wrap">
+          <div class="chapter-item-number">${item.chapter_number}</div>
+          <div class="chapter-item-number-label">章节</div>
+          ${item.version > 1 ? `<div class="chapter-item-version">v${item.version}</div>` : ''}
+        </div>
+        <div class="chapter-item-body">
           <div class="chapter-item-header">
-            <div class="chapter-item-number-wrap">
-              <div class="chapter-item-number">${item.chapter_number}</div>
-              ${item.version > 1 ? `<div class="chapter-item-version">v${item.version}</div>` : ''}
-            </div>
             <div class="chapter-item-title">${item.chapter_name || '未命名章节'}</div>
           </div>
           <div class="chapter-item-meta">
-            <div class="chapter-item-meta-tags">
+            <div class="chapter-item-meta-main">
               <span class="badge badge-sm ${getStatusBadgeClass(item.status)}">${ENUMS.NovelChapterStatus[item.status] || '起草'}</span>
               <span class="chapter-item-words">${formatWordCount(item.word_count)}</span>
             </div>
@@ -109,7 +111,8 @@ export async function render() {
               ${icon('delete', 14)}
             </button>
           </div>
-        `
+        </div>
+      `
       
       const deleteBtn = div.querySelector('[data-action="delete"]')
       if (deleteBtn) {
@@ -154,11 +157,8 @@ export async function render() {
   // 初始加载时如果有数据，选中第一个
   setTimeout(async () => {
     if (!selectedChapterId && !isCreating) {
-      const result = await api.listChapters(store.currentNovelId, 0, 1)
-      if (result.items && result.items.length > 0) {
-        selectedChapterId = result.items[0].id
-        renderChapterEditor(el)
-      }
+      isCreating = true
+      renderChapterEditor(el)
     }
   }, 100)
 
@@ -176,10 +176,7 @@ async function renderChapterEditor(root) {
   const editorEl = root.querySelector('#chapter-editor')
 
   if (isCreating) {
-    // 获取当前最大章节号
-    const result = await api.listChapters(store.currentNovelId, 0, 1)
-    const maxChapter = result.items && result.items.length > 0 ? result.items[0].chapter_number : 0
-    const nextChapter = maxChapter + 1
+    const nextChapter = await getNextChapterNumber()
 
     editorEl.innerHTML = `
       <div class="chapter-editor-header">
@@ -189,16 +186,16 @@ async function renderChapterEditor(root) {
         </div>
       </div>
 
-      <div class="form-grid mb-lg">
-        <div class="form-group">
-          <label class="form-label">章节序号</label>
-          <input id="chapter-number" class="form-input" type="number" value="${nextChapter}" />
-        </div>
-        <div class="form-group flex-2">
+      <div class="chapter-form-grid mb-lg">
+        <div class="form-group chapter-form-field chapter-form-field--name">
           <label class="form-label">章节名称</label>
           <input id="chapter-name" class="form-input" placeholder="输入章节名称" />
         </div>
-        <div class="form-group">
+        <div class="form-group chapter-form-field chapter-form-field--number">
+          <label class="form-label">章节序号</label>
+          <input id="chapter-number" class="form-input" type="number" value="${nextChapter}" />
+        </div>
+        <div class="form-group chapter-form-field chapter-form-field--status">
           <label class="form-label">章节状态</label>
           <select id="chapter-status" class="form-input">
             ${Object.entries(ENUMS.NovelChapterStatus).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}
@@ -241,16 +238,16 @@ async function renderChapterEditor(root) {
       try {
         const newChapter = await api.createChapter(store.currentNovelId, chapterName)
         const content = editorInstance ? editorInstance.getValue() : ''
+        const chapterNumber = parseInt(editorEl.querySelector('#chapter-number').value) || nextChapter
         const status = parseInt(editorEl.querySelector('#chapter-status').value)
 
-        if (content) {
-          await api.saveChapter(newChapter.id, chapterName, content, status)
-        }
+        await api.saveChapter(newChapter.id, chapterNumber, chapterName, content, status)
 
-        isCreating = false
-        selectedChapterId = newChapter.id
+        isCreating = true
+        selectedChapterId = null
         destroyCurrentEditor()
         chapterListComponent.refresh()
+        renderChapterEditor(root)
         toastSuccess('章节创建成功！')
       } catch (e) {
         console.error('创建章节失败:', e)
@@ -302,16 +299,16 @@ async function renderChapterEditor(root) {
       </div>
     </div>
 
-    <div class="form-grid mb-lg">
-      <div class="form-group">
-        <label class="form-label">章节序号</label>
-        <input id="chapter-number" class="form-input" type="number" value="${chapter.chapter_number}" />
-      </div>
-      <div class="form-group flex-2">
+    <div class="chapter-form-grid mb-lg">
+      <div class="form-group chapter-form-field chapter-form-field--name">
         <label class="form-label">章节名称</label>
         <input id="chapter-name" class="form-input" value="${chapter.chapter_name || ''}" />
       </div>
-      <div class="form-group">
+      <div class="form-group chapter-form-field chapter-form-field--number">
+        <label class="form-label">章节序号</label>
+        <input id="chapter-number" class="form-input" type="number" value="${chapter.chapter_number}" />
+      </div>
+      <div class="form-group chapter-form-field chapter-form-field--status">
         <label class="form-label">状态</label>
         <select id="chapter-status" class="form-input">${statusOptions}</select>
       </div>
@@ -353,10 +350,11 @@ async function renderChapterEditor(root) {
   editorEl.querySelector('#save-chapter-btn')?.addEventListener('click', async () => {
     try {
       const chapterName = editorEl.querySelector('#chapter-name').value.trim()
+      const chapterNumber = parseInt(editorEl.querySelector('#chapter-number').value || chapter.chapter_number)
       const content = editorInstance ? editorInstance.getValue() : ''
       const status = parseInt(editorEl.querySelector('#chapter-status').value)
 
-      await api.saveChapter(chapter.id, chapterName, content, status)
+      await api.saveChapter(chapter.id, chapterNumber, chapterName, content, status)
 
       toastSuccess('保存成功！')
       chapterListComponent.refresh()
@@ -418,4 +416,8 @@ export function cleanup() {
   selectedChapterId = null
   isCreating = false
   chaptersList = []
+}
+
+async function getNextChapterNumber() {
+  return api.getNextChapterNumber(store.currentNovelId)
 }

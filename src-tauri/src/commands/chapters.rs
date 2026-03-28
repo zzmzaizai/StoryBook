@@ -60,14 +60,28 @@ pub async fn get_chapter(
 }
 
 #[tauri::command]
+pub async fn get_next_chapter_number(
+    state: State<'_, AppState>,
+    novel_id: i32,
+) -> Result<i32, String> {
+    state
+        .chapters()
+        .get_next_chapter_number(novel_id)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub async fn save_chapter(
     state: State<'_, AppState>,
     id: i32,
+    chapter_number: i32,
     chapter_name: String,
     content: Option<String>,
     status: i32,
 ) -> Result<chapters::Model, String> {
     let params = ChapterUpdateParams {
+        chapter_number: Some(chapter_number),
         chapter_name: Some(chapter_name),
         content,
         status: Some(status),

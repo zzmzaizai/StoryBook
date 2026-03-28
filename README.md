@@ -1,7 +1,7 @@
 # StoryBook - AI Novel Editor
 
 <p align="center">
-  <strong>A cross-platform desktop application for AI-assisted novel writing based on Tauri v2</strong>
+  <strong>A cross-platform desktop app for AI-assisted novel planning and writing, built with Tauri v2</strong>
 </p>
 
 <p align="center">
@@ -19,106 +19,99 @@
 
 ## Introduction
 
-StoryBook is a **powerful**, **lightweight**, and **feature-rich** cross-platform desktop application designed specifically for novel writers and creative authors. Built with modern technologies (Tauri v2 + Rust + Vanilla JS), it combines the speed of native applications with the flexibility of web technologies.
+StoryBook is a local-first desktop application for novel creation. It combines project management, chapter editing, metadata organization, timeline planning, and configurable AI assistance in a single Tauri application.
 
-Whether you're writing a short story, a full-length novel, a screenplay, or even academic papers, StoryBook provides all the tools you need to bring your creative vision to life. With integrated AI assistance, you can overcome writer's block, generate ideas, and enhance your storytelling like never before.
+The current codebase focuses on a practical writing workflow:
 
-### Why StoryBook?
+- manage novel projects locally
+- edit chapters and characters
+- maintain novel metadata and timeline outlines
+- configure LLMs and Agents
+- use AI to generate novel info, metadata, timeline drafts, and chat responses
 
-- **🚀 Lightning Fast** - Built with Tauri v2 and Rust for native-level performance
-- **🔒 Privacy First** - All data stored locally, your stories stay with you
-- **🤖 AI-Powered** - Leverage multiple LLM providers to boost your creativity
-- **🎨 10+ Novel Styles** - From urban romance to xianxia cultivation fantasy
-- **📝 Professional Editor** - WYSIWYG Markdown editor with live preview
-- **📊 Smart Organization** - Chapters, characters, timelines, and metadata all in one place
-- **🌙 Dark/Light Themes** - Comfortable writing experience day or night
-- **🔐 Security** - Password protection to keep your work safe
+## Current Features
 
-## Features
+### Project Management
 
-### Core Features
+- Create, update, and delete novel projects
+- Store novel base information such as title, summary, style, target audience, and length type
+- Save AI original requirement text for AI-created novels
+- Maintain writing settings separately from the base novel record
 
-- **📚 Novel Project Management**
-  - Create unlimited novel projects with custom metadata
-  - Support for 15+ writing styles (Urban, Fantasy, Sci-Fi, Wuxia, Xianxia, etc.)
-  - Configurable length types (Short, Medium, Long, Epic)
-  - Track word count, chapter count, and writing progress
-  - Set target audience and writing goals
+### Workspace
 
-- **✍️ Advanced Chapter Editor**
-  - Built-in Vditor WYSIWYG Markdown editor
-  - Real-time word count tracking
-  - Version control with full history
-  - Chapter status management (Draft, Concept, Rough, Final, Revision)
-  - Drag-and-drop chapter reordering
+- `Basic` tab for novel profile and writing settings
+- `Meta` tab for structured novel metadata editing
+- `Timeline` tab for volume/chapter-range planning
+- `Workflow` tab as a lightweight placeholder for future orchestration
 
-- **👥 Character Development System**
-  - Create detailed character profiles
-  - Define relationships between characters
-  - Role attributes (Protagonist, Heroine, Hero, Villain, Supporting, Passerby)
-  - Character personality and background tracking
-  - Visual character organization
+### Chapter and Character Management
 
-- **📅 Timeline & Story Tracking**
-  - Visual story timeline management
-  - Event tracking across chapters
-  - Maintain plot consistency
-  - Track character appearances and story arcs
+- Chapter CRUD with Vditor-based Markdown editing
+- Character CRUD with role, gender, and personality fields
+- Word count tracking stored on the chapter side
 
-- **🏷️ Flexible Metadata System**
-  - Custom metadata properties for novels and chapters
-  - Extendable attribute system
-  - Search and filter by metadata
+### AI Features Available Now
 
-### AI Capabilities
+- AI-generated novel base info from a free-text requirement
+- Streaming AI chat in the assistant page
+- AI generation for novel metadata with streaming output into the editor
+- AI generation for timeline content with structured JSON response and form autofill
+- Writing settings can be injected into AI prompts when a novel context is available
 
-- **🌐 Multi-Provider LLM Support**
-  - **OpenAI / Chat Completions Compatible** - OpenAI and any compatible gateway via custom `base_url`
-  - **Anthropic Native** - Claude models through the native Anthropic provider
-  - **Google Gemini Native** - Gemini models through the native Gemini provider
-  - **Local AI** - Ollama via Rig native provider without API key
+### LLM and Agent System
 
-- **⚙️ Flexible Configuration**
-  - Preset mode for quick setup
-  - Advanced mode for fine-tuned control
-  - Custom API endpoints
-  - Multiple model profiles
+- Manage LLM configurations in-app
+- Manage Agent configurations in-app
+- Support default LLM selection and Agent-specific binding
+- Built-in Agents currently include:
+  - `general_chat`
+  - `novel_info_generator`
+  - `novel_outline`
+  - `chapter_timeline`
+  - `character_design`
 
-- **🤖 AI Writing Assistance**
-  - Intelligent outline generation
-  - Content continuation and expansion
-  - Character dialogue suggestions
-  - Plot twist ideas
-  - Style and tone recommendations
-  - Grammar and clarity improvements
+### Security and Local Storage
 
-### Security Features
+- Local password access page
+- SQLite-based local data storage
+- Tauri Store for local settings persistence
 
-- **🔐 Access Protection**
-  - Password-protected application access
-  - Session-based authentication
-  - Configurable security levels
-  - "Ignore Risk" mode for convenience
+## LLM Provider Support
 
-### User Experience
+The current implementation supports real requests for these providers:
 
-- **🌓 Theme Support** - Automatic dark/light theme switching based on system preference
-- **📱 Responsive Design** - Optimized layout for different screen sizes
-- **⚡ Fast Startup** - Quick launch with splash screen
-- **🔄 Auto-save** - Never lose your work with automatic saving
-- **📁 Local Storage** - All data stored locally in SQLite database
+- OpenAI
+- DeepSeek
+- OpenRouter
+- Ollama (OpenAI-compatible endpoint)
+
+The codebase contains provider abstractions for more models, but not every listed provider is fully wired for real requests yet.
+
+## What Is Not Fully Implemented
+
+The repository still contains some placeholder or incomplete areas. Examples:
+
+- workflow automation is not finished
+- some AI entry points were added recently and are still evolving
+- advanced structured writing pipelines are not fully connected end-to-end
+- some documentation from older iterations overstated the current scope
+
+This README reflects the current implemented behavior rather than the original roadmap.
 
 ## Supported Novel Styles
 
-| Style | Type |
-|-------|------|
-| Urban | Modern themes |
-| Fantasy | Fantasy worlds |
-| Suspense | Mystery & detective |
-| Comedy | Light & humorous |
-| Romance | Love stories |
-| Horror | Thriller & horror |
-| Sci-Fi | Future technology |
+Current built-in style enum values:
+
+| Style | Description |
+|-------|-------------|
+| Urban | Modern / city themes |
+| Fantasy | Fantasy world |
+| Suspense | Mystery / suspense |
+| Comedy | Light / humorous |
+| Romance | Relationship-driven |
+| Horror | Horror / thriller |
+| Sci-Fi | Science fiction |
 | Historical | Historical themes |
 | Wuxia | Martial arts |
 | Xianxia | Cultivation fantasy |
@@ -127,200 +120,112 @@ Whether you're writing a short story, a full-length novel, a screenplay, or even
 
 ### Frontend
 
-- **Vanilla JavaScript** - Native JavaScript, no framework dependencies
-- **Vite 6.x** - Modern build tool
-- **Vditor 3.x** - WYSIWYG Markdown editor
-- **Tauri API v2** - Desktop application interface
+- Vanilla JavaScript
+- Vite
+- Vditor
+- Tauri API v2
 
 ### Backend
 
-- **Tauri v2** - Lightweight cross-platform desktop application framework
-- **Rust** - High-performance systems programming language
-- **Sea-ORM** - Async ORM framework
-- **SQLite** - Embedded database
-- **Tokio** - Async runtime
+- Tauri v2
+- Rust
+- SeaORM
+- SQLite
+- Tokio
+- rig-core
 
 ## Project Structure
 
-```
+```text
 StoryBook/
-├── src/                        # Frontend source code
-│   ├── api/                    # Tauri API wrapper
-│   ├── assets/                 # Static assets
-│   ├── components/             # UI components
-│   │   ├── sidebar.js          # Sidebar
-│   │   ├── novel-list.js       # Novel list
-│   │   ├── chapter-page.js     # Chapter page
-│   │   ├── character-page.js   # Character page
-│   │   └── workspace.js        # Workspace
-│   ├── lib/                    # Utility libraries
-│   │   ├── modal.js            # Modal
-│   │   ├── toast.js            # Toast notifications
-│   │   ├── theme.js            # Theme management
-│   │   ├── markdown-editor.js  # Markdown editor
-│   │   └── store.js            # Local storage
-│   ├── pages/                  # Pages
-│   │   ├── dashboard.js        # Dashboard
-│   │   ├── novels.js           # Novel management
-│   │   ├── chapters.js         # Chapter management
-│   │   ├── characters.js       # Character management
-│   │   ├── workspace.js        # Workspace
-│   │   ├── llm-config.js       # LLM configuration
-│   │   ├── agent-config.js     # Agent configuration
-│   │   ├── security.js         # Security settings
-│   │   └── about.js            # About page
-│   ├── state/                  # State management
-│   ├── style/                  # Stylesheets
-│   ├── main.js                 # Entry point
-│   └── router.js               # Routing system
-├── src-tauri/                  # Tauri backend
+├── src/
+│   ├── api/                     # Tauri invoke wrappers
+│   ├── components/              # Reusable UI pieces and modals
+│   ├── lib/                     # Modal, markdown editor, tabs, toast, store
+│   ├── pages/
+│   │   ├── dashboard.js
+│   │   ├── novels.js
+│   │   ├── chapters.js
+│   │   ├── characters.js
+│   │   ├── chat.js
+│   │   ├── llm-config.js
+│   │   ├── agent-config.js
+│   │   ├── security.js
+│   │   ├── workspace.js
+│   │   └── workspace/
+│   │       ├── workspace-basic.js
+│   │       ├── workspace-meta.js
+│   │       ├── workspace-timeline.js
+│   │       └── workspace-workflow.js
+│   ├── state/                   # Lightweight frontend state
+│   ├── style/                   # Global and page styles
+│   ├── main.js
+│   └── router.js
+├── src-tauri/
 │   ├── src/
-│   │   ├── commands/           # Tauri commands
-│   │   │   ├── novels.rs       # Novel commands
-│   │   │   ├── chapters.rs     # Chapter commands
-│   │   │   ├── characters.rs   # Character commands
-│   │   │   ├── timeline.rs     # Timeline commands
-│   │   │   └── meta.rs         # Metadata commands
-│   │   ├── constants/          # Constant definitions
-│   │   ├── entity/             # Database entities
-│   │   │   ├── novels.rs       # Novel entity
-│   │   │   ├── chapters.rs     # Chapter entity
-│   │   │   ├── characters.rs   # Character entity
-│   │   │   └── enums.rs        # Enum definitions
-│   │   ├── repository/         # Data repository layer
-│   │   ├── seeds/              # Seed data
-│   │   ├── db.rs               # Database initialization
-│   │   ├── lib.rs              # Library entry
-│   │   ├── main.rs             # Main program
-│   │   ├── rig_service.rs      # AI service
-│   │   └── tray.rs             # System tray
-│   ├── icons/                  # Application icons
-│   ├── Cargo.toml              # Rust dependency configuration
-│   └── tauri.conf.json         # Tauri configuration
-├── index.html                  # Entry HTML
-├── package.json                # NPM configuration
-├── vite.config.js              # Vite configuration
-└── README.md                   # Project documentation
+│   │   ├── ai/                  # LLM, Agent, prompt loading, AI execution
+│   │   ├── commands/            # Tauri commands
+│   │   ├── constants/           # Built-in meta and chapter property definitions
+│   │   ├── entity/              # SeaORM entities
+│   │   ├── repository/          # Repository layer
+│   │   ├── seeds/               # Seed data
+│   │   ├── db.rs                # SQLite init and migration-like column checks
+│   │   ├── lib.rs               # Tauri app entry
+│   │   ├── storage.rs           # App storage paths
+│   │   └── tray.rs              # Tray support
+│   └── Cargo.toml
+├── package.json
+├── vite.config.js
+└── README.md
 ```
 
 ## Quick Start
 
 ### Requirements
 
-- **Node.js** >= 18.x
-- **Rust** >= 1.70
-- **pnpm** or **npm**
+- Node.js >= 18
+- Rust >= 1.70
+- npm
 
-### Installation
+### Install
 
 ```bash
-# Clone the repository
 git clone https://github.com/zzmzaizai/storybook.git
 cd storybook
-
-# Install frontend dependencies
 npm install
-
-# Install Rust dependencies (auto-installed on first run)
-cd src-tauri
-cargo install
 ```
 
-### Development Mode
+### Development
 
 ```bash
-# Start development server
-npm run tauri dev
+npm run tauri:dev
 ```
 
-### Build for Production
+### Production Build
 
 ```bash
-# Build production version
-npm run tauri build
+npm run tauri:build
 ```
 
-Build artifacts are located in `src-tauri/target/release/bundle/`.
-
-### Local CI Check
-
-Before pushing code or opening a PR, run the local CI-equivalent checks:
-
-```bash
-npm run check:ci
-```
-
-This command runs the same four checks used by CI:
-
-- `cargo fmt --all -- --check`
-- `cargo check`
-- `cargo clippy --all-targets -- -D warnings`
-- `npm run build`
-
-## Configuration
-
-### LLM Configuration
-
-The application supports multiple LLM providers:
-
-| Provider | Type | Default API Endpoint |
-|----------|------|---------------------|
-| OpenAI | Chat Completions Compatible | https://api.openai.com/v1 |
-| Anthropic | Native | https://api.anthropic.com |
-| Gemini | Native | https://generativelanguage.googleapis.com |
-| Ollama | Rig Native | http://localhost:11434 |
-
-### Security Configuration
-
-- Default access password: `123456` (recommended to change on first use)
-- Support for custom access passwords
-- Session-level authentication state management
+Build artifacts are generated under `src-tauri/target/release/bundle/`.
 
 ## Data Storage
 
-- Database file: `src-tauri/novel_editor.db` (SQLite)
-- Configuration storage: Using Tauri Store plugin
-- Data location: User application data directory
+- Main data: SQLite in the user app data directory
+- Local settings: Tauri Store plugin
+- Novel-related files: managed under the app storage directory
 
-## Development Guide
+## Notes for Developers
 
-### Recommended IDE
-
-- [VS Code](https://code.visualstudio.com/)
-- [Tauri Extension](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
-- [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
-
-### Code Standards
-
-- JavaScript: ES6+ syntax, modular development
-- Rust: Follow Rust standard code style
-- Comments: English comments
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit Issues and Pull Requests.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- The frontend uses direct DOM rendering instead of a framework
+- Workspace tabs and AI features are evolving quickly; reading the current code is more reliable than relying on older screenshots or external descriptions
+- Some recently added AI flows use streaming events, others use structured JSON responses depending on the editor scenario
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See `LICENSE` for details.
 
 ## Links
 
 - Gitee: https://gitee.com/zzmzaizai/storybook
 - GitHub: https://github.com/zzmzaizai/storybook
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=zzmzaizai/storybook&type=Date)](https://star-history.com/#zzmzaizai/storybook&Date)
-
----
-
-<p align="center">
-  Made with ❤️ by zaizai
-</p>

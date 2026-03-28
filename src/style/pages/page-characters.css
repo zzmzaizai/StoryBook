@@ -72,18 +72,23 @@
 }
 
 .character-list-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px 8px;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  width: 100%;
+  box-sizing: border-box;
   border-radius: var(--radius-md);
   cursor: pointer;
-  transition: background-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
   position: relative;
+  border: 1px solid transparent;
 }
 
 .character-list-item:hover {
   background: var(--bg-tertiary);
+  border-color: var(--border-primary);
 }
 
 .character-list-item:hover .list-item-delete-btn {
@@ -92,6 +97,7 @@
 
 .character-list-item.active {
   background: var(--accent-muted);
+  border-color: color-mix(in srgb, var(--accent) 36%, transparent);
 }
 
 .character-list-item.active .list-item-delete-btn {
@@ -105,24 +111,31 @@
 }
 
 .character-avatar {
-  width: 28px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 14px;
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: white;
   flex-shrink: 0;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, white), var(--accent));
+}
+
+.character-item-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .character-item-name {
-  flex: 1;
   min-width: 0;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
-  font-size: var(--font-size-sm);
+  font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

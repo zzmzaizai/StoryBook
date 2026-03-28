@@ -56,8 +56,9 @@ export const api = {
   listChapters: (novelId, page = 0, pageSize = 20) =>
     invoke('list_chapters', { novelId, page, pageSize }),
   getChapter: (id) => invoke('get_chapter', { id }),
-  saveChapter: (id, chapterName, content, status) =>
-    invoke('save_chapter', { id, chapterName, content, status }),
+  getNextChapterNumber: (novelId) => invoke('get_next_chapter_number', { novelId }),
+  saveChapter: (id, chapterNumber, chapterName, content, status) =>
+    invoke('save_chapter', { id, chapterNumber, chapterName, content, status }),
   deleteChapter: (id) => invoke('delete_chapter', { id }),
 
   createCharacter: (novelId, name) => invoke('create_character', { novelId, name }),

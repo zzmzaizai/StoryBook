@@ -2,6 +2,7 @@ import { api, ENUMS } from '../api/tauri.js'
 import { store } from '../state/store.js'
 import { navigate } from '../router.js'
 import { icon } from '../lib/icons.js'
+import { createMarkdownEditor } from '../lib/markdown-editor.js'
 import { confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
@@ -12,6 +13,7 @@ let selectedCharacterId = null
 let isCreating = false
 let charactersList = []
 let characterListComponent = null
+let personalityEditorInstance = null
 
 export async function render() {
   const el = document.createElement('div')
@@ -93,19 +95,22 @@ export async function render() {
         ? `${item.name || '未命名'}（${item.nickname}）` 
         : (item.name || '未命名')
       div.innerHTML = `
-        <div class="character-item-header">
-          <div class="character-item-name">${displayName}</div>
-        </div>
-        <div class="character-item-meta">
-          <div class="character-item-meta-tags">
-            <span class="badge badge-sm">${ENUMS.CharacterRoleAttribute[item.role_attribute] || '角色'}</span>
-            <span class="badge badge-sm badge-secondary">${ENUMS.CharacterGender[item.gender] || '未知'}</span>
-            <span class="badge badge-sm badge-secondary">${ENUMS.CharacterType[item.character_type] || '人类'}</span>
-            ${item.age ? `<span class="badge badge-sm badge-secondary">${item.age}岁</span>` : ''}
+        <div class="character-avatar">${(item.name || '角').slice(0, 1)}</div>
+        <div class="character-item-body">
+          <div class="character-item-header">
+            <div class="character-item-name">${displayName}</div>
           </div>
-          <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
-            ${icon('delete', 14)}
-          </button>
+          <div class="character-item-meta">
+            <div class="character-item-meta-tags">
+              <span class="badge badge-sm">${ENUMS.CharacterRoleAttribute[item.role_attribute] || '角色'}</span>
+              <span class="badge badge-sm badge-secondary">${ENUMS.CharacterGender[item.gender] || '未知'}</span>
+              <span class="badge badge-sm badge-secondary">${ENUMS.CharacterType[item.character_type] || '人类'}</span>
+              ${item.age ? `<span class="badge badge-sm badge-secondary">${item.age}岁</span>` : ''}
+            </div>
+            <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
+              ${icon('delete', 14)}
+            </button>
+          </div>
         </div>
       `
       
@@ -163,6 +168,7 @@ export async function render() {
 
 async function renderCharacterEditor(root) {
   const editorEl = root.querySelector('#character-editor')
+  destroyPersonalityEditor()
 
   if (isCreating) {
     editorEl.innerHTML = `
@@ -208,9 +214,21 @@ async function renderCharacterEditor(root) {
 
       <div class="form-group mb-lg">
         <label class="form-label">性格特点</label>
-        <textarea id="character-personality" class="form-input" rows="4" placeholder="描述角色的性格特点..."></textarea>
+        <div id="character-personality-editor" class="markdown-editor-container" style="height: 260px;"></div>
       </div>
     `
+
+    setTimeout(() => {
+      const container = editorEl.querySelector('#character-personality-editor')
+      if (container) {
+        personalityEditorInstance = createMarkdownEditor(container, {
+          placeholder: '描述角色的性格特点、行为方式、心理倾向、说话习惯等...',
+          height: 260,
+          minHeight: 220,
+          toolbar: ['headings', 'bold', 'italic', '|', 'list', 'ordered-list', '|', 'quote', 'code', '|', 'undo', 'redo', '|', 'edit-mode', 'preview'],
+        })
+      }
+    }, 50)
 
     editorEl.querySelector('#save-character-btn')?.addEventListener('click', async () => {
       const name = editorEl.querySelector('#character-name').value.trim()
@@ -224,7 +242,7 @@ async function renderCharacterEditor(root) {
 
         const nickname = editorEl.querySelector('#character-nickname').value.trim() || null
         const age = editorEl.querySelector('#character-age').value.trim() || null
-        const personality = editorEl.querySelector('#character-personality').value.trim() || null
+        const personality = personalityEditorInstance ? personalityEditorInstance.getValue().trim() || null : null
         const roleAttribute = parseInt(editorEl.querySelector('#character-role').value)
         const gender = parseInt(editorEl.querySelector('#character-gender').value)
         const characterType = parseInt(editorEl.querySelector('#character-type').value)
@@ -329,9 +347,22 @@ async function renderCharacterEditor(root) {
 
     <div class="form-group mb-lg">
       <label class="form-label">性格特点</label>
-      <textarea id="character-personality" class="form-input" rows="4">${character.personality || ''}</textarea>
+      <div id="character-personality-editor" class="markdown-editor-container" style="height: 300px;"></div>
     </div>
   `
+
+  setTimeout(() => {
+    const container = editorEl.querySelector('#character-personality-editor')
+    if (container) {
+      personalityEditorInstance = createMarkdownEditor(container, {
+        placeholder: '描述角色的性格特点、行为方式、心理倾向、说话习惯等...',
+        height: 300,
+        minHeight: 240,
+        value: character.personality || '',
+        toolbar: ['headings', 'bold', 'italic', '|', 'list', 'ordered-list', '|', 'quote', 'code', '|', 'undo', 'redo', '|', 'edit-mode', 'preview'],
+      })
+    }
+  }, 50)
 
   editorEl.querySelector('#save-character-btn')?.addEventListener('click', async () => {
     try {
@@ -343,7 +374,7 @@ async function renderCharacterEditor(root) {
 
       const nickname = editorEl.querySelector('#character-nickname').value.trim() || null
       const age = editorEl.querySelector('#character-age').value.trim() || null
-      const personality = editorEl.querySelector('#character-personality').value.trim() || null
+      const personality = personalityEditorInstance ? personalityEditorInstance.getValue().trim() || null : null
       const roleAttribute = parseInt(editorEl.querySelector('#character-role').value)
       const gender = parseInt(editorEl.querySelector('#character-gender').value)
       const characterType = parseInt(editorEl.querySelector('#character-type').value)
@@ -395,6 +426,7 @@ function getAvatarColor(id) {
 }
 
 export function cleanup() {
+  destroyPersonalityEditor()
   if (characterListComponent) {
     characterListComponent.destroy()
     characterListComponent = null
@@ -403,4 +435,11 @@ export function cleanup() {
   selectedCharacterId = null
   isCreating = false
   charactersList = []
+}
+
+function destroyPersonalityEditor() {
+  if (personalityEditorInstance) {
+    personalityEditorInstance.destroy()
+    personalityEditorInstance = null
+  }
 }

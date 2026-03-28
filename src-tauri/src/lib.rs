@@ -1,5 +1,5 @@
-mod app_window;
 mod ai;
+mod app_window;
 mod commands;
 mod constants;
 mod db;
@@ -54,6 +54,7 @@ pub fn run() {
             commands::create_chapter,
             commands::list_chapters,
             commands::get_chapter,
+            commands::get_next_chapter_number,
             commands::save_chapter,
             commands::delete_chapter,
             commands::create_character,
