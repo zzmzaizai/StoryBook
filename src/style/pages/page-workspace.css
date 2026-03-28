@@ -627,28 +627,11 @@
   overflow: hidden;
 }
 
-.meta-md-editor .vditor {
-  border: none;
-  height: 100%;
-}
-
-.meta-md-editor .vditor-toolbar {
-  border-bottom: 1px solid var(--border-color);
-}
-
 .timeline-md-editor {
   min-height: 180px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   overflow: hidden;
-}
-
-.timeline-md-editor .vditor {
-  border: none;
-}
-
-.timeline-md-editor .vditor-toolbar {
-  border-bottom: 1px solid var(--border-color);
 }
 
 .meta-editor-textarea {
