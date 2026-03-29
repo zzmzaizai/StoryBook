@@ -6,6 +6,7 @@ import { createMarkdownEditor, destroyEditor } from '../lib/markdown-editor.js'
 import { createModal, confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
+import { listen } from '@tauri-apps/api/event'
 import '../style/editor.css'
 import '../style/virtual-list.css'
 
@@ -15,8 +16,12 @@ let isCreating = false
 let editorInstance = null
 let chaptersList = []
 let chapterListComponent = null
+let chapterAiUnlisteners = []
+let activeChapterAiRequestId = null
+let activeChapterAiModal = null
 
 export async function render() {
+  await ensureChapterAiListeners()
   const el = document.createElement('div')
   el.className = 'page'
 
@@ -182,6 +187,7 @@ async function renderChapterEditor(root) {
       <div class="chapter-editor-header">
         <h3 class="card-title">创建章节</h3>
         <div class="chapter-editor-actions">
+          <button id="ai-generate-chapter-btn" class="btn btn-secondary">${icon('sparkles', 16)}<span>AI生成</span></button>
           <button id="save-chapter-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
         </div>
       </div>
@@ -254,6 +260,10 @@ async function renderChapterEditor(root) {
         toastError('创建失败: ' + e)
       }
     })
+
+    editorEl.querySelector('#ai-generate-chapter-btn')?.addEventListener('click', () => {
+      openChapterAiModal(editorEl, { chapterId: null, chapterNumber: nextChapter, status: 0 })
+    })
     return
   }
 
@@ -280,6 +290,7 @@ async function renderChapterEditor(root) {
         <div class="chapter-version-badge">v${chapter.version}</div>
       </div>
       <div class="chapter-editor-actions">
+        <button id="ai-generate-chapter-btn" class="btn btn-secondary">${icon('sparkles', 16)}<span>AI生成</span></button>
         <button id="save-chapter-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
       </div>
     </div>
@@ -363,6 +374,111 @@ async function renderChapterEditor(root) {
       toastError('保存失败: ' + e)
     }
   })
+
+  editorEl.querySelector('#ai-generate-chapter-btn')?.addEventListener('click', () => {
+    openChapterAiModal(editorEl, {
+      chapterId: chapter.id,
+      chapterNumber: chapter.chapter_number,
+      status: chapter.status,
+    })
+  })
+}
+
+function openChapterAiModal(editorEl, chapterInfo) {
+  const body = document.createElement('div')
+  body.innerHTML = `
+    <div class="form-group mb-md">
+      <label class="form-label">生成模式</label>
+      <select id="chapter-ai-mode" class="form-input">
+        <option value="create">新写本章</option>
+        <option value="rewrite">改写当前内容</option>
+        <option value="expand">扩写当前内容</option>
+        <option value="continue">续写当前内容</option>
+        <option value="polish">润色当前内容</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">补充要求</label>
+      <textarea id="chapter-ai-requirement" class="form-input" rows="6" placeholder="输入你希望 AI 如何生成这一章，例如剧情目标、情绪氛围、冲突重点、场景安排等..."></textarea>
+    </div>
+  `
+
+  const modal = createModal({
+    title: 'AI生成章节',
+    content: body,
+    size: 'md',
+    confirmText: '开始生成',
+    cancelText: '取消',
+    onConfirm: async (instance) => {
+      const requirement = instance.contentEl.querySelector('#chapter-ai-requirement')?.value?.trim() || ''
+      if (!requirement) return false
+
+      const mode = instance.contentEl.querySelector('#chapter-ai-mode')?.value || 'create'
+      const chapterNumber = parseInt(editorEl.querySelector('#chapter-number')?.value || `${chapterInfo.chapterNumber || 1}`, 10) || (chapterInfo.chapterNumber || 1)
+      const currentChapterName = editorEl.querySelector('#chapter-name')?.value?.trim() || ''
+      const currentStatus = parseInt(editorEl.querySelector('#chapter-status')?.value || `${chapterInfo.status || 0}`, 10) || 0
+      const currentContent = editorInstance ? editorInstance.getValue() : ''
+      const requestId = `chapter_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
+
+      activeChapterAiRequestId = requestId
+      editorInstance?.setValue('')
+      instance.setLoading(true)
+
+      try {
+        await api.aiGenerateChapterStream({
+          requestId,
+          novelId: store.currentNovelId,
+          chapterId: chapterInfo.chapterId,
+          currentChapterNumber: chapterNumber,
+          currentChapterName,
+          currentStatus,
+          currentContent,
+          mode,
+          requirement,
+        })
+      } catch (err) {
+        activeChapterAiRequestId = null
+        editorInstance?.setValue(currentContent)
+        instance.setLoading(false)
+        toastError('AI生成失败: ' + err)
+        return false
+      }
+    },
+  })
+
+  activeChapterAiModal = modal
+}
+
+async function ensureChapterAiListeners() {
+  if (chapterAiUnlisteners.length > 0) return
+
+  const chunkUnlisten = await listen('chapter-ai-stream-chunk', (event) => {
+    const payload = event.payload
+    if (!editorInstance || !payload?.delta || payload.request_id !== activeChapterAiRequestId) return
+    editorInstance.setValue((editorInstance.getValue() || '') + payload.delta)
+  })
+
+  const doneUnlisten = await listen('chapter-ai-stream-done', (event) => {
+    const payload = event.payload
+    if (!editorInstance || !payload || payload.request_id !== activeChapterAiRequestId) return
+    editorInstance.setValue(payload.content || '')
+    activeChapterAiRequestId = null
+    activeChapterAiModal?.setLoading(false)
+    activeChapterAiModal?.close({ action: 'confirm' })
+    activeChapterAiModal = null
+    toastSuccess('AI已生成章节内容，请检查后点击保存')
+  })
+
+  const errorUnlisten = await listen('chapter-ai-stream-error', (event) => {
+    const payload = event.payload
+    if (payload?.request_id !== activeChapterAiRequestId) return
+    activeChapterAiRequestId = null
+    activeChapterAiModal?.setLoading(false)
+    activeChapterAiModal = null
+    toastError('AI生成失败: ' + (payload?.error || '未知错误'))
+  })
+
+  chapterAiUnlisteners = [chunkUnlisten, doneUnlisten, errorUnlisten]
 }
 
 async function handleDeleteChapter(id, root) {
@@ -408,6 +524,14 @@ function formatWordCount(count) {
 
 export function cleanup() {
   destroyCurrentEditor()
+  chapterAiUnlisteners.forEach((unlisten) => {
+    try {
+      unlisten()
+    } catch (_) {}
+  })
+  chapterAiUnlisteners = []
+  activeChapterAiRequestId = null
+  activeChapterAiModal = null
   if (chapterListComponent) {
     chapterListComponent.destroy()
     chapterListComponent = null

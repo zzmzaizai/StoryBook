@@ -3,7 +3,7 @@ import { store } from '../state/store.js'
 import { navigate } from '../router.js'
 import { icon } from '../lib/icons.js'
 import { createMarkdownEditor } from '../lib/markdown-editor.js'
-import { confirm } from '../lib/modal.js'
+import { createModal, confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
 import '../style/virtual-list.css'
@@ -175,6 +175,7 @@ async function renderCharacterEditor(root) {
       <div class="character-editor-header">
         <h3 class="card-title">创建角色</h3>
         <div class="character-editor-actions">
+          <button id="ai-generate-character-btn" class="btn btn-secondary">${icon('sparkles', 16)}<span>AI生成</span></button>
           <button id="save-character-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
         </div>
       </div>
@@ -268,6 +269,10 @@ async function renderCharacterEditor(root) {
         toastError('创建失败: ' + e)
       }
     })
+
+    editorEl.querySelector('#ai-generate-character-btn')?.addEventListener('click', () => {
+      openCharacterAiModal(editorEl, null)
+    })
     return
   }
 
@@ -295,6 +300,7 @@ async function renderCharacterEditor(root) {
     <div class="character-editor-header">
       <h3 class="card-title">${character.name}</h3>
       <div class="character-editor-actions">
+        <button id="ai-generate-character-btn" class="btn btn-secondary">${icon('sparkles', 16)}<span>AI生成</span></button>
         <button id="save-character-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
       </div>
     </div>
@@ -397,6 +403,74 @@ async function renderCharacterEditor(root) {
       console.error('保存角色失败:', e)
       toastError('保存失败: ' + e)
     }
+  })
+
+  editorEl.querySelector('#ai-generate-character-btn')?.addEventListener('click', () => {
+    openCharacterAiModal(editorEl, character)
+  })
+}
+
+function openCharacterAiModal(editorEl, character) {
+  const body = document.createElement('div')
+  body.innerHTML = `
+    <div class="form-group mb-md">
+      <label class="form-label">生成模式</label>
+      <select id="character-ai-mode" class="form-input">
+        <option value="create">新建角色</option>
+        <option value="rewrite">改写当前角色</option>
+        <option value="complete">补全当前角色</option>
+        <option value="differentiate">差异化优化</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">补充要求</label>
+      <textarea id="character-ai-requirement" class="form-input" rows="6" placeholder="输入你希望 AI 如何塑造这个角色，例如定位、人设反差、成长方向、说话风格等..."></textarea>
+    </div>
+  `
+
+  createModal({
+    title: 'AI生成角色',
+    content: body,
+    size: 'md',
+    confirmText: '开始生成',
+    cancelText: '取消',
+    onConfirm: async (instance) => {
+      const requirement = instance.contentEl.querySelector('#character-ai-requirement')?.value?.trim() || ''
+      if (!requirement) return false
+
+      const mode = instance.contentEl.querySelector('#character-ai-mode')?.value || 'create'
+      instance.setLoading(true)
+
+      try {
+        const result = await api.aiGenerateCharacter({
+          novelId: store.currentNovelId,
+          characterId: character?.id ?? null,
+          currentName: editorEl.querySelector('#character-name')?.value?.trim() || '',
+          currentNickname: editorEl.querySelector('#character-nickname')?.value?.trim() || '',
+          currentAge: editorEl.querySelector('#character-age')?.value?.trim() || '',
+          currentRoleAttribute: parseInt(editorEl.querySelector('#character-role')?.value || `${character?.role_attribute || 6}`, 10) || 6,
+          currentGender: parseInt(editorEl.querySelector('#character-gender')?.value || `${character?.gender || 3}`, 10) || 3,
+          currentCharacterType: parseInt(editorEl.querySelector('#character-type')?.value || `${character?.character_type || 1}`, 10) || 1,
+          currentPersonality: personalityEditorInstance ? personalityEditorInstance.getValue() : '',
+          mode,
+          requirement,
+        })
+
+        if (editorEl.querySelector('#character-name')) editorEl.querySelector('#character-name').value = result.name || ''
+        if (editorEl.querySelector('#character-nickname')) editorEl.querySelector('#character-nickname').value = result.nickname || ''
+        if (editorEl.querySelector('#character-age')) editorEl.querySelector('#character-age').value = result.age || ''
+        if (editorEl.querySelector('#character-role')) editorEl.querySelector('#character-role').value = `${result.role_attribute ?? 6}`
+        if (editorEl.querySelector('#character-gender')) editorEl.querySelector('#character-gender').value = `${result.gender ?? 3}`
+        if (editorEl.querySelector('#character-type')) editorEl.querySelector('#character-type').value = `${result.character_type ?? 1}`
+        personalityEditorInstance?.setValue(result.personality || '')
+        toastSuccess('AI已生成角色内容，请检查后点击保存')
+        instance.setLoading(false)
+      } catch (err) {
+        toastError('AI生成失败: ' + err)
+        instance.setLoading(false)
+        return false
+      }
+    },
   })
 }
 

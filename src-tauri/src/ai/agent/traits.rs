@@ -56,14 +56,9 @@ impl AgentExecutionContext {
         }
     }
 
-    pub fn merge_custom_prompt(&self) -> String {
+    pub fn resolve_prompt(&self) -> String {
         match &self.custom_prompt {
-            Some(custom) if !custom.trim().is_empty() => format!(
-                "{}
-
-{}",
-                self.system_prompt, custom
-            ),
+            Some(custom) if !custom.trim().is_empty() => custom.trim().to_string(),
             _ => self.system_prompt.clone(),
         }
     }
@@ -87,7 +82,7 @@ pub trait AgentHandler: Send + Sync {
         use crate::ai::llm::executor::LlmExecutor;
 
         let user_prompt = self.build_user_prompt(ctx).await?;
-        let system_prompt = exec_ctx.merge_custom_prompt();
+        let system_prompt = exec_ctx.resolve_prompt();
         let executor = LlmExecutor::from_config(llm)?;
         executor.complete(&system_prompt, &user_prompt).await
     }
@@ -102,7 +97,7 @@ pub trait AgentHandler: Send + Sync {
         use crate::ai::llm::executor::LlmExecutor;
 
         let user_prompt = self.build_user_prompt(ctx).await?;
-        let system_prompt = exec_ctx.merge_custom_prompt();
+        let system_prompt = exec_ctx.resolve_prompt();
         let executor = LlmExecutor::from_config(llm)?;
         executor
             .stream_complete(&system_prompt, &user_prompt, tx)

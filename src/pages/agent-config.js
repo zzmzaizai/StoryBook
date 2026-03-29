@@ -5,13 +5,16 @@
  */
 import { icon } from '../lib/icons.js'
 import { invoke } from '@tauri-apps/api/core'
+import { toastSuccess, toastError } from '../lib/toast.js'
 import '../style/virtual-list.css'
+import '../style/pages/page-agent-config.css'
 
 let configs = []
 let llmConfigs = []
 let agentTypes = []
 let selectedId = null
 let isCreating = false
+let promptDetailsCache = new Map()
 
 export async function render() {
   const el = document.createElement('div')
@@ -32,7 +35,7 @@ export async function render() {
         
         <div class="agent-toolbar">
           <button id="create-btn" class="btn btn-primary btn-sm">${icon('plus', 16)}<span>新增配置</span></button>
-          <button id="init-btn" class="btn btn-success btn-sm">${icon('refresh', 16)}<span>初始化默认</span></button>
+          <button id="init-btn" class="btn btn-success btn-sm">${icon('refresh', 16)}<span>初始化</span></button>
         </div>
         
         <div id="agent-list-mount" class="agent-list-mount">
@@ -64,10 +67,10 @@ export async function render() {
   el.querySelector('#init-btn')?.addEventListener('click', async () => {
     try {
       await invoke('init_default_agent_configs')
-      alert('默认 Agent 配置初始化成功！')
+      toastSuccess('初始化成功，已补齐缺失的 Agent 配置')
       await loadData(el)
     } catch (err) {
-      alert(`初始化失败: ${err}`)
+      toastError(`初始化失败: ${err}`)
     }
   })
 
@@ -112,7 +115,7 @@ function renderList(root) {
     listEl.innerHTML = `
       <div class="text-center text-tertiary p-lg">
         <p>暂无配置</p>
-        <p class="text-sm mt-xs">点击上方按钮创建或初始化默认配置</p>
+        <p class="text-sm mt-xs">点击上方按钮创建或初始化配置</p>
       </div>
     `
     return
@@ -128,22 +131,18 @@ function renderList(root) {
           <div class="agent-item-name-row">
             <span class="agent-item-name">${escapeHtml(config.name)}</span>
           </div>
-          <div class="agent-item-actions">
-            <button class="agent-item-toggle-btn ${config.enabled ? 'is-enabled' : 'is-disabled'}" data-action="toggle" data-id="${config.id}" title="${config.enabled ? '禁用' : '启用'}">
-              ${config.enabled ? icon('check-circle', 15) : icon('x-circle', 15)}
-            </button>
-          </div>
         </div>
         <div class="agent-item-type">${agentType?.name || config.agent_code}</div>
         ${config.description ? `<div class="agent-item-desc">${escapeHtml(config.description)}</div>` : ''}
         <div class="agent-item-meta">
-          <span class="badge badge-sm ${config.enabled ? 'badge-success' : 'badge-secondary'}">${config.enabled ? '启用' : '禁用'}</span>
+          <span class="badge badge-sm badge-success">启用</span>
           <span class="badge badge-sm ${config.use_system_prompt ? 'badge-info' : 'badge-warning'}">${config.use_system_prompt ? '系统提示词' : '自定义提示词'}</span>
+          ${config.builtin ? '<span class="badge badge-sm badge-info">内置</span>' : '<span class="badge badge-sm badge-secondary">扩展</span>'}
           ${llmConfig ? `<span class="badge badge-sm">${escapeHtml(llmConfig.name)}</span>` : '<span class="badge badge-sm badge-secondary">默认 LLM</span>'}
           <span class="agent-item-meta-spacer"></span>
-          <button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete" data-id="${config.id}" title="删除">
-            ${icon('delete', 14)}
-          </button>
+          ${config.builtin
+            ? `<button class="list-item-delete-btn list-item-delete-btn-visible" data-action="reset" data-id="${config.id}" title="重置默认">${icon('refresh', 14)}</button>`
+            : `<button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete" data-id="${config.id}" title="删除">${icon('delete', 14)}</button>`}
         </div>
       </div>
     `
@@ -171,14 +170,6 @@ function renderList(root) {
 async function handleAction(action, id, root) {
   try {
     switch (action) {
-      case 'toggle':
-        const config = configs.find(c => c.id === id)
-        if (config.enabled) {
-          await invoke('disable_agent_config', { id })
-        } else {
-          await invoke('enable_agent_config', { id })
-        }
-        break
       case 'delete':
         if (confirm('确定删除此 Agent 配置？')) {
           await invoke('delete_agent_config', { id })
@@ -190,14 +181,21 @@ async function handleAction(action, id, root) {
           return
         }
         break
+      case 'reset':
+        if (confirm('确定将此内置 Agent 重置为默认配置？')) {
+          await invoke('reset_builtin_agent_config', { id })
+        } else {
+          return
+        }
+        break
     }
     await loadData(root)
   } catch (err) {
-    alert(`操作失败: ${err}`)
+    toastError(`操作失败: ${err}`)
   }
 }
 
-function renderEditor(root) {
+async function renderEditor(root) {
   const editorEl = root.querySelector('#agent-editor')
   
   if (isCreating) {
@@ -218,7 +216,8 @@ function renderEditor(root) {
     return
   }
 
-  renderEditForm(editorEl, config, root)
+  const promptDetails = await getPromptDetails(config.agent_code)
+  renderEditForm(editorEl, config, promptDetails, root)
 }
 
 function renderCreateForm(editorEl, root) {
@@ -268,21 +267,30 @@ function renderCreateForm(editorEl, root) {
           <option value="">使用默认 LLM</option>
           ${llmOptions}
         </select>
-        <span class="form-hint">不选择将使用系统默认的 LLM 配置</span>
+        <span class="form-hint">不选择将使用默认 LLM 配置</span>
       </div>
       
       <div class="form-group">
         <label class="checkbox-label">
-          <input type="checkbox" id="use-system-prompt" checked />
-          <span>使用系统默认提示词</span>
+          <input type="checkbox" id="use-custom-prompt" />
+          <span>使用自定义提示词</span>
         </label>
+        <span class="form-hint">默认使用系统提示词；勾选后切换为使用自定义提示词。</span>
       </div>
-      
+
+      <div id="system-prompt-section" class="form-group">
+        <label class="form-label">系统提示词</label>
+        <textarea id="system-prompt-preview" class="form-input prompt-textarea agent-prompt-preview" rows="10" readonly placeholder="请选择 Agent 类型后查看系统提示词"></textarea>
+      </div>
+
       <div id="custom-prompt-section" class="custom-prompt-section hidden">
         <div class="form-group">
-          <label class="form-label">自定义提示词</label>
-          <textarea id="custom-prompt" class="form-input prompt-textarea" rows="12" placeholder="输入自定义提示词，将追加到系统提示词之后..."></textarea>
-          <span class="form-hint">自定义提示词将追加到系统默认提示词之后</span>
+          <div class="agent-inline-label-row">
+            <label class="form-label">自定义提示词</label>
+            <button id="copy-system-to-custom-btn" class="btn btn-secondary btn-sm" type="button">${icon('copy', 14)}<span>填充系统默认提示词</span></button>
+          </div>
+          <textarea id="custom-prompt" class="form-input prompt-textarea" rows="12" placeholder="输入自定义提示词..."></textarea>
+          <span class="form-hint">如需基于系统提示词修改，请先点击“填充系统默认提示词”。</span>
         </div>
       </div>
     </div>
@@ -291,7 +299,7 @@ function renderCreateForm(editorEl, root) {
   setupFormEvents(editorEl, root, true)
 }
 
-function renderEditForm(editorEl, config, root) {
+function renderEditForm(editorEl, config, promptDetails, root) {
   const agentType = agentTypes.find(t => t.code === config.agent_code)
   
   const llmOptions = llmConfigs
@@ -336,28 +344,33 @@ function renderEditForm(editorEl, config, root) {
           </select>
         </div>
         
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input type="checkbox" id="enabled" ${config.enabled ? 'checked' : ''} />
-            <span>启用此 Agent</span>
-          </label>
-        </div>
       </div>
       
       <div class="form-section">
         <h4 class="form-section-title">提示词配置</h4>
         <div class="form-group">
           <label class="checkbox-label">
-            <input type="checkbox" id="use-system-prompt" ${config.use_system_prompt ? 'checked' : ''} />
-            <span>使用系统默认提示词</span>
+            <input type="checkbox" id="use-custom-prompt" ${config.use_system_prompt ? '' : 'checked'} />
+            <span>使用自定义提示词</span>
           </label>
+          <span class="form-hint">默认使用系统提示词；勾选后切换为使用自定义提示词。</span>
         </div>
         
-        <div id="custom-prompt-section" class="custom-prompt-section ${config.use_system_prompt && !config.custom_prompt ? 'hidden' : ''}">
+        <div class="agent-prompt-grid">
+          <div id="system-prompt-section" class="form-group ${config.use_system_prompt ? '' : 'hidden'}">
+            <label class="form-label">系统提示词</label>
+            <textarea id="system-prompt-preview" class="form-input prompt-textarea agent-prompt-preview" rows="10" readonly>${escapeHtml(promptDetails?.system_prompt || '')}</textarea>
+          </div>
+
+          <div id="custom-prompt-section" class="custom-prompt-section ${config.use_system_prompt ? 'hidden' : ''}">
           <div class="form-group">
-            <label class="form-label">自定义提示词</label>
+            <div class="agent-inline-label-row">
+              <label class="form-label">自定义提示词</label>
+              <button id="copy-system-to-custom-btn" class="btn btn-secondary btn-sm" type="button">${icon('copy', 14)}<span>填充系统默认提示词</span></button>
+            </div>
             <textarea id="custom-prompt" class="form-input prompt-textarea" rows="12" placeholder="输入自定义提示词...">${escapeHtml(config.custom_prompt || '')}</textarea>
-            <span class="form-hint">自定义提示词将追加到系统默认提示词之后</span>
+            <span class="form-hint">如需基于系统提示词修改，请先点击“填充系统默认提示词”。</span>
+          </div>
           </div>
         </div>
       </div>
@@ -370,8 +383,9 @@ function renderEditForm(editorEl, config, root) {
 function setupFormEvents(editorEl, root, isCreate) {
   const agentCodeSelect = editorEl.querySelector('#agent-code')
   const typeDescription = editorEl.querySelector('#agent-type-description')
-  const useSystemPrompt = editorEl.querySelector('#use-system-prompt')
-  const customPromptSection = editorEl.querySelector('#custom-prompt-section')
+  const useCustomPrompt = editorEl.querySelector('#use-custom-prompt')
+  const customPrompt = editorEl.querySelector('#custom-prompt')
+  const systemPromptPreview = editorEl.querySelector('#system-prompt-preview')
 
   // Agent 类型改变时显示描述
   agentCodeSelect?.addEventListener('change', (e) => {
@@ -388,18 +402,38 @@ function setupFormEvents(editorEl, root, isCreate) {
       if (nameInput && !nameInput.value) {
         nameInput.value = selectedType.name
       }
+
+      if (isCreate) {
+        getPromptDetails(selectedType.code)
+          .then((details) => {
+            if (systemPromptPreview) {
+              systemPromptPreview.value = details?.system_prompt || ''
+            }
+          })
+          .catch(() => {})
+      }
     } else {
       typeDescription.classList.add('hidden')
+      if (isCreate && systemPromptPreview) {
+        systemPromptPreview.value = ''
+      }
     }
   })
 
-  // 使用系统提示词切换
-  useSystemPrompt?.addEventListener('change', (e) => {
-    if (e.target.checked) {
-      customPromptSection.classList.add('hidden')
-    } else {
-      customPromptSection.classList.remove('hidden')
+  useCustomPrompt?.addEventListener('change', () => {
+    updatePromptMode(editorEl)
+  })
+
+  editorEl.querySelector('#copy-system-to-custom-btn')?.addEventListener('click', () => {
+    const systemText = systemPromptPreview?.value || ''
+    if (!customPrompt) return
+    if (!customPrompt.value.trim()) {
+      customPrompt.value = systemText
+    } else if (confirm('自定义提示词已有内容，是否使用系统提示词覆盖？')) {
+      customPrompt.value = systemText
     }
+    if (useCustomPrompt) useCustomPrompt.checked = true
+    updatePromptMode(editorEl)
   })
 
   // 保存按钮
@@ -418,13 +452,32 @@ function setupFormEvents(editorEl, root, isCreate) {
   })
 }
 
+function updatePromptMode(editorEl) {
+  const useCustomPrompt = editorEl.querySelector('#use-custom-prompt')?.checked
+  const systemSection = editorEl.querySelector('#system-prompt-section')
+  const customSection = editorEl.querySelector('#custom-prompt-section')
+
+  if (systemSection) {
+    systemSection.classList.toggle('hidden', !!useCustomPrompt)
+  }
+  if (customSection) {
+    customSection.classList.toggle('hidden', !useCustomPrompt)
+  }
+}
+
+async function getPromptDetails(agentCode) {
+  if (promptDetailsCache.has(agentCode)) return promptDetailsCache.get(agentCode)
+  const details = await invoke('get_agent_prompt_details', { agentCode })
+  promptDetailsCache.set(agentCode, details)
+  return details
+}
+
 async function saveConfig(editorEl, root, isCreate) {
   const name = editorEl.querySelector('#name')?.value?.trim()
   const description = editorEl.querySelector('#description')?.value?.trim()
   const llmConfigId = editorEl.querySelector('#llm-config-id')?.value
-  const useSystemPrompt = editorEl.querySelector('#use-system-prompt')?.checked
+  const useCustomPrompt = editorEl.querySelector('#use-custom-prompt')?.checked
   const customPrompt = editorEl.querySelector('#custom-prompt')?.value?.trim()
-  const enabled = editorEl.querySelector('#enabled')?.checked ?? true
 
   // 验证
   if (!name) {
@@ -447,7 +500,7 @@ async function saveConfig(editorEl, root, isCreate) {
           description: description || null,
           llm_config_id: llmConfigId ? Number(llmConfigId) : null,
           custom_prompt: customPrompt || null,
-          use_system_prompt: useSystemPrompt,
+          use_system_prompt: !useCustomPrompt,
           extra_config: null,
         }
       })
@@ -456,11 +509,10 @@ async function saveConfig(editorEl, root, isCreate) {
         id: selectedId,
         req: {
           name,
-          description: description || null,
+          description: description ? description : null,
           llm_config_id: llmConfigId ? Number(llmConfigId) : null,
-          custom_prompt: customPrompt || null,
-          use_system_prompt: useSystemPrompt,
-          enabled,
+          custom_prompt: customPrompt ? customPrompt : null,
+          use_system_prompt: !useCustomPrompt,
           extra_config: null,
         }
       })
@@ -469,7 +521,7 @@ async function saveConfig(editorEl, root, isCreate) {
     isCreating = false
     await loadData(root)
   } catch (err) {
-    alert(`保存失败: ${err}`)
+    toastError(`保存失败: ${err}`)
   }
 }
 
@@ -484,6 +536,7 @@ export function cleanup() {
   configs = []
   llmConfigs = []
   agentTypes = []
+  promptDetailsCache = new Map()
   selectedId = null
   isCreating = false
 }

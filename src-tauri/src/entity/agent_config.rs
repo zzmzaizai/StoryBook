@@ -12,7 +12,7 @@
 //! | description | Option<String> | 描述信息 |
 //! | llm_config_id | Option<i32> | 绑定的 LLM 配置 ID，为空则使用默认 LLM |
 //! | custom_prompt | Option<String> | 用户自定义提示词 |
-//! | use_system_prompt | bool | 是否使用系统默认提示词 |
+//! | use_system_prompt | bool | 是否使用系统提示词 |
 //! | enabled | bool | 是否启用 |
 //! | extra_config | Option<Json> | Agent 专属配置 |
 //!
@@ -21,6 +21,7 @@
 //! - `novel_outline` - 小说大纲生成
 //! - `chapter_timeline` - 章节时间线规划
 //! - `character_design` - 角色设计
+//! - `meta_generator` - 小说元数据生成
 //! - `chapter_content` - 章节内容生成
 //! - `chapter_polish` - 章节润色优化
 
@@ -63,10 +64,10 @@ pub struct Model {
     /// 可以覆盖或追加到系统默认提示词
     pub custom_prompt: Option<String>,
 
-    /// 是否使用系统默认提示词
+    /// 是否使用系统提示词
     ///
-    /// - true: 加载系统内置提示词，并与 custom_prompt 合并
-    /// - false: 仅使用 custom_prompt
+    /// - true: 使用系统内置提示词
+    /// - false: 使用 custom_prompt
     pub use_system_prompt: bool,
 
     /// 是否启用
@@ -105,6 +106,7 @@ impl AgentCodes {
     pub const NOVEL_OUTLINE: &'static str = "novel_outline";
     pub const CHAPTER_TIMELINE: &'static str = "chapter_timeline";
     pub const CHARACTER_DESIGN: &'static str = "character_design";
+    pub const META_GENERATOR: &'static str = "meta_generator";
     pub const CHAPTER_CONTENT: &'static str = "chapter_content";
     pub const CHAPTER_POLISH: &'static str = "chapter_polish";
 
@@ -115,6 +117,7 @@ impl AgentCodes {
             Self::NOVEL_OUTLINE,
             Self::CHAPTER_TIMELINE,
             Self::CHARACTER_DESIGN,
+            Self::META_GENERATOR,
             Self::CHAPTER_CONTENT,
             Self::CHAPTER_POLISH,
         ]
@@ -127,9 +130,28 @@ impl AgentCodes {
             Self::NOVEL_OUTLINE => "小说大纲生成",
             Self::CHAPTER_TIMELINE => "章节时间线规划",
             Self::CHARACTER_DESIGN => "角色设计",
+            Self::META_GENERATOR => "小说元数据生成",
             Self::CHAPTER_CONTENT => "章节内容生成",
             Self::CHAPTER_POLISH => "章节润色优化",
             _ => "未知 Agent",
         }
+    }
+
+    pub fn get_default_description(code: &str) -> &'static str {
+        match code {
+            Self::GENERAL_CHAT => "用于通用聊天问答与小说相关咨询。",
+            Self::NOVEL_INFO_GENERATOR => "根据用户要求生成小说基础信息 JSON。",
+            Self::NOVEL_OUTLINE => "根据故事概念生成整体大纲与章节规划。",
+            Self::CHAPTER_TIMELINE => "结合上下文生成或改写章节时间线与卷级规划。",
+            Self::CHARACTER_DESIGN => "结合设定生成或改写角色档案与性格描述。",
+            Self::META_GENERATOR => "结合小说设定生成或改写单项小说元数据。",
+            Self::CHAPTER_CONTENT => "结合时间线和上下文生成、扩写、续写章节正文。",
+            Self::CHAPTER_POLISH => "对现有章节进行润色、重写或风格优化。",
+            _ => "未知 Agent。",
+        }
+    }
+
+    pub fn is_builtin(code: &str) -> bool {
+        Self::all().contains(&code)
     }
 }

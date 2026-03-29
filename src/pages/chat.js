@@ -127,7 +127,7 @@ async function loadAgents() {
         isDefault: true
       },
       ...agentConfigs
-        .filter(cfg => cfg.enabled && cfg.agent_code !== 'general_chat')
+        .filter(cfg => cfg.agent_code !== 'general_chat')
         .map(cfg => ({
           code: cfg.agent_code,
           name: cfg.name,

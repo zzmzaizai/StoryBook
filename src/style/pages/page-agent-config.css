@@ -221,6 +221,35 @@
   border-top: 1px solid var(--border-primary);
 }
 
+.agent-prompt-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-lg);
+}
+
+.agent-prompt-grid .hidden {
+  display: none !important;
+}
+
+.agent-prompt-preview {
+  background: var(--bg-tertiary);
+}
+
+.agent-prompt-tools {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.agent-inline-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
 .prompt-textarea {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
   font-size: var(--font-size-sm);

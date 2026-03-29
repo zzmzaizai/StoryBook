@@ -1,7 +1,20 @@
 use super::AppState;
+use crate::ai::agent::service::AgentService;
+use crate::entity::agent_config::AgentCodes;
 use crate::entity::characters;
 use crate::repository::CharacterUpdateParams;
 use tauri::State;
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct GeneratedCharacterPayload {
+    pub name: String,
+    pub nickname: String,
+    pub age: String,
+    pub role_attribute: i32,
+    pub gender: i32,
+    pub character_type: i32,
+    pub personality: String,
+}
 
 #[tauri::command]
 pub async fn create_character(
@@ -97,4 +110,205 @@ pub async fn delete_character(state: State<'_, AppState>, id: i32) -> Result<(),
         .delete(id)
         .await
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn ai_generate_character(
+    state: State<'_, AppState>,
+    novel_id: i32,
+    character_id: Option<i32>,
+    current_name: Option<String>,
+    current_nickname: Option<String>,
+    current_age: Option<String>,
+    current_role_attribute: Option<i32>,
+    current_gender: Option<i32>,
+    current_character_type: Option<i32>,
+    current_personality: Option<String>,
+    mode: String,
+    requirement: String,
+) -> Result<GeneratedCharacterPayload, String> {
+    let novel = state
+        .novels()
+        .find_by_id(novel_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "小说不存在".to_string())?;
+    let metas = state
+        .meta()
+        .find_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let characters = state
+        .characters()
+        .find_all_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let meta_context = metas
+        .iter()
+        .filter_map(|m| {
+            m.property_value.as_ref().and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(format!("- {}：{}", m.property_name, trimmed))
+                }
+            })
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let existing_characters_context = characters
+        .iter()
+        .filter(|item| Some(item.id) != character_id)
+        .map(|item| {
+            format!(
+                "- {}｜{}｜{}｜{}｜{}",
+                item.name,
+                role_attribute_label(item.role_attribute),
+                gender_label(item.gender),
+                character_type_label(item.character_type),
+                summarize_text(item.personality.as_deref().unwrap_or(""), 80)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    let current_character_context = format!(
+        "当前角色信息：\n- 名称：{}\n- 昵称：{}\n- 年龄：{}\n- 角色属性：{}\n- 性别：{}\n- 角色类型：{}\n- 性格特点：{}",
+        current_name.as_deref().unwrap_or(""),
+        current_nickname.as_deref().unwrap_or(""),
+        current_age.as_deref().unwrap_or(""),
+        role_attribute_label(current_role_attribute.unwrap_or(6)),
+        gender_label(current_gender.unwrap_or(3)),
+        character_type_label(current_character_type.unwrap_or(1)),
+        current_personality.as_deref().unwrap_or(""),
+    );
+
+    let novel_context = format!(
+        "小说基础信息：\n- 标题：{}\n- 简介：{}\n- 风格：{}\n- 目标读者：{}\n- 篇幅：{}\n- 原始需求：{}",
+        novel.title,
+        novel.description.as_deref().unwrap_or(""),
+        novel.style,
+        novel.target_audience,
+        novel.length_type,
+        novel.original_description.as_deref().unwrap_or("")
+    );
+
+    let raw = AgentService::invoke(
+        &state.db,
+        AgentCodes::CHARACTER_DESIGN,
+        serde_json::json!({
+            "novel_id": novel_id,
+            "story_background": novel_context,
+            "role_type": mode,
+            "keywords": [requirement],
+            "relationship_hint": format!(
+                "其他已生成元数据：\n{}\n\n已有角色摘要（避免重复）：\n{}\n\n{}\n\n请严格输出 JSON：{{\"name\":\"角色名称\",\"nickname\":\"角色昵称\",\"age\":\"年龄\",\"role_attribute\":5,\"gender\":1,\"character_type\":1,\"personality\":\"Markdown 形式的人设和性格特点\"}}",
+                if meta_context.is_empty() { "（暂无）" } else { &meta_context },
+                if existing_characters_context.is_empty() { "（暂无）" } else { &existing_characters_context },
+                current_character_context,
+            )
+        }),
+    )
+        .await
+        .map_err(|e| e.to_string())?
+        .content;
+
+    let cleaned_content = raw
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim()
+        .to_string();
+    let normalized_content = normalize_json_like_content(&cleaned_content);
+    let json_content =
+        extract_json_object(&normalized_content).ok_or_else(|| "AI 未返回合法 JSON".to_string())?;
+
+    let mut payload = serde_json::from_str::<GeneratedCharacterPayload>(&json_content)
+        .map_err(|e| e.to_string())?;
+    payload.role_attribute = normalize_role_attribute(payload.role_attribute);
+    payload.gender = normalize_gender(payload.gender);
+    payload.character_type = normalize_character_type(payload.character_type);
+    Ok(payload)
+}
+
+fn extract_json_object(content: &str) -> Option<String> {
+    let start = content.find('{')?;
+    let end = content.rfind('}')?;
+    if end < start {
+        return None;
+    }
+    Some(content[start..=end].to_string())
+}
+
+fn normalize_json_like_content(content: &str) -> String {
+    content.replace(['“', '”'], "\"").replace(['‘', '’'], "'")
+}
+
+fn summarize_text(content: &str, max_chars: usize) -> String {
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return "暂无明显人设描述".to_string();
+    }
+
+    let summary = trimmed.chars().take(max_chars).collect::<String>();
+    if trimmed.chars().count() > max_chars {
+        format!("{}...", summary)
+    } else {
+        summary
+    }
+}
+
+fn role_attribute_label(value: i32) -> &'static str {
+    match value {
+        1 => "主角",
+        2 => "女主角",
+        3 => "男主角",
+        4 => "反派",
+        5 => "配角",
+        _ => "路人",
+    }
+}
+
+fn gender_label(value: i32) -> &'static str {
+    match value {
+        1 => "男性",
+        2 => "女性",
+        _ => "中性",
+    }
+}
+
+fn character_type_label(value: i32) -> &'static str {
+    match value {
+        2 => "非人类",
+        _ => "人类",
+    }
+}
+
+fn normalize_role_attribute(value: i32) -> i32 {
+    if (1..=6).contains(&value) {
+        value
+    } else {
+        5
+    }
+}
+
+fn normalize_gender(value: i32) -> i32 {
+    if (1..=3).contains(&value) {
+        value
+    } else {
+        3
+    }
+}
+
+fn normalize_character_type(value: i32) -> i32 {
+    if (1..=2).contains(&value) {
+        value
+    } else {
+        1
+    }
 }

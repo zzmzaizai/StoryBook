@@ -367,6 +367,7 @@ async function openMetaAiModal(novelInfo) {
 
       const requestId = `meta_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
       activeMetaAiRequestId = requestId
+      const currentContent = metaEditorInstance ? metaEditorInstance.getValue() : ''
       if (metaEditorInstance) {
         metaEditorInstance.setValue('')
       }
@@ -377,7 +378,7 @@ async function openMetaAiModal(novelInfo) {
           novelId: novelInfo.id,
           propertyName: editingMeta.property_name,
           propertyDescription: metaProperties.find(p => p.property_name === editingMeta.property_name)?.property_description || '',
-          currentContent: metaEditorInstance ? metaEditorInstance.getValue() : '',
+          currentContent,
           requirement,
         })
       } catch (err) {

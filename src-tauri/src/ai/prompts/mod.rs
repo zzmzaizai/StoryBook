@@ -133,6 +133,36 @@ fn get_builtin_prompt(agent_code: &str) -> PromptConfig {
             output_format: None,
             extra: HashMap::new(),
         },
+        "meta_generator" => PromptConfig {
+            system_prompt: include_str!("meta_generator.toml")
+                .parse::<toml::Value>()
+                .ok()
+                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
+                .unwrap_or_else(|| "你是专业的小说策划编辑，负责生成或改写小说元数据内容。".to_string()),
+            user_template: None,
+            output_format: None,
+            extra: HashMap::new(),
+        },
+        "chapter_content" => PromptConfig {
+            system_prompt: include_str!("chapter_content.toml")
+                .parse::<toml::Value>()
+                .ok()
+                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
+                .unwrap_or_else(|| "你是专业的长篇小说章节写作编辑。".to_string()),
+            user_template: None,
+            output_format: None,
+            extra: HashMap::new(),
+        },
+        "chapter_polish" => PromptConfig {
+            system_prompt: include_str!("chapter_polish.toml")
+                .parse::<toml::Value>()
+                .ok()
+                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
+                .unwrap_or_else(|| "你是专业的小说润色编辑。".to_string()),
+            user_template: None,
+            output_format: None,
+            extra: HashMap::new(),
+        },
         _ => PromptConfig {
             system_prompt: "你是一个专业的 AI 助手。".to_string(),
             user_template: None,
@@ -155,6 +185,9 @@ pub async fn init_prompt_cache() -> anyhow::Result<()> {
         "novel_outline",
         "chapter_timeline",
         "character_design",
+        "meta_generator",
+        "chapter_content",
+        "chapter_polish",
     ];
 
     for agent_code in agents {

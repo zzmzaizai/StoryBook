@@ -60,6 +60,7 @@ export const api = {
   saveChapter: (id, chapterNumber, chapterName, content, status) =>
     invoke('save_chapter', { id, chapterNumber, chapterName, content, status }),
   deleteChapter: (id) => invoke('delete_chapter', { id }),
+  aiGenerateChapterStream: (payload) => invoke('ai_generate_chapter_stream', payload),
 
   createCharacter: (novelId, name) => invoke('create_character', { novelId, name }),
   listCharacters: (novelId, page = 0, pageSize = 20) =>
@@ -78,6 +79,7 @@ export const api = {
       sortOrder 
     }),
   deleteCharacter: (id) => invoke('delete_character', { id }),
+  aiGenerateCharacter: (payload) => invoke('ai_generate_character', payload),
 
   createTimeline: (novelId, title) => invoke('create_timeline', { novelId, title }),
   listTimelines: (novelId) => invoke('list_timelines', { novelId }),

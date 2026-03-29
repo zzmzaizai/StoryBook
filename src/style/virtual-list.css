@@ -129,7 +129,7 @@
 .paged-list-item {
   display: flex;
   align-items: center;
-  padding: var(--space-sm) var(--space-md);
+  padding: var(--space-xs) var(--space-sm);
   border-bottom: 1px solid var(--border-secondary);
   cursor: pointer;
   transition: background-color 0.15s ease;

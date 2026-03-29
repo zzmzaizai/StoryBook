@@ -163,8 +163,7 @@ impl AgentFactory {
         let repo = AgentConfigRepository::new(Arc::new(db.clone()));
         repo.find_by_agent_code(agent_code)
             .await?
-            .filter(|config| config.enabled)
-            .ok_or_else(|| anyhow::anyhow!("Agent 配置不存在或已禁用: {}", agent_code))
+            .ok_or_else(|| anyhow::anyhow!("Agent 配置不存在: {}", agent_code))
     }
 
     fn get_required_handler(&self, agent_code: &str) -> anyhow::Result<Arc<dyn AgentHandler>> {

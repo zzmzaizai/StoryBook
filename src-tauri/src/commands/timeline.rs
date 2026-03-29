@@ -1,7 +1,7 @@
 use super::AppState;
-use crate::ai::llm::executor::LlmExecutor;
-use crate::ai::llm::service::LlmService;
+use crate::ai::agent::service::AgentService;
 use crate::constants::{ChapterMetaConstants, MetaPropertyDto};
+use crate::entity::agent_config::AgentCodes;
 use crate::entity::novel_chapter_timeline;
 use crate::repository::TimelineUpdateParams;
 use tauri::State;
@@ -143,11 +143,6 @@ pub async fn ai_generate_timeline(
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "小说不存在".to_string())?;
-    let settings_context = state
-        .novel_settings()
-        .get_prompt_context(novel_id)
-        .await
-        .map_err(|e| e.to_string())?;
     let metas = state
         .meta()
         .find_by_novel(novel_id)
@@ -202,32 +197,26 @@ pub async fn ai_generate_timeline(
         ),
     };
 
-    let system_prompt = [
-        Some("你是专业的小说分卷与时间线策划编辑。你必须返回一个合法 JSON 对象，不要输出 markdown 代码块，不要输出 JSON 以外的任何解释文字。JSON 必须包含字段：title, description, timeline_outline, characters_description。".to_string()),
-        settings_context,
-    ]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>()
-    .join("\n\n");
-
-    let user_prompt = format!(
-        "{}\n\n其他已生成元数据：\n{}\n\n其他已生成好的小说时间线（最多往前20条）：\n{}\n\n用户刚输入的补充要求：\n{}\n\n{}\n\n请严格输出 JSON：\n{{\n  \"title\": \"小卷标题\",\n  \"description\": \"这一卷的简述\",\n  \"timeline_outline\": \"完整时间线大纲\",\n  \"characters_description\": \"本卷涉及角色与作用\"\n}}",
-        novel_context,
-        if metas_context.is_empty() { "（暂无）" } else { &metas_context },
-        if previous_timelines.is_empty() { "（暂无）" } else { &previous_timelines },
-        requirement,
-        current_context,
-    );
-
-    let llm = LlmService::get_default_llm(&state.db)
+    let raw = AgentService::invoke(
+        &state.db,
+        AgentCodes::CHAPTER_TIMELINE,
+        serde_json::json!({
+            "novel_id": novel_id,
+            "outline": novel_context,
+            "chapter_start": start_chapter_number.unwrap_or(1),
+            "chapter_end": end_chapter_number.unwrap_or(10),
+            "current_arc_goal": format!(
+                "其他已生成元数据：\n{}\n\n其他已生成好的小说时间线（最多往前20条）：\n{}\n\n用户刚输入的补充要求：\n{}\n\n{}\n\n请严格输出 JSON：{{\"title\":\"小卷标题\",\"description\":\"这一卷的简述\",\"timeline_outline\":\"完整时间线大纲\",\"characters_description\":\"本卷涉及角色与作用\"}}",
+                if metas_context.is_empty() { "（暂无）" } else { &metas_context },
+                if previous_timelines.is_empty() { "（暂无）" } else { &previous_timelines },
+                requirement,
+                current_context,
+            )
+        }),
+    )
         .await
-        .map_err(|e| e.to_string())?;
-    let executor = LlmExecutor::from_config(&llm).map_err(|e| e.to_string())?;
-    let raw = executor
-        .complete(&system_prompt, &user_prompt)
-        .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?
+        .content;
 
     let cleaned_content = raw
         .trim()

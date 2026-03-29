@@ -1,7 +1,7 @@
 use super::AppState;
-use crate::ai::llm::executor::LlmExecutor;
-use crate::ai::llm::service::LlmService;
+use crate::ai::agent::service::AgentService;
 use crate::constants::{MetaPropertyDto, NovelMetaConstants};
+use crate::entity::agent_config::AgentCodes;
 use crate::entity::novel_meta;
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::mpsc;
@@ -155,30 +155,11 @@ pub async fn ai_generate_meta_stream(
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "小说不存在".to_string())?;
-    let settings_context = state
-        .novel_settings()
-        .get_prompt_context(novel_id)
-        .await
-        .map_err(|e| e.to_string())?;
     let metas = state
         .meta()
         .find_by_novel(novel_id)
         .await
         .map_err(|e| e.to_string())?;
-
-    let llm = LlmService::get_default_llm(&state.db)
-        .await
-        .map_err(|e| e.to_string())?;
-    let executor = LlmExecutor::from_config(&llm).map_err(|e| e.to_string())?;
-
-    let system_prompt = [
-        Some("你是专业的小说策划编辑，负责生成或改写小说元数据内容。输出应直接是可写入编辑器的正文内容，不要解释，不要使用代码块。".to_string()),
-        settings_context,
-    ]
-    .into_iter()
-    .flatten()
-    .collect::<Vec<_>>()
-    .join("\n\n");
 
     let meta_context = metas
         .iter()
@@ -206,23 +187,15 @@ pub async fn ai_generate_meta_stream(
         novel.original_description.as_deref().unwrap_or("")
     );
 
-    let action_text = match current_content.as_deref().map(str::trim) {
-        Some(content) if !content.is_empty() => format!(
-            "当前元数据编辑器已有内容，请基于现有内容进行修改、扩展和重写，输出完整的新内容：\n{}",
-            content
-        ),
-        _ => "当前元数据编辑器为空，请根据上下文新生成完整内容。".to_string(),
-    };
-
-    let user_prompt = format!(
-        "{}\n\n当前要生成的元数据：\n- 名称：{}\n- 描述：{}\n\n其他已生成元数据：\n{}\n\n用户刚输入的补充要求：\n{}\n\n{}\n\n请直接输出最终正文内容。",
-        novel_context,
-        property_name,
-        property_description.unwrap_or_default(),
-        if meta_context.is_empty() { "（暂无）" } else { &meta_context },
-        requirement,
-        action_text
-    );
+    let input = serde_json::json!({
+        "novel_id": novel_id,
+        "novel_context": novel_context,
+        "property_name": property_name,
+        "property_description": property_description,
+        "meta_context": if meta_context.is_empty() { None::<String> } else { Some(meta_context) },
+        "current_content": current_content,
+        "requirement": requirement,
+    });
 
     let (tx, mut rx) = mpsc::unbounded_channel::<String>();
     let app_handle = app.clone();
@@ -239,16 +212,13 @@ pub async fn ai_generate_meta_stream(
         }
     });
 
-    match executor
-        .stream_complete(&system_prompt, &user_prompt, tx)
-        .await
-    {
-        Ok(content) => {
+    match AgentService::invoke_stream(&state.db, AgentCodes::META_GENERATOR, input, tx).await {
+        Ok(result) => {
             app.emit(
                 "meta-ai-stream-done",
                 MetaAiStreamDone {
                     request_id,
-                    content,
+                    content: result.content,
                 },
             )
             .map_err(|e| e.to_string())?;
