@@ -146,6 +146,7 @@ pub async fn ai_generate_meta_stream(
     novel_id: i32,
     property_name: String,
     property_description: Option<String>,
+    action: String,
     current_content: Option<String>,
     requirement: String,
 ) -> Result<(), String> {
@@ -192,6 +193,7 @@ pub async fn ai_generate_meta_stream(
         "novel_context": novel_context,
         "property_name": property_name,
         "property_description": property_description,
+        "action": action,
         "meta_context": if meta_context.is_empty() { None::<String> } else { Some(meta_context) },
         "current_content": current_content,
         "requirement": requirement,

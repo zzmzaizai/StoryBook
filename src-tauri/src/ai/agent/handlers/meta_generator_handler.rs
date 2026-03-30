@@ -8,6 +8,7 @@ struct MetaGeneratorInput {
     property_name: String,
     property_description: Option<String>,
     meta_context: Option<String>,
+    action: Option<String>,
     current_content: Option<String>,
     requirement: String,
 }
@@ -31,21 +32,42 @@ impl AgentHandler for MetaGeneratorHandler {
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String> {
         let input: MetaGeneratorInput = ctx.parse()?;
 
-        let action_text = match input.current_content.as_deref().map(str::trim) {
-            Some(content) if !content.is_empty() => format!(
-                "当前元数据编辑器已有内容，请基于现有内容进行修改、扩展和重写，输出完整的新内容：\n{}",
-                content
+        let action = input.action.as_deref().unwrap_or("generate");
+        let current_content = input.current_content.as_deref().unwrap_or("").trim();
+
+        let action_text = match action {
+            "improve" if !current_content.is_empty() => format!(
+                "当前任务：优化现有元数据内容，在保留核心设定的前提下提升表达、结构与完整度。现有内容：\n{}",
+                current_content
             ),
-            _ => "当前元数据编辑器为空，请根据上下文新生成完整内容。".to_string(),
+            "rewrite" if !current_content.is_empty() => format!(
+                "当前任务：重写现有元数据内容，可以重组表达方式，但要保留核心设定。现有内容：\n{}",
+                current_content
+            ),
+            "expand" if !current_content.is_empty() => format!(
+                "当前任务：扩展现有元数据内容，补充更多细节、层次与说明。现有内容：\n{}",
+                current_content
+            ),
+            "condense" if !current_content.is_empty() => format!(
+                "当前任务：精简整理现有元数据内容，去掉重复和冗余，保留关键信息。现有内容：\n{}",
+                current_content
+            ),
+            "generate" if !current_content.is_empty() => format!(
+                "当前任务：参考现有内容重新生成一版更完整的元数据正文。现有内容：\n{}",
+                current_content
+            ),
+            _ => "当前编辑器为空，请根据上下文直接生成完整元数据内容。".to_string(),
         };
 
+        let requirement_text = input.requirement.trim();
+
         Ok(format!(
-            "{}\n\n当前要生成的元数据：\n- 名称：{}\n- 描述：{}\n\n其他已生成元数据：\n{}\n\n用户刚输入的补充要求：\n{}\n\n{}\n\n请直接输出最终正文内容。",
+            "{}\n\n当前要生成的元数据：\n- 名称：{}\n- 描述：{}\n\n其他已生成元数据：\n{}\n\n补充要求：\n{}\n\n{}\n\n请直接输出最终正文内容。",
             input.novel_context,
             input.property_name,
             input.property_description.unwrap_or_default(),
             input.meta_context.unwrap_or_else(|| "（暂无）".to_string()),
-            input.requirement,
+            if requirement_text.is_empty() { "（无额外要求）" } else { requirement_text },
             action_text,
         ))
     }

@@ -19,7 +19,7 @@
 //! # Agent 代码常量
 //!
 //! - `novel_outline` - 小说大纲生成
-//! - `chapter_timeline` - 章节时间线规划
+//! - `chapter_timeline` - 时间线正文生成
 //! - `character_design` - 角色设计
 //! - `meta_generator` - 小说元数据生成
 //! - `chapter_content` - 章节内容生成
@@ -42,7 +42,7 @@ pub struct Model {
     ///
     /// 用于路由到具体的 Agent 实现，如：
     /// - novel_outline: 小说大纲生成
-    /// - chapter_timeline: 章节时间线规划
+    /// - chapter_timeline: 时间线正文生成
     /// - character_design: 角色设计
     /// - chapter_content: 章节内容生成
     /// - chapter_polish: 章节润色优化
@@ -128,7 +128,7 @@ impl AgentCodes {
             Self::GENERAL_CHAT => "通用助手",
             Self::NOVEL_INFO_GENERATOR => "小说基础信息生成",
             Self::NOVEL_OUTLINE => "小说大纲生成",
-            Self::CHAPTER_TIMELINE => "章节时间线规划",
+            Self::CHAPTER_TIMELINE => "时间线正文生成",
             Self::CHARACTER_DESIGN => "角色设计",
             Self::META_GENERATOR => "小说元数据生成",
             Self::CHAPTER_CONTENT => "章节内容生成",
@@ -142,7 +142,9 @@ impl AgentCodes {
             Self::GENERAL_CHAT => "用于通用聊天问答与小说相关咨询。",
             Self::NOVEL_INFO_GENERATOR => "根据用户要求生成小说基础信息 JSON。",
             Self::NOVEL_OUTLINE => "根据故事概念生成整体大纲与章节规划。",
-            Self::CHAPTER_TIMELINE => "结合上下文生成或改写章节时间线与卷级规划。",
+            Self::CHAPTER_TIMELINE => {
+                "结合上下文生成或改写时间线标题、正文与章节范围内的剧情推进。"
+            }
             Self::CHARACTER_DESIGN => "结合设定生成或改写角色档案与性格描述。",
             Self::META_GENERATOR => "结合小说设定生成或改写单项小说元数据。",
             Self::CHAPTER_CONTENT => "结合时间线和上下文生成、扩写、续写章节正文。",

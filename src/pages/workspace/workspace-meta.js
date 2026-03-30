@@ -19,6 +19,42 @@ let metaTabsComponent = null
 let metaListComponent = null
 let metaAiUnlisteners = []
 let activeMetaAiRequestId = null
+let metaAiGenerating = false
+let metaAiOriginalContent = ''
+
+const META_AI_ACTIONS = [
+  { value: 'generate', label: '直接生成' },
+  { value: 'improve', label: '优化现有内容' },
+  { value: 'rewrite', label: '重写现有内容' },
+  { value: 'expand', label: '扩展现有内容' },
+  { value: 'condense', label: '精简整理' },
+]
+
+function getMetaAiDefaultAction(currentContent) {
+  return currentContent.trim() ? 'improve' : 'generate'
+}
+
+function getMetaAiConfirmText(action) {
+  switch (action) {
+    case 'improve': return '优化内容'
+    case 'rewrite': return '重写内容'
+    case 'expand': return '扩展内容'
+    case 'condense': return '精简整理'
+    default: return '直接生成'
+  }
+}
+
+function updateMetaAiButtonState() {
+  const aiButton = document.querySelector('#ai-generate-btn')
+  if (!aiButton) return
+
+  aiButton.disabled = metaAiGenerating
+  aiButton.classList.toggle('btn-loading', metaAiGenerating)
+  const label = aiButton.querySelector('span')
+  if (label) {
+    label.textContent = metaAiGenerating ? 'AI生成中...' : 'AI生成'
+  }
+}
 
 export async function loadMeta(novelId) {
   try {
@@ -158,9 +194,15 @@ function renderMetaList(content, novelInfo) {
         return div
       },
       onItemClick: (meta, index, el) => {
-        // 选中编辑
         previewMetaProperty = null
         editingMeta = meta
+
+        const listContainer = el.closest('.paged-list-content')
+        if (listContainer) {
+          listContainer.querySelectorAll('.meta-list-item').forEach(item => item.classList.remove('active'))
+          el.querySelector('.meta-list-item')?.classList.add('active')
+        }
+
         renderEditor(content, novelInfo)
       },
       emptyText: '暂无元数据'
@@ -292,7 +334,7 @@ function renderEditor(content, novelInfo) {
       </div>
       <div id="meta-md-editor" class="markdown-editor-container" style="height: 350px;"></div>
       <div class="flex justify-end gap-md mt-md">
-        <button id="ai-generate-btn" class="btn btn-secondary">${icon('sparkles', 16)}<span>AI生成</span></button>
+        <button id="ai-generate-btn" class="btn btn-secondary${metaAiGenerating ? ' btn-loading' : ''}" ${metaAiGenerating ? 'disabled' : ''}>${icon('sparkles', 16)}<span>${metaAiGenerating ? 'AI生成中...' : 'AI生成'}</span></button>
         <button id="save-meta-btn" class="btn btn-primary">${icon('save', 16)}<span>保存</span></button>
       </div>
     </div>
@@ -347,11 +389,30 @@ function renderEditor(content, novelInfo) {
 }
 
 async function openMetaAiModal(novelInfo) {
+  const currentContent = metaEditorInstance ? metaEditorInstance.getValue() : ''
+  const defaultAction = getMetaAiDefaultAction(currentContent)
   const body = document.createElement('div')
   body.innerHTML = `
+    <div class="meta-preview-note" style="margin-top: 0; margin-bottom: var(--space-md);">
+      <div>
+        <div class="meta-preview-note__title">${currentContent.trim() ? '将基于当前内容继续处理' : '当前内容为空，可直接生成初稿'}</div>
+        <div class="meta-preview-note__desc">补充要求现在是可选项。你可以直接让 AI 生成、优化、重写或精简当前元数据内容。</div>
+      </div>
+    </div>
     <div class="form-group">
-      <label class="form-label">补充要求</label>
-      <textarea id="meta-ai-requirement" class="form-input" rows="6" placeholder="输入你希望 AI 如何生成或修改这段元数据..."></textarea>
+      <label class="form-label">操作类型</label>
+      <div class="meta-ai-actions">
+        ${META_AI_ACTIONS.map(action => `
+          <label class="meta-ai-action-option">
+            <input type="radio" name="meta-ai-action" value="${action.value}" ${action.value === defaultAction ? 'checked' : ''}>
+            <span>${action.label}</span>
+          </label>
+        `).join('')}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">补充要求（可选）</label>
+      <textarea id="meta-ai-requirement" class="form-input" rows="6" placeholder="例如：更黑暗一点、加入更多权谋细节、语气更克制"></textarea>
     </div>
   `
 
@@ -359,29 +420,39 @@ async function openMetaAiModal(novelInfo) {
     title: `AI生成 - ${editingMeta.property_name}`,
     content: body,
     size: 'md',
-    confirmText: '确定生成',
+    confirmText: getMetaAiConfirmText(defaultAction),
     cancelText: '取消',
     onConfirm: async (instance) => {
+      const action = instance.contentEl.querySelector('input[name="meta-ai-action"]:checked')?.value || defaultAction
       const requirement = instance.contentEl.querySelector('#meta-ai-requirement')?.value?.trim() || ''
-      if (!requirement) return false
-
       const requestId = `meta_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
       activeMetaAiRequestId = requestId
-      const currentContent = metaEditorInstance ? metaEditorInstance.getValue() : ''
-      if (metaEditorInstance) {
-        metaEditorInstance.setValue('')
-      }
+      const currentEditorContent = metaEditorInstance ? metaEditorInstance.getValue() : ''
+      metaAiOriginalContent = currentEditorContent
       instance.setLoading(true)
       try {
+        metaAiGenerating = true
+        updateMetaAiButtonState()
+        if (metaEditorInstance) {
+          metaEditorInstance.setValue('')
+        }
         await api.aiGenerateMetaStream({
           requestId,
           novelId: novelInfo.id,
           propertyName: editingMeta.property_name,
           propertyDescription: metaProperties.find(p => p.property_name === editingMeta.property_name)?.property_description || '',
-          currentContent,
+          action,
+          currentContent: currentEditorContent,
           requirement,
         })
+        instance.close({ action: 'confirm' })
       } catch (err) {
+        metaAiGenerating = false
+        activeMetaAiRequestId = null
+        updateMetaAiButtonState()
+        if (metaEditorInstance) {
+          metaEditorInstance.setValue(metaAiOriginalContent)
+        }
         toastError('AI生成失败: ' + err)
         instance.setLoading(false)
         return false
@@ -389,7 +460,20 @@ async function openMetaAiModal(novelInfo) {
     }
   })
 
+  const syncConfirmText = () => {
+    const action = modal.contentEl.querySelector('input[name="meta-ai-action"]:checked')?.value || defaultAction
+    modal.setButtons([
+      { text: '取消', type: 'default', onClick: () => modal.cancel() },
+      { text: getMetaAiConfirmText(action), type: 'primary', onClick: () => modal.confirm() },
+    ])
+  }
+
   modal.open()
+  setTimeout(() => {
+    modal.contentEl.querySelectorAll('input[name="meta-ai-action"]').forEach(input => {
+      input.addEventListener('change', syncConfirmText)
+    })
+  }, 0)
 }
 
 async function ensureMetaAiListeners() {
@@ -406,12 +490,21 @@ async function ensureMetaAiListeners() {
       if (!metaEditorInstance || !payload || payload.request_id !== activeMetaAiRequestId) return
       metaEditorInstance.setValue(payload.content || '')
       activeMetaAiRequestId = null
+      metaAiGenerating = false
+      metaAiOriginalContent = ''
+      updateMetaAiButtonState()
       toastSuccess('AI生成完成')
     }),
     await listen('meta-ai-stream-error', (event) => {
       const payload = event.payload
       if (payload?.request_id !== activeMetaAiRequestId) return
       activeMetaAiRequestId = null
+      metaAiGenerating = false
+      if (metaEditorInstance) {
+        metaEditorInstance.setValue(metaAiOriginalContent)
+      }
+      metaAiOriginalContent = ''
+      updateMetaAiButtonState()
       toastError('AI生成失败: ' + (payload?.error || '未知错误'))
     })
   )
@@ -436,6 +529,8 @@ export function cleanup() {
   metaDataList = []
   metaProperties = []
   activeMetaAiRequestId = null
+  metaAiGenerating = false
+  metaAiOriginalContent = ''
   metaAiUnlisteners.forEach(fn => fn())
   metaAiUnlisteners = []
 }

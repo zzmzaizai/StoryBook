@@ -27,12 +27,9 @@ impl TimelineRepository {
         let model = ActiveTimeline {
             novel_id: Set(novel_id),
             title: Set(title),
-            description: Set(None),
-            timeline_outline: Set(None),
+            content: Set(None),
             start_chapter_number: Set(None),
             end_chapter_number: Set(None),
-            characters_description: Set(None),
-            chapter_metas: Set(None),
             created_at: Set(now.clone()),
             updated_at: Set(now),
             ..Default::default()
@@ -98,23 +95,14 @@ impl TimelineRepository {
         if let Some(title) = params.title {
             active.title = Set(title);
         }
-        if let Some(description) = params.description {
-            active.description = Set(Some(description));
-        }
-        if let Some(timeline_outline) = params.timeline_outline {
-            active.timeline_outline = Set(Some(timeline_outline));
+        if let Some(content) = params.content {
+            active.content = Set(Some(content));
         }
         if let Some(start_chapter_number) = params.start_chapter_number {
             active.start_chapter_number = Set(Some(start_chapter_number));
         }
         if let Some(end_chapter_number) = params.end_chapter_number {
             active.end_chapter_number = Set(Some(end_chapter_number));
-        }
-        if let Some(characters_description) = params.characters_description {
-            active.characters_description = Set(Some(characters_description));
-        }
-        if let Some(chapter_metas) = params.chapter_metas {
-            active.chapter_metas = Set(Some(chapter_metas));
         }
         active.updated_at = Set(Utc::now().to_rfc3339());
 
@@ -129,10 +117,7 @@ impl TimelineRepository {
 
 pub struct TimelineUpdateParams {
     pub title: Option<String>,
-    pub description: Option<String>,
-    pub timeline_outline: Option<String>,
+    pub content: Option<String>,
     pub start_chapter_number: Option<i32>,
     pub end_chapter_number: Option<i32>,
-    pub characters_description: Option<String>,
-    pub chapter_metas: Option<String>,
 }

@@ -619,6 +619,33 @@
   color: var(--text-tertiary);
 }
 
+.meta-ai-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-sm);
+}
+
+.meta-ai-action-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.meta-ai-action-option input {
+  margin: 0;
+}
+
+.btn-loading {
+  opacity: 0.8;
+  pointer-events: none;
+}
+
 .meta-md-editor {
   flex: 1;
   min-height: 300px;

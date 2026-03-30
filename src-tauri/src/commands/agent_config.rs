@@ -271,8 +271,8 @@ pub fn get_agent_types() -> Vec<AgentTypeInfo> {
         },
         AgentTypeInfo {
             code: "chapter_timeline".to_string(),
-            name: "章节时间线规划".to_string(),
-            description: "根据大纲和上下文，规划章节的时间线和事件推进表。".to_string(),
+            name: "时间线正文生成".to_string(),
+            description: "根据大纲和上下文，生成或改写时间线标题与正文。".to_string(),
         },
         AgentTypeInfo {
             code: "character_design".to_string(),

@@ -14,18 +14,12 @@ pub struct Model {
     pub novel_id: i32,
     /// 时间线标题
     pub title: String,
-    /// 时间线描述
-    pub description: Option<String>,
-    /// 时间线大纲
-    pub timeline_outline: Option<String>,
+    /// 时间线正文
+    pub content: Option<String>,
     /// 起始章节号
     pub start_chapter_number: Option<i32>,
     /// 结束章节号
     pub end_chapter_number: Option<i32>,
-    /// 涉及角色描述
-    pub characters_description: Option<String>,
-    /// 章节元数据（JSON格式）
-    pub chapter_metas: Option<String>,
     /// 创建时间
     pub created_at: String,
     /// 更新时间

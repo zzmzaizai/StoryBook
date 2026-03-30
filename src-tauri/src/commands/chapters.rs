@@ -181,13 +181,11 @@ pub async fn ai_generate_chapter_stream(
     let related_timeline_context = related_timeline
         .map(|item| {
             format!(
-                "当前章节命中的时间线：\n- 标题：{}\n- 章节范围：{}-{}\n- 描述：{}\n- 大纲：{}\n- 角色安排：{}",
+                "当前章节命中的时间线：\n- 标题：{}\n- 章节范围：{}-{}\n- 正文：{}",
                 item.title,
                 item.start_chapter_number.unwrap_or(0),
                 item.end_chapter_number.unwrap_or(0),
-                item.description.as_deref().unwrap_or(""),
-                item.timeline_outline.as_deref().unwrap_or(""),
-                item.characters_description.as_deref().unwrap_or("")
+                item.content.as_deref().unwrap_or("")
             )
         })
         .unwrap_or_else(|| "当前章节暂未匹配到明确时间线，请结合已有设定合理创作。".to_string());

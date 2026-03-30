@@ -9,9 +9,7 @@ use tauri::State;
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct GeneratedTimelinePayload {
     pub title: String,
-    pub description: String,
-    pub timeline_outline: String,
-    pub characters_description: String,
+    pub content: String,
 }
 
 #[tauri::command]
@@ -86,21 +84,15 @@ pub async fn update_timeline(
     state: State<'_, AppState>,
     id: i32,
     title: Option<String>,
-    description: Option<String>,
-    timeline_outline: Option<String>,
+    content: Option<String>,
     start_chapter_number: Option<i32>,
     end_chapter_number: Option<i32>,
-    characters_description: Option<String>,
-    chapter_metas: Option<String>,
 ) -> Result<novel_chapter_timeline::Model, String> {
     let params = TimelineUpdateParams {
         title,
-        description,
-        timeline_outline,
+        content,
         start_chapter_number,
         end_chapter_number,
-        characters_description,
-        chapter_metas,
     };
     state
         .timelines()
@@ -130,9 +122,8 @@ pub async fn ai_generate_timeline(
     novel_id: i32,
     timeline_id: Option<i32>,
     current_title: Option<String>,
-    current_description: Option<String>,
-    current_outline: Option<String>,
-    current_characters_description: Option<String>,
+    action: String,
+    current_content: Option<String>,
     start_chapter_number: Option<i32>,
     end_chapter_number: Option<i32>,
     requirement: String,
@@ -182,20 +173,41 @@ pub async fn ai_generate_timeline(
         novel.original_description.as_deref().unwrap_or("")
     );
 
-    let current_context = match current_outline.as_deref().map(str::trim) {
-        Some(content) if !content.is_empty() => format!(
-            "当前正在修改已有时间线，请基于以下已有内容改造成新版本：\n- 标题：{}\n- 描述：{}\n- 大纲：{}\n- 人物：{}",
+    let current_trimmed = current_content.as_deref().unwrap_or("").trim();
+    let current_context = match action.as_str() {
+        "improve" if !current_trimmed.is_empty() => format!(
+            "当前任务：优化现有时间线，在保留核心剧情方向的前提下提升逻辑、节奏与可执行性。\n- 标题：{}\n- 正文：{}",
             current_title.clone().unwrap_or_default(),
-            current_description.clone().unwrap_or_default(),
-            content,
-            current_characters_description.clone().unwrap_or_default(),
+            current_trimmed,
+        ),
+        "rewrite" if !current_trimmed.is_empty() => format!(
+            "当前任务：重写现有时间线，可以调整组织方式和表述，但要保留章节范围与核心剧情目标。\n- 标题：{}\n- 正文：{}",
+            current_title.clone().unwrap_or_default(),
+            current_trimmed,
+        ),
+        "expand" if !current_trimmed.is_empty() => format!(
+            "当前任务：扩展现有时间线，补充更多事件细节、冲突推进和人物作用。\n- 标题：{}\n- 正文：{}",
+            current_title.clone().unwrap_or_default(),
+            current_trimmed,
+        ),
+        "condense" if !current_trimmed.is_empty() => format!(
+            "当前任务：精简整理现有时间线，压缩冗余内容，保留最关键的创作提纲。\n- 标题：{}\n- 正文：{}",
+            current_title.clone().unwrap_or_default(),
+            current_trimmed,
+        ),
+        "generate" if !current_trimmed.is_empty() => format!(
+            "当前任务：参考现有时间线重新生成一版更完整的时间线标题与正文。\n- 标题：{}\n- 正文：{}",
+            current_title.clone().unwrap_or_default(),
+            current_trimmed,
         ),
         _ => format!(
-            "当前是新生成时间线，请基于章节范围生成标题、描述、大纲和人物安排：\n- 起始章节：{}\n- 结束章节：{}",
+            "当前任务：直接生成时间线标题和正文。\n- 起始章节：{}\n- 结束章节：{}",
             start_chapter_number.unwrap_or(1),
             end_chapter_number.unwrap_or(10)
         ),
     };
+
+    let requirement_text = requirement.trim();
 
     let raw = AgentService::invoke(
         &state.db,
@@ -206,10 +218,10 @@ pub async fn ai_generate_timeline(
             "chapter_start": start_chapter_number.unwrap_or(1),
             "chapter_end": end_chapter_number.unwrap_or(10),
             "current_arc_goal": format!(
-                "其他已生成元数据：\n{}\n\n其他已生成好的小说时间线（最多往前20条）：\n{}\n\n用户刚输入的补充要求：\n{}\n\n{}\n\n请严格输出 JSON：{{\"title\":\"小卷标题\",\"description\":\"这一卷的简述\",\"timeline_outline\":\"完整时间线大纲\",\"characters_description\":\"本卷涉及角色与作用\"}}",
+                "其他已生成元数据：\n{}\n\n其他已生成好的小说时间线（最多往前20条）：\n{}\n\n补充要求：\n{}\n\n{}\n\n请严格输出 JSON：{{\"title\":\"时间线标题\",\"content\":\"时间线正文\"}}",
                 if metas_context.is_empty() { "（暂无）" } else { &metas_context },
                 if previous_timelines.is_empty() { "（暂无）" } else { &previous_timelines },
-                requirement,
+                if requirement_text.is_empty() { "（无额外要求）" } else { requirement_text },
                 current_context,
             )
         }),
@@ -261,7 +273,7 @@ fn build_previous_timeline_context(
                 item.title,
                 item.start_chapter_number.unwrap_or(0),
                 item.end_chapter_number.unwrap_or(0),
-                item.timeline_outline.as_deref().unwrap_or("")
+                item.content.as_deref().unwrap_or("")
             )
         })
         .collect::<Vec<_>>()

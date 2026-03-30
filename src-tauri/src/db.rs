@@ -253,7 +253,7 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
     .await?;
 
     // 创建时间线表
-    // 存储小说的时间线大纲
+    // 存储小说时间线的标题、正文和章节范围
     db.execute(Statement::from_string(
         db.get_database_backend(),
         r#"
@@ -261,12 +261,9 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             novel_id INTEGER NOT NULL,
             title TEXT NOT NULL,
-            description TEXT,
-            timeline_outline TEXT,
+            content TEXT,
             start_chapter_number INTEGER,
             end_chapter_number INTEGER,
-            characters_description TEXT,
-            chapter_metas TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         );
@@ -274,6 +271,8 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         .to_string(),
     ))
     .await?;
+
+    migrate_timeline_table(&db).await?;
 
     // 创建 LLM 配置表
     // 存储大语言模型的配置信息，支持多个 Provider 和 Model
@@ -396,6 +395,105 @@ async fn migrate_novels_table(db: &DatabaseConnection) -> Result<(), sea_orm::Db
     Ok(())
 }
 
+async fn migrate_timeline_table(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
+    let content_exists_sql =
+        "SELECT COUNT(*) FROM pragma_table_info('novel_chapter_timeline') WHERE name='content'";
+
+    let content_exists: i64 = db
+        .query_one(Statement::from_string(
+            db.get_database_backend(),
+            content_exists_sql.to_string(),
+        ))
+        .await?
+        .map(|row| row.try_get::<i64>("", "COUNT(*)").unwrap_or(0))
+        .unwrap_or(0);
+
+    if content_exists > 0 {
+        return Ok(());
+    }
+
+    db.execute(Statement::from_string(
+        db.get_database_backend(),
+        r#"
+        ALTER TABLE novel_chapter_timeline RENAME TO novel_chapter_timeline_old;
+        "#
+        .to_string(),
+    ))
+    .await?;
+
+    db.execute(Statement::from_string(
+        db.get_database_backend(),
+        r#"
+        CREATE TABLE novel_chapter_timeline (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            novel_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT,
+            start_chapter_number INTEGER,
+            end_chapter_number INTEGER,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        "#
+        .to_string(),
+    ))
+    .await?;
+
+    db.execute(Statement::from_string(
+        db.get_database_backend(),
+        r#"
+        INSERT INTO novel_chapter_timeline (
+            id,
+            novel_id,
+            title,
+            content,
+            start_chapter_number,
+            end_chapter_number,
+            created_at,
+            updated_at
+        )
+        SELECT
+            id,
+            novel_id,
+            title,
+            TRIM(
+                COALESCE(
+                    NULLIF(
+                        (CASE
+                            WHEN description IS NOT NULL AND TRIM(description) <> ''
+                            THEN '概述：' || TRIM(description) || char(10) || char(10)
+                            ELSE ''
+                        END) ||
+                        COALESCE(NULLIF(TRIM(timeline_outline), ''), '') ||
+                        (CASE
+                            WHEN characters_description IS NOT NULL AND TRIM(characters_description) <> ''
+                            THEN char(10) || char(10) || '涉及角色：' || TRIM(characters_description)
+                            ELSE ''
+                        END),
+                        ''
+                    ),
+                    ''
+                )
+            ),
+            start_chapter_number,
+            end_chapter_number,
+            created_at,
+            updated_at
+        FROM novel_chapter_timeline_old;
+        "#
+        .to_string(),
+    ))
+    .await?;
+
+    db.execute(Statement::from_string(
+        db.get_database_backend(),
+        r#"DROP TABLE novel_chapter_timeline_old;"#.to_string(),
+    ))
+    .await?;
+
+    Ok(())
+}
+
 /// 初始化种子数据
 ///
 /// 如果数据库是新建的（novels 表为空），则插入示例数据。
@@ -500,7 +598,7 @@ async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
 /// 初始化默认 Agent 配置
 ///
 /// 如果 agent_config 表为空，则插入默认的 Agent 配置。
-/// 包括小说大纲生成、章节时间线规划、角色设计等 Agent。
+/// 包括小说大纲生成、时间线正文生成、角色设计等 Agent。
 ///
 /// # 参数
 ///
@@ -511,7 +609,7 @@ async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
 /// | Agent Code | 名称 | 说明 |
 /// |------------|------|------|
 /// | novel_outline | 小说大纲生成 | 生成小说的整体大纲 |
-/// | chapter_timeline | 章节时间线规划 | 规划章节的时间线 |
+/// | chapter_timeline | 时间线正文生成 | 生成时间线标题与正文 |
 /// | character_design | 角色设计 | 设计小说角色 |
 /// | chapter_content | 章节内容生成 | 生成章节内容 |
 /// | chapter_polish | 章节润色优化 | 润色和优化章节 |

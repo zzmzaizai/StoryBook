@@ -86,8 +86,8 @@ export const api = {
   listTimelinesPaged: (novelId, page = 0, pageSize = 20) =>
     invoke('list_timelines_paged', { novelId, page, pageSize }),
   getTimeline: (id) => invoke('get_timeline', { id }),
-  updateTimeline: (id, title, description, timelineOutline, startChapterNumber, endChapterNumber, charactersDescription, chapterMetas) =>
-    invoke('update_timeline', { id, title, description, timelineOutline, startChapterNumber, endChapterNumber, charactersDescription, chapterMetas }),
+  updateTimeline: (id, title, content, startChapterNumber, endChapterNumber) =>
+    invoke('update_timeline', { id, title, content, startChapterNumber, endChapterNumber }),
   aiGenerateTimeline: (payload) => invoke('ai_generate_timeline', payload),
   deleteTimeline: (id) => invoke('delete_timeline', { id }),
   getChapterMetaProperties: () => invoke('get_chapter_meta_properties'),
