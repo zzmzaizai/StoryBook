@@ -2,9 +2,9 @@ import { api } from '../../api/tauri.js'
 import { icon } from '../../lib/icons.js'
 import { toastSuccess, toastError } from '../../lib/toast.js'
 import { confirm } from '../../lib/modal.js'
-import { Modal } from '../../lib/modal.js'
 import { createMarkdownEditor } from '../../lib/markdown-editor.js'
 import { createPagedList } from '../../lib/virtual-list.js'
+import { openAiGenerateModal } from '../../components/ai-generate-modal.js'
 import '../../style/virtual-list.css'
 
 let timelineList = []
@@ -14,7 +14,7 @@ let timelineListComponent = null
 let timelineAiGenerating = false
 
 const TIMELINE_AI_ACTIONS = [
-  { value: 'generate', label: '直接生成' },
+  { value: 'generate', label: '生成' },
   { value: 'improve', label: '优化现有内容' },
   { value: 'rewrite', label: '重写现有内容' },
   { value: 'expand', label: '扩展现有内容' },
@@ -31,7 +31,7 @@ function getTimelineAiConfirmText(action) {
     case 'rewrite': return '重写内容'
     case 'expand': return '扩展内容'
     case 'condense': return '精简整理'
-    default: return '直接生成'
+    default: return '生成'
   }
 }
 
@@ -310,42 +310,16 @@ function renderEditor(content, novelInfo) {
 function openTimelineAiModal(novelInfo, editorContent) {
   const currentContent = timelineContentEditor ? timelineContentEditor.getValue() : ''
   const defaultAction = getTimelineAiDefaultAction(currentContent)
-  const body = document.createElement('div')
-  body.innerHTML = `
-    <div class="meta-preview-note" style="margin-top: 0; margin-bottom: var(--space-md);">
-      <div>
-        <div class="meta-preview-note__title">${currentContent.trim() ? '将基于当前时间线继续处理' : '当前时间线为空，可直接生成初稿'}</div>
-        <div class="meta-preview-note__desc">你可以直接生成、优化、重写或精简当前时间线。补充要求是可选项。</div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">操作类型</label>
-      <div class="meta-ai-actions">
-        ${TIMELINE_AI_ACTIONS.map(action => `
-          <label class="meta-ai-action-option">
-            <input type="radio" name="timeline-ai-action" value="${action.value}" ${action.value === defaultAction ? 'checked' : ''}>
-            <span>${action.label}</span>
-          </label>
-        `).join('')}
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">补充要求（可选）</label>
-      <textarea id="timeline-ai-requirement" class="form-input" rows="6" placeholder="例如：节奏更快、强化主角动机、让结尾留下更强钩子"></textarea>
-    </div>
-  `
-
-  const modal = new Modal({
+  openAiGenerateModal({
     title: 'AI生成时间线',
-    content: body,
-    size: 'md',
-    confirmText: getTimelineAiConfirmText(defaultAction),
-    cancelText: '取消',
-    onConfirm: async (instance) => {
-      const action = instance.contentEl.querySelector('input[name="timeline-ai-action"]:checked')?.value || defaultAction
-      const requirement = instance.contentEl.querySelector('#timeline-ai-requirement')?.value?.trim() || ''
-      instance.setLoading(true)
-
+    currentContent,
+    currentContextTitle: '你可以生成、优化、重写、扩展或精简当前时间线。补充要求是可选项。',
+    modeLabel: '操作类型',
+    modes: TIMELINE_AI_ACTIONS,
+    defaultMode: defaultAction,
+    requirementPlaceholder: '例如：节奏更快、强化主角动机、让结尾留下更强钩子',
+    getConfirmText: getTimelineAiConfirmText,
+    onSubmit: async ({ mode, requirement }) => {
       try {
         timelineAiGenerating = true
         updateTimelineAiButtonState()
@@ -353,14 +327,12 @@ function openTimelineAiModal(novelInfo, editorContent) {
           novelId: novelInfo.id,
           timelineId: editingTimeline?.id ?? null,
           currentTitle: editorContent.querySelector('#timeline-title')?.value || '',
-          action,
+          action: mode,
           currentContent: timelineContentEditor ? timelineContentEditor.getValue() : '',
           startChapterNumber: parseInt(editorContent.querySelector('#timeline-start')?.value || '1'),
           endChapterNumber: parseInt(editorContent.querySelector('#timeline-end')?.value || '10'),
           requirement,
         })
-
-        instance.close({ action: 'confirm' })
 
         editorContent.querySelector('#timeline-title').value = result.title || ''
         timelineContentEditor?.setValue(result.content || '')
@@ -371,25 +343,9 @@ function openTimelineAiModal(novelInfo, editorContent) {
         timelineAiGenerating = false
         updateTimelineAiButtonState()
         toastError('AI生成失败: ' + err)
-        return false
       }
     }
   })
-
-  const syncConfirmText = () => {
-    const action = modal.contentEl.querySelector('input[name="timeline-ai-action"]:checked')?.value || defaultAction
-    modal.setButtons([
-      { text: '取消', type: 'default', onClick: () => modal.cancel() },
-      { text: getTimelineAiConfirmText(action), type: 'primary', onClick: () => modal.confirm() },
-    ])
-  }
-
-  modal.open()
-  setTimeout(() => {
-    modal.contentEl.querySelectorAll('input[name="timeline-ai-action"]').forEach(input => {
-      input.addEventListener('change', syncConfirmText)
-    })
-  }, 0)
 }
 
 export function cleanup() {

@@ -3,9 +3,10 @@ import { store } from '../state/store.js'
 import { navigate } from '../router.js'
 import { icon } from '../lib/icons.js'
 import { createMarkdownEditor } from '../lib/markdown-editor.js'
-import { createModal, confirm } from '../lib/modal.js'
+import { confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
+import { openAiGenerateModal } from '../components/ai-generate-modal.js'
 import '../style/virtual-list.css'
 
 let searchKeyword = ''
@@ -14,6 +15,22 @@ let isCreating = false
 let charactersList = []
 let characterListComponent = null
 let personalityEditorInstance = null
+
+const CHARACTER_AI_MODES = [
+  { value: 'create', label: '新建角色' },
+  { value: 'rewrite', label: '改写当前角色' },
+  { value: 'complete', label: '补全当前角色' },
+  { value: 'differentiate', label: '差异化优化' },
+]
+
+function getCharacterAiConfirmText(mode) {
+  switch (mode) {
+    case 'rewrite': return '重写内容'
+    case 'complete': return '补全内容'
+    case 'differentiate': return '优化内容'
+    default: return '生成'
+  }
+}
 
 export async function render() {
   const el = document.createElement('div')
@@ -411,36 +428,17 @@ async function renderCharacterEditor(root) {
 }
 
 function openCharacterAiModal(editorEl, character) {
-  const body = document.createElement('div')
-  body.innerHTML = `
-    <div class="form-group mb-md">
-      <label class="form-label">生成模式</label>
-      <select id="character-ai-mode" class="form-input">
-        <option value="create">新建角色</option>
-        <option value="rewrite">改写当前角色</option>
-        <option value="complete">补全当前角色</option>
-        <option value="differentiate">差异化优化</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">补充要求</label>
-      <textarea id="character-ai-requirement" class="form-input" rows="6" placeholder="输入你希望 AI 如何塑造这个角色，例如定位、人设反差、成长方向、说话风格等..."></textarea>
-    </div>
-  `
-
-  createModal({
+  openAiGenerateModal({
     title: 'AI生成角色',
-    content: body,
-    size: 'md',
-    confirmText: '开始生成',
-    cancelText: '取消',
-    onConfirm: async (instance) => {
-      const requirement = instance.contentEl.querySelector('#character-ai-requirement')?.value?.trim() || ''
-      if (!requirement) return false
-
-      const mode = instance.contentEl.querySelector('#character-ai-mode')?.value || 'create'
-      instance.setLoading(true)
-
+    currentContent: personalityEditorInstance ? personalityEditorInstance.getValue() : '',
+    currentContextTitle: character ? '将基于当前角色继续处理。' : '当前角色内容为空，可直接生成。',
+    currentContextDesc: '你可以生成、改写、补全或优化当前角色内容。',
+    modeLabel: '生成模式',
+    modes: CHARACTER_AI_MODES,
+    defaultMode: character ? 'rewrite' : 'create',
+    requirementPlaceholder: '例如：更有危险气质、增加反差萌、强化野心和控制欲',
+    getConfirmText: getCharacterAiConfirmText,
+    onSubmit: async ({ mode, requirement }) => {
       try {
         const result = await api.aiGenerateCharacter({
           novelId: store.currentNovelId,
@@ -464,11 +462,8 @@ function openCharacterAiModal(editorEl, character) {
         if (editorEl.querySelector('#character-type')) editorEl.querySelector('#character-type').value = `${result.character_type ?? 1}`
         personalityEditorInstance?.setValue(result.personality || '')
         toastSuccess('AI已生成角色内容，请检查后点击保存')
-        instance.setLoading(false)
       } catch (err) {
         toastError('AI生成失败: ' + err)
-        instance.setLoading(false)
-        return false
       }
     },
   })

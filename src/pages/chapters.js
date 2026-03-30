@@ -3,9 +3,10 @@ import { store } from '../state/store.js'
 import { navigate } from '../router.js'
 import { icon } from '../lib/icons.js'
 import { createMarkdownEditor, destroyEditor } from '../lib/markdown-editor.js'
-import { createModal, confirm } from '../lib/modal.js'
+import { confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
+import { openAiGenerateModal } from '../components/ai-generate-modal.js'
 import { listen } from '@tauri-apps/api/event'
 import '../style/editor.css'
 import '../style/virtual-list.css'
@@ -18,7 +19,24 @@ let chaptersList = []
 let chapterListComponent = null
 let chapterAiUnlisteners = []
 let activeChapterAiRequestId = null
-let activeChapterAiModal = null
+
+const CHAPTER_AI_MODES = [
+  { value: 'create', label: '新写本章' },
+  { value: 'rewrite', label: '改写当前内容' },
+  { value: 'expand', label: '扩写当前内容' },
+  { value: 'continue', label: '续写当前内容' },
+  { value: 'polish', label: '润色当前内容' },
+]
+
+function getChapterAiConfirmText(mode) {
+  switch (mode) {
+    case 'rewrite': return '重写内容'
+    case 'expand': return '扩写内容'
+    case 'continue': return '续写内容'
+    case 'polish': return '润色内容'
+    default: return '生成'
+  }
+}
 
 export async function render() {
   await ensureChapterAiListeners()
@@ -385,35 +403,17 @@ async function renderChapterEditor(root) {
 }
 
 function openChapterAiModal(editorEl, chapterInfo) {
-  const body = document.createElement('div')
-  body.innerHTML = `
-    <div class="form-group mb-md">
-      <label class="form-label">生成模式</label>
-      <select id="chapter-ai-mode" class="form-input">
-        <option value="create">新写本章</option>
-        <option value="rewrite">改写当前内容</option>
-        <option value="expand">扩写当前内容</option>
-        <option value="continue">续写当前内容</option>
-        <option value="polish">润色当前内容</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">补充要求</label>
-      <textarea id="chapter-ai-requirement" class="form-input" rows="6" placeholder="输入你希望 AI 如何生成这一章，例如剧情目标、情绪氛围、冲突重点、场景安排等..."></textarea>
-    </div>
-  `
-
-  const modal = createModal({
+  openAiGenerateModal({
     title: 'AI生成章节',
-    content: body,
-    size: 'md',
-    confirmText: '开始生成',
-    cancelText: '取消',
-    onConfirm: async (instance) => {
-      const requirement = instance.contentEl.querySelector('#chapter-ai-requirement')?.value?.trim() || ''
-      if (!requirement) return false
-
-      const mode = instance.contentEl.querySelector('#chapter-ai-mode')?.value || 'create'
+    currentContent: editorInstance ? editorInstance.getValue() : '',
+    currentContextTitle: `你正在处理第 ${chapterInfo.chapterNumber || 1} 章。补充要求是可选项。`,
+    currentContextDesc: '你可以生成、改写、扩写、续写或润色当前章节内容。',
+    modeLabel: '生成模式',
+    modes: CHAPTER_AI_MODES,
+    defaultMode: 'create',
+    requirementPlaceholder: '例如：强化冲突推进、让结尾钩子更强、突出人物压迫感',
+    getConfirmText: getChapterAiConfirmText,
+    onSubmit: async ({ mode, requirement }) => {
       const chapterNumber = parseInt(editorEl.querySelector('#chapter-number')?.value || `${chapterInfo.chapterNumber || 1}`, 10) || (chapterInfo.chapterNumber || 1)
       const currentChapterName = editorEl.querySelector('#chapter-name')?.value?.trim() || ''
       const currentStatus = parseInt(editorEl.querySelector('#chapter-status')?.value || `${chapterInfo.status || 0}`, 10) || 0
@@ -422,7 +422,6 @@ function openChapterAiModal(editorEl, chapterInfo) {
 
       activeChapterAiRequestId = requestId
       editorInstance?.setValue('')
-      instance.setLoading(true)
 
       try {
         await api.aiGenerateChapterStream({
@@ -439,14 +438,10 @@ function openChapterAiModal(editorEl, chapterInfo) {
       } catch (err) {
         activeChapterAiRequestId = null
         editorInstance?.setValue(currentContent)
-        instance.setLoading(false)
         toastError('AI生成失败: ' + err)
-        return false
       }
     },
   })
-
-  activeChapterAiModal = modal
 }
 
 async function ensureChapterAiListeners() {
@@ -455,17 +450,14 @@ async function ensureChapterAiListeners() {
   const chunkUnlisten = await listen('chapter-ai-stream-chunk', (event) => {
     const payload = event.payload
     if (!editorInstance || !payload?.delta || payload.request_id !== activeChapterAiRequestId) return
-    editorInstance.setValue((editorInstance.getValue() || '') + payload.delta)
+    editorInstance.setValueWithAiFollow((editorInstance.getValue() || '') + payload.delta)
   })
 
   const doneUnlisten = await listen('chapter-ai-stream-done', (event) => {
     const payload = event.payload
     if (!editorInstance || !payload || payload.request_id !== activeChapterAiRequestId) return
-    editorInstance.setValue(payload.content || '')
+    editorInstance.setValueWithAiFollow(payload.content || '')
     activeChapterAiRequestId = null
-    activeChapterAiModal?.setLoading(false)
-    activeChapterAiModal?.close({ action: 'confirm' })
-    activeChapterAiModal = null
     toastSuccess('AI已生成章节内容，请检查后点击保存')
   })
 
@@ -473,8 +465,6 @@ async function ensureChapterAiListeners() {
     const payload = event.payload
     if (payload?.request_id !== activeChapterAiRequestId) return
     activeChapterAiRequestId = null
-    activeChapterAiModal?.setLoading(false)
-    activeChapterAiModal = null
     toastError('AI生成失败: ' + (payload?.error || '未知错误'))
   })
 
@@ -531,7 +521,6 @@ export function cleanup() {
   })
   chapterAiUnlisteners = []
   activeChapterAiRequestId = null
-  activeChapterAiModal = null
   if (chapterListComponent) {
     chapterListComponent.destroy()
     chapterListComponent = null

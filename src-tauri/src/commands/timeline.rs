@@ -174,36 +174,48 @@ pub async fn ai_generate_timeline(
     );
 
     let current_trimmed = current_content.as_deref().unwrap_or("").trim();
+    let chapter_start = start_chapter_number.unwrap_or(1);
+    let chapter_end = end_chapter_number.unwrap_or(10);
     let current_context = match action.as_str() {
         "improve" if !current_trimmed.is_empty() => format!(
-            "当前任务：优化现有时间线，在保留核心剧情方向的前提下提升逻辑、节奏与可执行性。\n- 标题：{}\n- 正文：{}",
+            "当前任务：你正在编辑第 {} 到第 {} 章的时间线。请优化现有时间线，在保留核心剧情方向的前提下提升逻辑、节奏与可执行性，并确保内容与小说元数据上下文一致。\n- 标题：{}\n- 正文：{}",
+            chapter_start,
+            chapter_end,
             current_title.clone().unwrap_or_default(),
             current_trimmed,
         ),
         "rewrite" if !current_trimmed.is_empty() => format!(
-            "当前任务：重写现有时间线，可以调整组织方式和表述，但要保留章节范围与核心剧情目标。\n- 标题：{}\n- 正文：{}",
+            "当前任务：你正在编辑第 {} 到第 {} 章的时间线。请重写现有时间线，可以调整组织方式和表述，但必须保留章节范围、核心剧情目标，并与小说元数据上下文保持一致。\n- 标题：{}\n- 正文：{}",
+            chapter_start,
+            chapter_end,
             current_title.clone().unwrap_or_default(),
             current_trimmed,
         ),
         "expand" if !current_trimmed.is_empty() => format!(
-            "当前任务：扩展现有时间线，补充更多事件细节、冲突推进和人物作用。\n- 标题：{}\n- 正文：{}",
+            "当前任务：你正在编辑第 {} 到第 {} 章的时间线。请扩展现有时间线，补充更多事件细节、冲突推进和人物作用，并确保不偏离小说元数据设定。\n- 标题：{}\n- 正文：{}",
+            chapter_start,
+            chapter_end,
             current_title.clone().unwrap_or_default(),
             current_trimmed,
         ),
         "condense" if !current_trimmed.is_empty() => format!(
-            "当前任务：精简整理现有时间线，压缩冗余内容，保留最关键的创作提纲。\n- 标题：{}\n- 正文：{}",
+            "当前任务：你正在编辑第 {} 到第 {} 章的时间线。请精简整理现有时间线，压缩冗余内容，保留最关键的创作提纲，并保持与小说元数据上下文一致。\n- 标题：{}\n- 正文：{}",
+            chapter_start,
+            chapter_end,
             current_title.clone().unwrap_or_default(),
             current_trimmed,
         ),
         "generate" if !current_trimmed.is_empty() => format!(
-            "当前任务：参考现有时间线重新生成一版更完整的时间线标题与正文。\n- 标题：{}\n- 正文：{}",
+            "当前任务：你正在编辑第 {} 到第 {} 章的时间线。请参考现有时间线重新生成一版更完整的时间线标题与正文，并严格结合小说元数据上下文。\n- 标题：{}\n- 正文：{}",
+            chapter_start,
+            chapter_end,
             current_title.clone().unwrap_or_default(),
             current_trimmed,
         ),
         _ => format!(
-            "当前任务：直接生成时间线标题和正文。\n- 起始章节：{}\n- 结束章节：{}",
-            start_chapter_number.unwrap_or(1),
-            end_chapter_number.unwrap_or(10)
+            "当前任务：你正在编辑第 {} 到第 {} 章的时间线。请直接生成该章节区间的时间线标题和正文，并严格结合小说元数据上下文，不要写成其他章节的内容。",
+            chapter_start,
+            chapter_end
         ),
     };
 
@@ -215,10 +227,12 @@ pub async fn ai_generate_timeline(
         serde_json::json!({
             "novel_id": novel_id,
             "outline": novel_context,
-            "chapter_start": start_chapter_number.unwrap_or(1),
-            "chapter_end": end_chapter_number.unwrap_or(10),
+            "chapter_start": chapter_start,
+            "chapter_end": chapter_end,
             "current_arc_goal": format!(
-                "其他已生成元数据：\n{}\n\n其他已生成好的小说时间线（最多往前20条）：\n{}\n\n补充要求：\n{}\n\n{}\n\n请严格输出 JSON：{{\"title\":\"时间线标题\",\"content\":\"时间线正文\"}}",
+                "当前正在编辑的时间线章节范围：第 {} 到第 {} 章。你输出的标题和正文必须服务于这一段剧情，不能越界到其他章节。\n\n小说元数据上下文（必须优先服从）：\n{}\n\n其他已生成好的小说时间线（最多往前20条）：\n{}\n\n补充要求：\n{}\n\n{}\n\n请严格输出 JSON：{{\"title\":\"时间线标题\",\"content\":\"时间线正文\"}}",
+                chapter_start,
+                chapter_end,
                 if metas_context.is_empty() { "（暂无）" } else { &metas_context },
                 if previous_timelines.is_empty() { "（暂无）" } else { &previous_timelines },
                 if requirement_text.is_empty() { "（无额外要求）" } else { requirement_text },

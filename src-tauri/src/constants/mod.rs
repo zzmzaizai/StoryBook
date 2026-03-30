@@ -11,4 +11,5 @@ pub struct MetaPropertyDto {
     pub group_name: String,
     pub property_name: String,
     pub property_description: String,
+    pub priority_level: String,
 }

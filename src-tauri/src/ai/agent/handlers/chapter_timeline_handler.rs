@@ -44,12 +44,15 @@ impl AgentHandler for ChapterTimelineHandler {
 当前篇章目标：
 {}
 
+请注意：你现在编辑的是第 {} 到第 {} 章这一段时间线，输出必须严格服务于这个章节范围。
 请只输出适合作家继续创作的时间线正文，不要解释，不要写多余前言。
-正文应包含这一段章节范围内的核心推进、关键事件、冲突演进、重要人物作用和节奏安排。"#,
+正文应包含这一段章节范围内的核心推进、关键事件、冲突演进、重要人物作用和节奏安排，并与已给上下文保持一致。"#,
             input.chapter_start,
             input.chapter_end,
             input.outline,
             input.current_arc_goal.unwrap_or_default()
+            ,input.chapter_start,
+            input.chapter_end
         );
 
         Ok(prompt)

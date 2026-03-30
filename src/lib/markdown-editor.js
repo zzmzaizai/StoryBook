@@ -124,6 +124,18 @@ export function createMarkdownEditor(container, options = {}) {
     updateCharacterCount(value || '')
   }
 
+  function setValueWithAiFollow(value) {
+    const nextValue = value || ''
+    const anchor = nextValue.length
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: nextValue },
+      selection: { anchor, head: anchor },
+      scrollIntoView: true,
+    })
+    view.focus()
+    updateCharacterCount(nextValue)
+  }
+
   function updateCharacterCount(value = getValue()) {
     const text = `字符 ${value.length}`
     if (leftCountLabel) leftCountLabel.textContent = text
@@ -187,6 +199,7 @@ export function createMarkdownEditor(container, options = {}) {
     editor: view,
     getValue,
     setValue,
+    setValueWithAiFollow,
     getHTML: () => previewMount.innerHTML,
     focus: () => view.focus(),
     blur: () => view.contentDOM.blur(),

@@ -510,9 +510,95 @@
   margin-bottom: var(--space-xs);
 }
 
+.meta-item-title-wrap {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+
 .meta-item-name {
   font-weight: 500;
   color: var(--text-primary);
+}
+
+.meta-item-group {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.meta-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.meta-priority-badge--required {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.meta-priority-badge--recommended {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.meta-priority-badge--advanced {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+}
+
+.meta-list-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.meta-priority-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.meta-priority-filter {
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.meta-priority-filter.active {
+  background: var(--accent-muted);
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border-primary));
+}
+
+.meta-priority-summary {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.meta-priority-hint {
+  margin-bottom: 12px;
+  font-size: var(--font-size-sm);
+  color: var(--text-tertiary);
+  line-height: 1.6;
 }
 
 .meta-item-preview,
@@ -568,6 +654,14 @@
   color: var(--text-tertiary);
   margin: var(--space-xs) 0 0 0;
   line-height: 1.5;
+}
+
+.meta-editor-meta-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .meta-preview-note {

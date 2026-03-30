@@ -7,6 +7,7 @@ import { listen } from '@tauri-apps/api/event'
 import { createMarkdownEditor } from '../../lib/markdown-editor.js'
 import { createTabs } from '../../lib/tabs.js'
 import { createPagedList } from '../../lib/virtual-list.js'
+import { openAiGenerateModal } from '../../components/ai-generate-modal.js'
 import '../../style/virtual-list.css'
 
 let activeMetaTab = 'added'
@@ -21,14 +22,88 @@ let metaAiUnlisteners = []
 let activeMetaAiRequestId = null
 let metaAiGenerating = false
 let metaAiOriginalContent = ''
+let activeMetaPriorityFilter = 'required'
 
 const META_AI_ACTIONS = [
-  { value: 'generate', label: '直接生成' },
+  { value: 'generate', label: '生成' },
   { value: 'improve', label: '优化现有内容' },
   { value: 'rewrite', label: '重写现有内容' },
   { value: 'expand', label: '扩展现有内容' },
   { value: 'condense', label: '精简整理' },
 ]
+
+const META_PRIORITY_FILTERS = [
+  { key: 'all', label: '全部' },
+  { key: 'required', label: '基础必填' },
+  { key: 'recommended', label: '推荐补充' },
+  { key: 'advanced', label: '高级扩展' },
+]
+
+function getMetaPriorityMeta(priority) {
+  switch (priority) {
+    case 'required':
+      return { label: '基础必填', badge: '必填', description: '建议优先补齐这类元数据，先建立最小创作骨架。', className: 'required' }
+    case 'recommended':
+      return { label: '推荐补充', badge: '推荐', description: '补充后可以显著提升角色、剧情和长线连贯性。', className: 'recommended' }
+    case 'advanced':
+      return { label: '高级扩展', badge: '扩展', description: '适合在主线稳定后继续细化世界深度和复杂度。', className: 'advanced' }
+    default:
+      return { label: '全部', badge: '全部', description: '查看全部可添加元数据。', className: 'all' }
+  }
+}
+
+function filterMetaPropertiesByPriority(properties, priority) {
+  if (priority === 'all') return properties
+  return properties.filter(prop => prop.priority_level === priority)
+}
+
+function buildMetaPriorityToolbar(items, priority) {
+  const priorityMeta = getMetaPriorityMeta(priority)
+  return `
+    <div class="meta-list-toolbar">
+      ${renderMetaPriorityFilters()}
+      <div class="meta-priority-summary">${priorityMeta.label} · ${items.length}</div>
+    </div>
+    <div class="meta-priority-hint">${priorityMeta.description}</div>
+  `
+}
+
+function bindMetaPriorityFilters(listMount, content, novelInfo) {
+  listMount.querySelectorAll('[data-priority-filter]').forEach(button => {
+    button.addEventListener('click', () => {
+      activeMetaPriorityFilter = button.dataset.priorityFilter || 'all'
+      renderMetaList(content, novelInfo)
+    })
+  })
+}
+
+function renderMetaListItemHeader(prop, actionHtml) {
+  return `
+    <div class="meta-item-header">
+      <div class="meta-item-title-wrap">
+        <span class="meta-item-name">${prop.property_name}</span>
+        <span class="meta-item-group">${prop.group_name}</span>
+        ${renderMetaPriorityBadge(prop.priority_level)}
+      </div>
+      ${actionHtml}
+    </div>
+  `
+}
+
+function renderMetaPriorityFilters() {
+  return `
+    <div class="meta-priority-filters">
+      ${META_PRIORITY_FILTERS.map(filter => `
+        <button type="button" class="meta-priority-filter${activeMetaPriorityFilter === filter.key ? ' active' : ''}" data-priority-filter="${filter.key}">${filter.label}</button>
+      `).join('')}
+    </div>
+  `
+}
+
+function renderMetaPriorityBadge(priority) {
+  const meta = getMetaPriorityMeta(priority)
+  return `<span class="meta-priority-badge meta-priority-badge--${meta.className}">${meta.badge}</span>`
+}
 
 function getMetaAiDefaultAction(currentContent) {
   return currentContent.trim() ? 'improve' : 'generate'
@@ -40,7 +115,7 @@ function getMetaAiConfirmText(action) {
     case 'rewrite': return '重写内容'
     case 'expand': return '扩展内容'
     case 'condense': return '精简整理'
-    default: return '直接生成'
+    default: return '生成'
   }
 }
 
@@ -130,14 +205,27 @@ function renderMetaList(content, novelInfo) {
 
   if (activeMetaTab === 'added') {
     // 已添加的元数据 - 使用分页加载
+    const allAddedMeta = metaDataList
+      .map(meta => ({ meta, propDef: metaProperties.find(p => p.property_name === meta.property_name) }))
+      .filter(item => item.propDef)
+    const filteredAddedMeta = filterMetaPropertiesByPriority(
+      allAddedMeta.map(item => item.meta),
+      activeMetaPriorityFilter
+    )
+
+    listMount.innerHTML = buildMetaPriorityToolbar(filteredAddedMeta, activeMetaPriorityFilter)
+    bindMetaPriorityFilters(listMount, content, novelInfo)
+
     metaListComponent = createPagedList({
       containerId: 'meta-added-list',
       pageSize: 20,
       loadMore: async (page, pageSize) => {
-        const result = await api.listMetaPaged(novelInfo.id, page, pageSize)
+        const start = page * pageSize
+        const end = start + pageSize
+        const items = filteredAddedMeta.slice(start, end)
         return {
-          items: result.items,
-          hasMore: result.has_more
+          items,
+          hasMore: end < filteredAddedMeta.length
         }
       },
       renderItem: (meta) => {
@@ -149,12 +237,10 @@ function renderMetaList(content, novelInfo) {
         const propDef = metaProperties.find(p => p.property_name === meta.property_name)
         const previewText = propDef?.property_description || '点击继续编辑该元数据内容'
         div.innerHTML = `
-          <div class="meta-item-header">
-            <span class="meta-item-name">${meta.property_name}</span>
-            <button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete-meta" data-meta-id="${meta.id}" aria-label="删除元数据">
-              ${icon('delete', 14)}
-            </button>
-          </div>
+          ${renderMetaListItemHeader(
+            propDef || { property_name: meta.property_name, group_name: '未分组', priority_level: 'recommended' },
+            `<button class="list-item-delete-btn list-item-delete-btn-visible" data-action="delete-meta" data-meta-id="${meta.id}" aria-label="删除元数据">${icon('delete', 14)}</button>`
+          )}
           <p class="meta-item-preview">${previewText}</p>
         `
 
@@ -209,7 +295,10 @@ function renderMetaList(content, novelInfo) {
     })
   } else {
     // 可添加的元数据 - 一次性加载（数量通常较少）
-    const unaddedProps = metaProperties.filter(p => !metaDataList.find(m => m.property_name === p.property_name))
+    const allUnaddedProps = metaProperties.filter(p => !metaDataList.find(m => m.property_name === p.property_name))
+    const filteredUnaddedProps = filterMetaPropertiesByPriority(allUnaddedProps, activeMetaPriorityFilter)
+    listMount.innerHTML = buildMetaPriorityToolbar(filteredUnaddedProps, activeMetaPriorityFilter)
+    bindMetaPriorityFilters(listMount, content, novelInfo)
 
     metaListComponent = createPagedList({
       containerId: 'meta-available-list',
@@ -217,10 +306,10 @@ function renderMetaList(content, novelInfo) {
       loadMore: async (page, pageSize) => {
         const start = page * pageSize
         const end = start + pageSize
-        const items = unaddedProps.slice(start, end)
+        const items = filteredUnaddedProps.slice(start, end)
         return {
           items: items,
-          hasMore: end < unaddedProps.length
+          hasMore: end < filteredUnaddedProps.length
         }
       },
       renderItem: (prop) => {
@@ -230,10 +319,10 @@ function renderMetaList(content, novelInfo) {
           div.classList.add('active')
         }
         div.innerHTML = `
-          <div class="meta-item-header">
-            <span class="meta-item-name">${prop.property_name}</span>
-            <button class="list-item-add-btn" data-action="add-meta" aria-label="添加元数据">${icon('plus', 12)}</button>
-          </div>
+          ${renderMetaListItemHeader(
+            prop,
+            `<button class="list-item-add-btn" data-action="add-meta" aria-label="添加元数据">${icon('plus', 12)}</button>`
+          )}
           <p class="meta-item-preview">${prop.property_description || ''}</p>
         `
 
@@ -296,6 +385,10 @@ function renderMetaPreview(content, prop, novelInfo) {
       <div class="meta-editor-header">
         <div>
           <h3 class="meta-editor-title">${prop.property_name}</h3>
+          <div class="meta-editor-meta-row">
+            <span class="meta-item-group">${prop.group_name}</span>
+            ${renderMetaPriorityBadge(prop.priority_level)}
+          </div>
           <p class="meta-editor-desc">${prop.property_description || '该元数据暂无详细描述。'}</p>
         </div>
       </div>
@@ -303,7 +396,7 @@ function renderMetaPreview(content, prop, novelInfo) {
         <button id="add-preview-meta-btn" class="meta-preview-note__icon" aria-label="立即添加这个元数据">${icon('plus', 14)}</button>
         <div>
           <div class="meta-preview-note__title">立即添加这个元数据</div>
-          <div class="meta-preview-note__desc">添加后，这个元数据会进入“已添加”列表，并可在这里继续编辑具体内容。</div>
+          <div class="meta-preview-note__desc">${getMetaPriorityMeta(prop.priority_level).description} 添加后，这个元数据会进入“已添加”列表，并可在这里继续编辑具体内容。</div>
         </div>
       </div>
     </div>
@@ -329,6 +422,7 @@ function renderEditor(content, novelInfo) {
       <div class="meta-editor-header">
         <div>
           <h3 class="meta-editor-title">${editingMeta.property_name}</h3>
+          ${propDef ? `<div class="meta-editor-meta-row"><span class="meta-item-group">${propDef.group_name}</span>${renderMetaPriorityBadge(propDef.priority_level)}</div>` : ''}
           ${propDesc ? `<p class="meta-editor-desc">${propDesc}</p>` : ''}
         </div>
       </div>
@@ -391,45 +485,20 @@ function renderEditor(content, novelInfo) {
 async function openMetaAiModal(novelInfo) {
   const currentContent = metaEditorInstance ? metaEditorInstance.getValue() : ''
   const defaultAction = getMetaAiDefaultAction(currentContent)
-  const body = document.createElement('div')
-  body.innerHTML = `
-    <div class="meta-preview-note" style="margin-top: 0; margin-bottom: var(--space-md);">
-      <div>
-        <div class="meta-preview-note__title">${currentContent.trim() ? '将基于当前内容继续处理' : '当前内容为空，可直接生成初稿'}</div>
-        <div class="meta-preview-note__desc">补充要求现在是可选项。你可以直接让 AI 生成、优化、重写或精简当前元数据内容。</div>
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">操作类型</label>
-      <div class="meta-ai-actions">
-        ${META_AI_ACTIONS.map(action => `
-          <label class="meta-ai-action-option">
-            <input type="radio" name="meta-ai-action" value="${action.value}" ${action.value === defaultAction ? 'checked' : ''}>
-            <span>${action.label}</span>
-          </label>
-        `).join('')}
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">补充要求（可选）</label>
-      <textarea id="meta-ai-requirement" class="form-input" rows="6" placeholder="例如：更黑暗一点、加入更多权谋细节、语气更克制"></textarea>
-    </div>
-  `
-
-  const modal = new Modal({
+  openAiGenerateModal({
     title: `AI生成 - ${editingMeta.property_name}`,
-    content: body,
-    size: 'md',
-    confirmText: getMetaAiConfirmText(defaultAction),
-    cancelText: '取消',
-    onConfirm: async (instance) => {
-      const action = instance.contentEl.querySelector('input[name="meta-ai-action"]:checked')?.value || defaultAction
-      const requirement = instance.contentEl.querySelector('#meta-ai-requirement')?.value?.trim() || ''
+    currentContent,
+    currentContextTitle: '补充要求现在是可选项。你可以生成、优化、重写、扩展或精简当前元数据内容。',
+    modeLabel: '操作类型',
+    modes: META_AI_ACTIONS,
+    defaultMode: defaultAction,
+    requirementPlaceholder: '例如：更黑暗一点、加入更多权谋细节、语气更克制',
+    getConfirmText: getMetaAiConfirmText,
+    onSubmit: async ({ mode, requirement }) => {
       const requestId = `meta_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
       activeMetaAiRequestId = requestId
       const currentEditorContent = metaEditorInstance ? metaEditorInstance.getValue() : ''
       metaAiOriginalContent = currentEditorContent
-      instance.setLoading(true)
       try {
         metaAiGenerating = true
         updateMetaAiButtonState()
@@ -441,11 +510,10 @@ async function openMetaAiModal(novelInfo) {
           novelId: novelInfo.id,
           propertyName: editingMeta.property_name,
           propertyDescription: metaProperties.find(p => p.property_name === editingMeta.property_name)?.property_description || '',
-          action,
+          action: mode,
           currentContent: currentEditorContent,
           requirement,
         })
-        instance.close({ action: 'confirm' })
       } catch (err) {
         metaAiGenerating = false
         activeMetaAiRequestId = null
@@ -454,26 +522,9 @@ async function openMetaAiModal(novelInfo) {
           metaEditorInstance.setValue(metaAiOriginalContent)
         }
         toastError('AI生成失败: ' + err)
-        instance.setLoading(false)
-        return false
       }
     }
   })
-
-  const syncConfirmText = () => {
-    const action = modal.contentEl.querySelector('input[name="meta-ai-action"]:checked')?.value || defaultAction
-    modal.setButtons([
-      { text: '取消', type: 'default', onClick: () => modal.cancel() },
-      { text: getMetaAiConfirmText(action), type: 'primary', onClick: () => modal.confirm() },
-    ])
-  }
-
-  modal.open()
-  setTimeout(() => {
-    modal.contentEl.querySelectorAll('input[name="meta-ai-action"]').forEach(input => {
-      input.addEventListener('change', syncConfirmText)
-    })
-  }, 0)
 }
 
 async function ensureMetaAiListeners() {
@@ -483,12 +534,12 @@ async function ensureMetaAiListeners() {
     await listen('meta-ai-stream-chunk', (event) => {
       const payload = event.payload
       if (!metaEditorInstance || !payload?.delta || payload.request_id !== activeMetaAiRequestId) return
-      metaEditorInstance.setValue((metaEditorInstance.getValue() || '') + payload.delta)
+      metaEditorInstance.setValueWithAiFollow((metaEditorInstance.getValue() || '') + payload.delta)
     }),
     await listen('meta-ai-stream-done', (event) => {
       const payload = event.payload
       if (!metaEditorInstance || !payload || payload.request_id !== activeMetaAiRequestId) return
-      metaEditorInstance.setValue(payload.content || '')
+      metaEditorInstance.setValueWithAiFollow(payload.content || '')
       activeMetaAiRequestId = null
       metaAiGenerating = false
       metaAiOriginalContent = ''
@@ -524,6 +575,7 @@ export function cleanup() {
     metaListComponent = null
   }
   activeMetaTab = 'added'
+  activeMetaPriorityFilter = 'required'
   editingMeta = null
   previewMetaProperty = null
   metaDataList = []
