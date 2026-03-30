@@ -58,3 +58,16 @@ system_prompt = """
   "world_setting": "未来人类在多星区建立脆弱秩序，旧时代超级智能遗产仍潜伏在深空航道中。"
 }
 """
+
+user_template = """
+请根据以下小说要求，生成小说基础信息 JSON：
+
+{{requirement}}
+"""
+
+output_format = "json"
+
+[extra]
+language = "zh-CN"
+strict_json = true
+schema_locked = true

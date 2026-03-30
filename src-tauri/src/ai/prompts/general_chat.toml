@@ -1,7 +1,7 @@
 # 通用聊天 Agent 默认提示词
 
 system_prompt = """
-你是一个友好的 AI 助手，擅长进行自然、有帮助的对话。
+你是一个友好、清晰、可靠的中文 AI 助手，擅长进行自然、有帮助的对话。
 
 ## 角色定位
 
@@ -61,6 +61,7 @@ output_format = "text"
 
 # 额外配置
 [extra]
-max_response_length = 2000
 language = "zh-CN"
-enable_context_memory = true
+style = "concise"
+supports_history = true
+supports_context = true

@@ -79,90 +79,48 @@ fn get_prompt_file_path(agent_code: &str) -> PathBuf {
 
 /// 获取内置默认提示词
 fn get_builtin_prompt(agent_code: &str) -> PromptConfig {
+    fn parse_embedded_prompt(content: &str, fallback: &str) -> PromptConfig {
+        toml::from_str::<PromptConfig>(content).unwrap_or_else(|_| PromptConfig {
+            system_prompt: fallback.to_string(),
+            user_template: None,
+            output_format: None,
+            extra: HashMap::new(),
+        })
+    }
+
     match agent_code {
-        "general_chat" => PromptConfig {
-            system_prompt: include_str!("general_chat.toml")
-                .parse::<toml::Value>()
-                .ok()
-                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
-                .unwrap_or_else(|| "你是一个专业的 AI 助手。".to_string()),
-            user_template: None,
-            output_format: None,
-            extra: HashMap::new(),
-        },
-        "novel_info_generator" => PromptConfig {
-            system_prompt: include_str!("novel_info_generator.toml")
-                .parse::<toml::Value>()
-                .ok()
-                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
-                .unwrap_or_else(|| {
-                    "你是一个专业的网络小说编辑和策划专家。必须只输出 JSON 对象，不要输出解释、前缀、markdown 或代码块。"
-                        .to_string()
-                }),
-            user_template: None,
-            output_format: None,
-            extra: HashMap::new(),
-        },
-        "novel_outline" => PromptConfig {
-            system_prompt: include_str!("novel_outline.toml")
-                .parse::<toml::Value>()
-                .ok()
-                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
-                .unwrap_or_else(|| "你是一个专业的小说策划编辑。".to_string()),
-            user_template: None,
-            output_format: None,
-            extra: HashMap::new(),
-        },
-        "chapter_timeline" => PromptConfig {
-            system_prompt: include_str!("chapter_timeline.toml")
-                .parse::<toml::Value>()
-                .ok()
-                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
-                .unwrap_or_else(|| "你是一个专业的长篇小说章节规划助手。".to_string()),
-            user_template: None,
-            output_format: None,
-            extra: HashMap::new(),
-        },
-        "character_design" => PromptConfig {
-            system_prompt: include_str!("character_design.toml")
-                .parse::<toml::Value>()
-                .ok()
-                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
-                .unwrap_or_else(|| "你是一个专业的小说角色设计师。".to_string()),
-            user_template: None,
-            output_format: None,
-            extra: HashMap::new(),
-        },
-        "meta_generator" => PromptConfig {
-            system_prompt: include_str!("meta_generator.toml")
-                .parse::<toml::Value>()
-                .ok()
-                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
-                .unwrap_or_else(|| "你是专业的小说策划编辑，负责生成或改写小说元数据内容。".to_string()),
-            user_template: None,
-            output_format: None,
-            extra: HashMap::new(),
-        },
-        "chapter_content" => PromptConfig {
-            system_prompt: include_str!("chapter_content.toml")
-                .parse::<toml::Value>()
-                .ok()
-                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
-                .unwrap_or_else(|| "你是专业的长篇小说章节写作编辑。".to_string()),
-            user_template: None,
-            output_format: None,
-            extra: HashMap::new(),
-        },
-        "chapter_polish" => PromptConfig {
-            system_prompt: include_str!("chapter_polish.toml")
-                .parse::<toml::Value>()
-                .ok()
-                .and_then(|v| v.get("system_prompt").and_then(|s| s.as_str().map(String::from)))
-                .unwrap_or_else(|| "你是专业的小说润色编辑。".to_string()),
-            user_template: None,
-            output_format: None,
-            extra: HashMap::new(),
-        },
+        "general_chat" => parse_embedded_prompt(
+            include_str!("general_chat.toml"),
+            "你是一个专业的 AI 助手。",
+        ),
+        "novel_info_generator" => parse_embedded_prompt(
+            include_str!("novel_info_generator.toml"),
+            "你是一个专业的网络小说编辑和策划专家。必须只输出 JSON 对象，不要输出解释、前缀、markdown 或代码块。",
+        ),
+        "novel_outline" => parse_embedded_prompt(
+            include_str!("novel_outline.toml"),
+            "你是一个专业的小说策划编辑。",
+        ),
+        "chapter_timeline" => parse_embedded_prompt(
+            include_str!("chapter_timeline.toml"),
+            "你是一个专业的长篇小说章节规划助手。",
+        ),
+        "character_design" => parse_embedded_prompt(
+            include_str!("character_design.toml"),
+            "你是一个专业的小说角色设计师。",
+        ),
+        "meta_generator" => parse_embedded_prompt(
+            include_str!("meta_generator.toml"),
+            "你是专业的小说策划编辑，负责生成或改写小说元数据内容。",
+        ),
+        "chapter_content" => parse_embedded_prompt(
+            include_str!("chapter_content.toml"),
+            "你是专业的长篇小说章节写作编辑。",
+        ),
+        "chapter_polish" => parse_embedded_prompt(
+            include_str!("chapter_polish.toml"),
+            "你是专业的小说润色编辑。",
+        ),
         _ => PromptConfig {
             system_prompt: "你是一个专业的 AI 助手。".to_string(),
             user_template: None,

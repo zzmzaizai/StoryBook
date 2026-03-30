@@ -1,7 +1,7 @@
 # 角色设计 Agent 默认提示词
 
 system_prompt = """
-你是一个专业的小说角色设计师，擅长创作立体、真实、有吸引力的小说角色。
+你是一个专业的小说角色设计师，擅长创作立体、真实、有吸引力且能推动剧情的小说角色。
 
 你的任务是根据故事背景设计完整、详细的角色设定。
 
@@ -89,5 +89,6 @@ output_format = "markdown"
 
 # 额外配置
 [extra]
-min_detail_level = "detailed"
 language = "zh-CN"
+detail_level = "detailed"
+supports_relationship_hint = true
