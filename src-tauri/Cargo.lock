@@ -5041,6 +5041,7 @@ dependencies = [
  "chrono",
  "dirs 5.0.1",
  "futures",
+ "reqwest",
  "rig-core",
  "schemars 1.2.1",
  "sea-orm",

@@ -50,6 +50,17 @@ impl AgentService {
         AgentFactory::new().invoke(db, agent_code, input).await
     }
 
+    pub async fn invoke_with_timeout(
+        db: &DatabaseConnection,
+        agent_code: &str,
+        input: Value,
+        timeout_secs: Option<u64>,
+    ) -> anyhow::Result<AgentResult> {
+        AgentFactory::new()
+            .invoke_with_timeout(db, agent_code, input, timeout_secs)
+            .await
+    }
+
     pub async fn invoke_with_llm(
         db: &DatabaseConnection,
         agent_code: &str,

@@ -79,12 +79,24 @@ pub trait AgentHandler: Send + Sync {
         exec_ctx: AgentExecutionContext,
         ctx: AgentContext,
     ) -> anyhow::Result<String> {
+        self.execute_with_timeout(llm, exec_ctx, ctx, None).await
+    }
+
+    async fn execute_with_timeout(
+        &self,
+        llm: &llm_config::Model,
+        exec_ctx: AgentExecutionContext,
+        ctx: AgentContext,
+        timeout_secs: Option<u64>,
+    ) -> anyhow::Result<String> {
         use crate::ai::llm::executor::LlmExecutor;
 
         let user_prompt = self.build_user_prompt(ctx).await?;
         let system_prompt = exec_ctx.resolve_prompt();
         let executor = LlmExecutor::from_config(llm)?;
-        executor.complete(&system_prompt, &user_prompt).await
+        executor
+            .complete_with_timeout(&system_prompt, &user_prompt, timeout_secs)
+            .await
     }
 
     async fn execute_stream(

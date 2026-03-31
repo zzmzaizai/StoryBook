@@ -6,6 +6,8 @@ use crate::entity::novel_chapter_timeline;
 use crate::repository::TimelineUpdateParams;
 use tauri::State;
 
+const TIMELINE_AI_TIMEOUT_SECS: u64 = 900;
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct GeneratedTimelinePayload {
     pub title: String,
@@ -221,7 +223,7 @@ pub async fn ai_generate_timeline(
 
     let requirement_text = requirement.trim();
 
-    let raw = AgentService::invoke(
+    let raw = AgentService::invoke_with_timeout(
         &state.db,
         AgentCodes::CHAPTER_TIMELINE,
         serde_json::json!({
@@ -239,6 +241,7 @@ pub async fn ai_generate_timeline(
                 current_context,
             )
         }),
+        Some(TIMELINE_AI_TIMEOUT_SECS),
     )
         .await
         .map_err(|e| e.to_string())?
@@ -255,7 +258,12 @@ pub async fn ai_generate_timeline(
     let json_content =
         extract_json_object(&normalized_content).ok_or_else(|| "AI 未返回合法 JSON".to_string())?;
 
-    serde_json::from_str::<GeneratedTimelinePayload>(&json_content).map_err(|e| e.to_string())
+    serde_json::from_str::<GeneratedTimelinePayload>(&json_content).map_err(|e| {
+        format!(
+            "AI 返回的 JSON 解析失败: {}。原始内容: {}",
+            e, cleaned_content
+        )
+    })
 }
 
 fn build_previous_timeline_context(
@@ -304,5 +312,7 @@ fn extract_json_object(content: &str) -> Option<String> {
 }
 
 fn normalize_json_like_content(content: &str) -> String {
-    content.replace(['“', '”'], "\"").replace(['‘', '’'], "'")
+    content
+        .replace('，', ",")
+        .replace('：', ":")
 }

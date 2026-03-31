@@ -11,9 +11,12 @@ use rig::client::{CompletionClient, Nothing};
 use rig::completion::Prompt;
 use rig::providers::{anthropic, gemini, ollama, openai};
 use rig::streaming::StreamingPrompt;
+use std::time::Duration;
 use tokio::sync::mpsc::UnboundedSender;
 
 pub struct LlmFactory;
+
+const DEFAULT_COMPLETION_TIMEOUT_SECS: u64 = 600;
 
 impl LlmFactory {
     pub fn create_runtime_config(config: &llm_config::Model) -> LlmRuntimeConfig {
@@ -74,8 +77,16 @@ impl OpenAiCompatibleClient {
         }
     }
 
-    fn build_client_with_key(&self, api_key: &str) -> anyhow::Result<openai::CompletionsClient> {
+    fn build_client_with_key(
+        &self,
+        api_key: &str,
+        timeout_secs: Option<u64>,
+    ) -> anyhow::Result<openai::CompletionsClient> {
         let mut builder = openai::CompletionsClient::builder().api_key(api_key);
+
+        if let Some(timeout_secs) = timeout_secs {
+            builder = builder.http_client(build_http_client(timeout_secs)?);
+        }
 
         if let Some(base_url) = self.config.effective_base_url() {
             builder = builder.base_url(&base_url);
@@ -98,8 +109,16 @@ impl AnthropicClient {
         }
     }
 
-    fn build_client_with_key(&self, api_key: &str) -> anyhow::Result<anthropic::Client> {
+    fn build_client_with_key(
+        &self,
+        api_key: &str,
+        timeout_secs: Option<u64>,
+    ) -> anyhow::Result<anthropic::Client> {
         let mut builder = anthropic::Client::builder().api_key(api_key);
+
+        if let Some(timeout_secs) = timeout_secs {
+            builder = builder.http_client(build_http_client(timeout_secs)?);
+        }
 
         if let Some(base_url) = self.config.effective_base_url() {
             builder = builder.base_url(&base_url);
@@ -122,8 +141,16 @@ impl GeminiClient {
         }
     }
 
-    fn build_client_with_key(&self, api_key: &str) -> anyhow::Result<gemini::Client> {
+    fn build_client_with_key(
+        &self,
+        api_key: &str,
+        timeout_secs: Option<u64>,
+    ) -> anyhow::Result<gemini::Client> {
         let mut builder = gemini::Client::builder().api_key(api_key);
+
+        if let Some(timeout_secs) = timeout_secs {
+            builder = builder.http_client(build_http_client(timeout_secs)?);
+        }
 
         if let Some(base_url) = self.config.effective_base_url() {
             builder = builder.base_url(&base_url);
@@ -146,8 +173,12 @@ impl OllamaClient {
         }
     }
 
-    fn build_client(&self) -> anyhow::Result<ollama::Client> {
+    fn build_client(&self, timeout_secs: Option<u64>) -> anyhow::Result<ollama::Client> {
         let mut builder = ollama::Client::builder().api_key(Nothing);
+
+        if let Some(timeout_secs) = timeout_secs {
+            builder = builder.http_client(build_http_client(timeout_secs)?);
+        }
 
         if let Some(base_url) = self.config.effective_base_url() {
             builder = builder.base_url(&base_url);
@@ -157,6 +188,13 @@ impl OllamaClient {
             .build()
             .map_err(|e| anyhow::anyhow!("创建 Ollama client 失败: {}", e))
     }
+}
+
+fn build_http_client(timeout_secs: u64) -> anyhow::Result<reqwest::Client> {
+    reqwest::Client::builder()
+        .timeout(Duration::from_secs(timeout_secs))
+        .build()
+        .map_err(|e| anyhow::anyhow!("创建 HTTP client 失败: {}", e))
 }
 
 fn apply_common_builder_options<M>(
@@ -198,7 +236,7 @@ macro_rules! impl_keyed_rig_client {
                 params: LlmCompletionParams,
             ) -> anyhow::Result<LlmCompletionResult> {
                 let first_key = self.config.effective_api_key();
-                let client = self.$build_method(&first_key)?;
+                let client = self.$build_method(&first_key, params.timeout_secs.or(Some(DEFAULT_COMPLETION_TIMEOUT_SECS)))?;
                 let builder = client.agent(&self.config.model);
                 let builder = apply_common_builder_options(
                     builder,
@@ -218,7 +256,7 @@ macro_rules! impl_keyed_rig_client {
                         if should_retry_with_another_key(&first_error) {
                             let retry_key = self.config.random_api_key(Some(&first_key));
                             if !retry_key.is_empty() && retry_key != first_key {
-                                let retry_client = self.$build_method(&retry_key)?;
+                                let retry_client = self.$build_method(&retry_key, params.timeout_secs.or(Some(DEFAULT_COMPLETION_TIMEOUT_SECS)))?;
                                 let retry_builder = retry_client.agent(&self.config.model);
                                 let retry_builder = apply_common_builder_options(
                                     retry_builder,
@@ -246,7 +284,7 @@ macro_rules! impl_keyed_rig_client {
                 tx: UnboundedSender<String>,
             ) -> anyhow::Result<LlmCompletionResult> {
                 let first_key = self.config.effective_api_key();
-                let client = self.$build_method(&first_key)?;
+                let client = self.$build_method(&first_key, None)?;
                 let builder = client.agent(&self.config.model);
                 let builder = apply_common_builder_options(
                     builder,
@@ -273,7 +311,7 @@ macro_rules! impl_keyed_rig_client {
                             if should_retry_with_another_key(&first_error) {
                                 let retry_key = self.config.random_api_key(Some(&first_key));
                                 if !retry_key.is_empty() && retry_key != first_key {
-                                    let retry_client = self.$build_method(&retry_key)?;
+                                    let retry_client = self.$build_method(&retry_key, None)?;
                                     let retry_builder = retry_client.agent(&self.config.model);
                                     let retry_builder = apply_common_builder_options(
                                         retry_builder,
@@ -327,7 +365,7 @@ macro_rules! impl_keyed_rig_client {
 #[async_trait::async_trait]
 impl LlmClient for OllamaClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        let client = self.build_client()?;
+        let client = self.build_client(params.timeout_secs.or(Some(DEFAULT_COMPLETION_TIMEOUT_SECS)))?;
         let builder = client.agent(&self.config.model);
         let builder = apply_common_builder_options(
             builder,
@@ -350,7 +388,7 @@ impl LlmClient for OllamaClient {
         params: LlmCompletionParams,
         tx: UnboundedSender<String>,
     ) -> anyhow::Result<LlmCompletionResult> {
-        let client = self.build_client()?;
+        let client = self.build_client(None)?;
         let builder = client.agent(&self.config.model);
         let builder = apply_common_builder_options(
             builder,

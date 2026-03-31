@@ -5,6 +5,8 @@ use crate::entity::characters;
 use crate::repository::CharacterUpdateParams;
 use tauri::State;
 
+const CHARACTER_AI_TIMEOUT_SECS: u64 = 420;
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct GeneratedCharacterPayload {
     pub name: String,
@@ -197,7 +199,7 @@ pub async fn ai_generate_character(
         novel.original_description.as_deref().unwrap_or("")
     );
 
-    let raw = AgentService::invoke(
+    let raw = AgentService::invoke_with_timeout(
         &state.db,
         AgentCodes::CHARACTER_DESIGN,
         serde_json::json!({
@@ -212,6 +214,7 @@ pub async fn ai_generate_character(
                 current_character_context,
             )
         }),
+        Some(CHARACTER_AI_TIMEOUT_SECS),
     )
         .await
         .map_err(|e| e.to_string())?
@@ -246,7 +249,9 @@ fn extract_json_object(content: &str) -> Option<String> {
 }
 
 fn normalize_json_like_content(content: &str) -> String {
-    content.replace(['“', '”'], "\"").replace(['‘', '’'], "'")
+    content
+        .replace('，', ",")
+        .replace('：', ":")
 }
 
 fn summarize_text(content: &str, max_chars: usize) -> String {

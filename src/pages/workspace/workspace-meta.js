@@ -208,10 +208,9 @@ function renderMetaList(content, novelInfo) {
     const allAddedMeta = metaDataList
       .map(meta => ({ meta, propDef: metaProperties.find(p => p.property_name === meta.property_name) }))
       .filter(item => item.propDef)
-    const filteredAddedMeta = filterMetaPropertiesByPriority(
-      allAddedMeta.map(item => item.meta),
-      activeMetaPriorityFilter
-    )
+    const filteredAddedMeta = allAddedMeta
+      .filter(item => activeMetaPriorityFilter === 'all' || item.propDef.priority_level === activeMetaPriorityFilter)
+      .map(item => item.meta)
 
     listMount.innerHTML = buildMetaPriorityToolbar(filteredAddedMeta, activeMetaPriorityFilter)
     bindMetaPriorityFilters(listMount, content, novelInfo)

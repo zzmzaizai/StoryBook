@@ -36,6 +36,16 @@ impl AgentFactory {
         agent_code: &str,
         input: Value,
     ) -> anyhow::Result<AgentResult> {
+        self.invoke_with_timeout(db, agent_code, input, None).await
+    }
+
+    pub async fn invoke_with_timeout(
+        &self,
+        db: &DatabaseConnection,
+        agent_code: &str,
+        input: Value,
+        timeout_secs: Option<u64>,
+    ) -> anyhow::Result<AgentResult> {
         let settings_context =
             crate::ai::agent::settings_context::load_settings_context_from_input(db, &input)
                 .await?;
@@ -46,7 +56,9 @@ impl AgentFactory {
             .build_exec_ctx(agent_code, &agent_config, settings_context)
             .await?;
         let ctx = AgentContext::new(input);
-        let content = handler.execute(&llm_config, exec_ctx, ctx).await?;
+        let content = handler
+            .execute_with_timeout(&llm_config, exec_ctx, ctx, timeout_secs)
+            .await?;
 
         Ok(AgentResult {
             content,

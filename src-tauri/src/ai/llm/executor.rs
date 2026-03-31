@@ -18,12 +18,24 @@ impl LlmExecutor {
         Ok(Self { client })
     }
 
+    #[allow(dead_code)]
     pub async fn complete(&self, system_prompt: &str, user_prompt: &str) -> anyhow::Result<String> {
+        self.complete_with_timeout(system_prompt, user_prompt, None)
+            .await
+    }
+
+    pub async fn complete_with_timeout(
+        &self,
+        system_prompt: &str,
+        user_prompt: &str,
+        timeout_secs: Option<u64>,
+    ) -> anyhow::Result<String> {
         let result = self
             .client
             .complete(LlmCompletionParams {
                 system_prompt: system_prompt.to_string(),
                 user_prompt: user_prompt.to_string(),
+                timeout_secs,
                 ..Default::default()
             })
             .await?;

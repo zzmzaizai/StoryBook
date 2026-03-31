@@ -9,6 +9,8 @@ use tauri::State;
 
 use super::AppState;
 
+const NOVEL_INFO_AI_TIMEOUT_SECS: u64 = 300;
+
 #[tauri::command]
 pub async fn create_novel(
     state: State<'_, AppState>,
@@ -104,10 +106,11 @@ pub async fn ai_generate_novel_info(
         requirement
     );
 
-    let result = AgentService::invoke(
+    let result = AgentService::invoke_with_timeout(
         &state.db,
         AgentCodes::NOVEL_INFO_GENERATOR,
         json!({ "requirement": requirement }),
+        Some(NOVEL_INFO_AI_TIMEOUT_SECS),
     )
     .await
     .map_err(|e| {
@@ -179,8 +182,6 @@ fn extract_json_object(content: &str) -> Option<String> {
 
 fn normalize_json_like_content(content: &str) -> String {
     content
-        .replace(['“', '”'], "\"")
-        .replace(['‘', '’'], "'")
         .replace('，', ",")
         .replace('：', ":")
 }

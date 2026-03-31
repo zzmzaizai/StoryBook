@@ -138,4 +138,5 @@ pub struct LlmCompletionParams {
     pub user_prompt: String,
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
+    pub timeout_secs: Option<u64>,
 }
