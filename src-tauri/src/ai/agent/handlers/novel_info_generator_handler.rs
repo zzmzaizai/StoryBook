@@ -5,41 +5,43 @@
 use crate::ai::agent::traits::{AgentContext, AgentHandler};
 use async_trait::async_trait;
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// AI 生成小说信息输入参数
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct NovelInfoGeneratorInput {
     #[doc = "用户对小说的要求描述（一段话）"]
     pub requirement: String,
 }
 
 /// AI 生成的小说基础信息
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, JsonSchema)]
 pub struct GeneratedNovelInfo {
-    /// 小说标题
+    #[schemars(description = "小说标题，简洁、有吸引力，并与题材风格匹配")]
     pub title: String,
-    /// 小说简介（100-200字）
+    #[schemars(description = "小说简介，100-200 字，概括主角处境、核心冲突和主要卖点")]
     pub description: String,
-    /// 小说风格（1-10：1都市/2奇幻/3悬疑/4喜剧/5言情/6恐怖/7科幻/8历史/9武侠/10仙侠）
+    #[schemars(
+        description = "小说风格代码，1-10：1都市/2奇幻/3悬疑/4喜剧/5言情/6恐怖/7科幻/8历史/9武侠/10仙侠"
+    )]
     pub style: i32,
-    /// 目标读者（1-4：1男性/2女性/3儿童/4全体）
+    #[schemars(description = "目标读者代码，1-4：1男性/2女性/3儿童/4全体")]
     pub target_audience: i32,
-    /// 篇幅类型（1-5：1超长篇/2长篇/3中篇/4短文/5其他）
+    #[schemars(description = "篇幅类型代码，1-5：1超长篇/2长篇/3中篇/4短文/5其他")]
     pub length_type: i32,
-    /// 预估章节数
+    #[schemars(description = "预估章节总数，必须是整数")]
     pub estimated_chapter_count: i32,
-    /// 预估总字数
+    #[schemars(description = "预估总字数，必须是整数")]
     pub estimated_total_word_count: i64,
-    /// 每章预估字数
+    #[schemars(description = "每章预估字数，必须是整数")]
     pub estimated_words_per_chapter: i32,
-    /// 主角姓名
+    #[schemars(description = "主角姓名；如果不适合明确命名，可留空")]
     pub protagonist_name: Option<String>,
-    /// 主角简介
+    #[schemars(description = "主角简介，概括身份、能力或人格特征；如果不确定可留空")]
     pub protagonist_description: Option<String>,
-    /// 核心冲突
+    #[schemars(description = "核心冲突，明确主角必须面对的主要矛盾；如果不确定可留空")]
     pub core_conflict: Option<String>,
-    /// 世界观设定摘要
+    #[schemars(description = "世界观设定摘要，概括故事发生环境和关键规则；如果不确定可留空")]
     pub world_setting: Option<String>,
 }
 
@@ -60,45 +62,30 @@ impl AgentHandler for NovelInfoGeneratorHandler {
         "根据用户描述的小说要求，AI生成小说的基础信息，包括标题、简介、风格、预估字数等"
     }
 
+    async fn build_prompt_params(
+        &self,
+        ctx: &AgentContext,
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        Ok(Some(serde_json::to_value(
+            ctx.parse::<NovelInfoGeneratorInput>()?,
+        )?))
+    }
+
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String> {
         let input: NovelInfoGeneratorInput = ctx.parse()?;
 
         let prompt = format!(
-            r#"请根据以下小说要求，生成小说的基础信息。
+            r#"请根据以下小说要求，完成小说基础信息设计：
 
-用户要求：
 {}
 
-请严格遵守以下输出规则：
-1. 只输出一个合法 JSON 对象
-2. 不要输出 markdown 代码块
-3. 不要输出任何解释、说明、前缀、后缀
-4. 字段名必须完全使用下面给出的名称，不能改名
-5. 所有字符串必须使用双引号
-6. 所有数值字段必须是数字，不能写成字符串
-7. 如果某个文本信息不确定，请输出空字符串，不要缺失字段
-
-请严格按照以下 JSON 格式输出：
-{{
-  "title": "小说标题",
-  "description": "小说简介（100-200字）",
-  "style": 1,
-  "target_audience": 4,
-  "length_type": 3,
-  "estimated_chapter_count": 50,
-  "estimated_total_word_count": 150000,
-  "estimated_words_per_chapter": 3000,
-  "protagonist_name": "主角姓名",
-  "protagonist_description": "主角简介",
-  "core_conflict": "核心冲突",
-  "world_setting": "世界观设定"
-}}
-
-风格(style)取值说明：1=都市, 2=奇幻, 3=悬疑, 4=喜剧, 5=言情, 6=恐怖, 7=科幻, 8=历史, 9=武侠, 10=仙侠
-目标读者(target_audience)取值说明：1=男性, 2=女性, 3=儿童, 4=全体
-篇幅类型(length_type)取值说明：1=超长篇(100万字以上), 2=长篇(30-100万字), 3=中篇(10-30万字), 4=短文(10万字以下), 5=其他
-
-再次强调：最终回复中只能包含 JSON 对象本身，不能包含任何其他内容。"#,
+请确保结果能够直接用于创建小说项目。
+- 标题要有传播力，并与题材、基调一致。
+- 简介要清楚写出主角处境、故事卖点和核心冲突。
+- 风格、目标读者、篇幅类型必须使用系统定义的数值代码。
+- 章节数、总字数、每章字数要彼此协调。
+- 可以补充主角信息、核心冲突、世界观摘要；若确实无法确定，可留空。
+- 不要把结果写到字段之外。"#,
             input.requirement
         );
 

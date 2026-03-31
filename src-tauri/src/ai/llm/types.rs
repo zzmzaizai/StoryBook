@@ -139,4 +139,5 @@ pub struct LlmCompletionParams {
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
     pub timeout_secs: Option<u64>,
+    pub additional_params: Option<serde_json::Value>,
 }

@@ -4,10 +4,10 @@
 
 use crate::ai::agent::traits::{AgentContext, AgentHandler};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// 小说大纲输入参数
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct NovelOutlineInput {
     title: Option<String>,
     genre: String,
@@ -33,6 +33,15 @@ impl AgentHandler for NovelOutlineHandler {
 
     fn description(&self) -> &'static str {
         "根据用户提供的小说题材、核心设定、世界观和风格偏好，生成完整的大纲"
+    }
+
+    async fn build_prompt_params(
+        &self,
+        ctx: &AgentContext,
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        Ok(Some(serde_json::to_value(
+            ctx.parse::<NovelOutlineInput>()?,
+        )?))
     }
 
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String> {

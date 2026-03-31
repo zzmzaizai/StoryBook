@@ -1,4 +1,5 @@
 use super::AppState;
+use crate::ai::agent::handlers::MetaGeneratorInput;
 use crate::ai::agent::service::AgentService;
 use crate::constants::{MetaPropertyDto, NovelMetaConstants};
 use crate::entity::agent_config::AgentCodes;
@@ -188,16 +189,20 @@ pub async fn ai_generate_meta_stream(
         novel.original_description.as_deref().unwrap_or("")
     );
 
-    let input = serde_json::json!({
-        "novel_id": novel_id,
-        "novel_context": novel_context,
-        "property_name": property_name,
-        "property_description": property_description,
-        "action": action,
-        "meta_context": if meta_context.is_empty() { None::<String> } else { Some(meta_context) },
-        "current_content": current_content,
-        "requirement": requirement,
-    });
+    let input = MetaGeneratorInput {
+        novel_context,
+        property_name,
+        property_description,
+        action: Some(action),
+        meta_context: if meta_context.is_empty() {
+            None
+        } else {
+            Some(meta_context)
+        },
+        current_content,
+        requirement,
+    };
+    let input = serde_json::to_value(&input).map_err(|e| e.to_string())?;
 
     let (tx, mut rx) = mpsc::unbounded_channel::<String>();
     let app_handle = app.clone();

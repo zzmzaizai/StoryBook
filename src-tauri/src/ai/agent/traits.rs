@@ -2,6 +2,7 @@
 //!
 //! 定义所有 Agent 必须实现的接口
 
+use crate::ai::prompts::{render_user_template, PromptConfig};
 use crate::entity::llm_config;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -42,7 +43,7 @@ impl AgentContext {
 pub struct AgentExecutionContext {
     pub system_prompt: String,
     pub custom_prompt: Option<String>,
-    #[allow(dead_code)]
+    pub prompt_config: PromptConfig,
     pub extra_params: Option<Value>,
 }
 
@@ -52,6 +53,12 @@ impl AgentExecutionContext {
         Self {
             system_prompt,
             custom_prompt: None,
+            prompt_config: PromptConfig {
+                system_prompt: String::new(),
+                user_template: None,
+                output_format: None,
+                extra: Default::default(),
+            },
             extra_params: None,
         }
     }
@@ -71,7 +78,25 @@ pub trait AgentHandler: Send + Sync {
     fn name(&self) -> &'static str;
     #[allow(dead_code)]
     fn description(&self) -> &'static str;
+    async fn build_prompt_params(&self, _ctx: &AgentContext) -> anyhow::Result<Option<Value>> {
+        Ok(None)
+    }
+
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String>;
+
+    async fn resolve_user_prompt(
+        &self,
+        exec_ctx: &AgentExecutionContext,
+        ctx: &AgentContext,
+    ) -> anyhow::Result<String> {
+        if let Some(template) = exec_ctx.prompt_config.user_template.as_deref() {
+            if let Some(params) = self.build_prompt_params(ctx).await? {
+                return render_user_template(template, &params);
+            }
+        }
+
+        self.build_user_prompt(ctx.clone()).await
+    }
 
     async fn execute(
         &self,
@@ -91,11 +116,16 @@ pub trait AgentHandler: Send + Sync {
     ) -> anyhow::Result<String> {
         use crate::ai::llm::executor::LlmExecutor;
 
-        let user_prompt = self.build_user_prompt(ctx).await?;
+        let user_prompt = self.resolve_user_prompt(&exec_ctx, &ctx).await?;
         let system_prompt = exec_ctx.resolve_prompt();
         let executor = LlmExecutor::from_config(llm)?;
         executor
-            .complete_with_timeout(&system_prompt, &user_prompt, timeout_secs)
+            .complete_with_timeout(
+                &system_prompt,
+                &user_prompt,
+                timeout_secs,
+                exec_ctx.extra_params.clone(),
+            )
             .await
     }
 
@@ -108,11 +138,16 @@ pub trait AgentHandler: Send + Sync {
     ) -> anyhow::Result<String> {
         use crate::ai::llm::executor::LlmExecutor;
 
-        let user_prompt = self.build_user_prompt(ctx).await?;
+        let user_prompt = self.resolve_user_prompt(&exec_ctx, &ctx).await?;
         let system_prompt = exec_ctx.resolve_prompt();
         let executor = LlmExecutor::from_config(llm)?;
         executor
-            .stream_complete(&system_prompt, &user_prompt, tx)
+            .stream_complete(
+                &system_prompt,
+                &user_prompt,
+                tx,
+                exec_ctx.extra_params.clone(),
+            )
             .await
     }
 }

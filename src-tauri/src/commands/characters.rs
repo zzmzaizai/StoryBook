@@ -1,20 +1,30 @@
 use super::AppState;
-use crate::ai::agent::service::AgentService;
+use crate::ai::agent::handlers::CharacterDesignInput;
+use crate::ai::policy::character_generation_options;
+use crate::ai::structured::generate_structured;
 use crate::entity::agent_config::AgentCodes;
 use crate::entity::characters;
 use crate::repository::CharacterUpdateParams;
+use schemars::JsonSchema;
 use tauri::State;
 
-const CHARACTER_AI_TIMEOUT_SECS: u64 = 420;
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, JsonSchema)]
 pub struct GeneratedCharacterPayload {
+    #[schemars(description = "角色名称，避免与已有角色重复")]
     pub name: String,
+    #[schemars(description = "昵称或常用称呼；如不适合可留空字符串")]
     pub nickname: String,
+    #[schemars(description = "年龄描述；不确定时可用大致年龄段")]
     pub age: String,
+    #[schemars(description = "角色属性代码，1主角/2女主角/3男主角/4反派/5配角/6路人")]
     pub role_attribute: i32,
+    #[schemars(description = "性别代码，1男性/2女性/3中性")]
     pub gender: i32,
+    #[schemars(description = "角色类型代码，1人类/2非人类")]
     pub character_type: i32,
+    #[schemars(
+        description = "Markdown 形式的人设正文，体现性格、动机、矛盾点、剧情作用和关系张力"
+    )]
     pub personality: String,
 }
 
@@ -199,59 +209,29 @@ pub async fn ai_generate_character(
         novel.original_description.as_deref().unwrap_or("")
     );
 
-    let raw = AgentService::invoke_with_timeout(
+    let input = CharacterDesignInput {
+        novel_context,
+        meta_context,
+        existing_characters_context,
+        current_character_context,
+        role_type: mode,
+        requirement: (!requirement.trim().is_empty()).then_some(requirement),
+    };
+    let structured_input = serde_json::to_value(&input).map_err(|e| e.to_string())?;
+
+    let mut payload: GeneratedCharacterPayload = generate_structured(
         &state.db,
         AgentCodes::CHARACTER_DESIGN,
-        serde_json::json!({
-            "novel_id": novel_id,
-            "story_background": novel_context,
-            "role_type": mode,
-            "keywords": [requirement],
-            "relationship_hint": format!(
-                "其他已生成元数据：\n{}\n\n已有角色摘要（避免重复）：\n{}\n\n{}\n\n请严格输出 JSON：{{\"name\":\"角色名称\",\"nickname\":\"角色昵称\",\"age\":\"年龄\",\"role_attribute\":5,\"gender\":1,\"character_type\":1,\"personality\":\"Markdown 形式的人设和性格特点\"}}",
-                if meta_context.is_empty() { "（暂无）" } else { &meta_context },
-                if existing_characters_context.is_empty() { "（暂无）" } else { &existing_characters_context },
-                current_character_context,
-            )
-        }),
-        Some(CHARACTER_AI_TIMEOUT_SECS),
+        structured_input,
+        character_generation_options(),
     )
-        .await
-        .map_err(|e| e.to_string())?
-        .content;
+    .await
+    .map_err(|e| e.to_string())?;
 
-    let cleaned_content = raw
-        .trim()
-        .trim_start_matches("```json")
-        .trim_start_matches("```")
-        .trim_end_matches("```")
-        .trim()
-        .to_string();
-    let normalized_content = normalize_json_like_content(&cleaned_content);
-    let json_content =
-        extract_json_object(&normalized_content).ok_or_else(|| "AI 未返回合法 JSON".to_string())?;
-
-    let mut payload = serde_json::from_str::<GeneratedCharacterPayload>(&json_content)
-        .map_err(|e| e.to_string())?;
     payload.role_attribute = normalize_role_attribute(payload.role_attribute);
     payload.gender = normalize_gender(payload.gender);
     payload.character_type = normalize_character_type(payload.character_type);
     Ok(payload)
-}
-
-fn extract_json_object(content: &str) -> Option<String> {
-    let start = content.find('{')?;
-    let end = content.rfind('}')?;
-    if end < start {
-        return None;
-    }
-    Some(content[start..=end].to_string())
-}
-
-fn normalize_json_like_content(content: &str) -> String {
-    content
-        .replace('，', ",")
-        .replace('：', ":")
 }
 
 fn summarize_text(content: &str, max_chars: usize) -> String {

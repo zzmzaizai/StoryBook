@@ -1,16 +1,16 @@
 use crate::ai::agent::traits::{AgentContext, AgentHandler};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
-struct MetaGeneratorInput {
-    novel_context: String,
-    property_name: String,
-    property_description: Option<String>,
-    meta_context: Option<String>,
-    action: Option<String>,
-    current_content: Option<String>,
-    requirement: String,
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct MetaGeneratorInput {
+    pub novel_context: String,
+    pub property_name: String,
+    pub property_description: Option<String>,
+    pub meta_context: Option<String>,
+    pub action: Option<String>,
+    pub current_content: Option<String>,
+    pub requirement: String,
 }
 
 pub struct MetaGeneratorHandler;
@@ -27,6 +27,15 @@ impl AgentHandler for MetaGeneratorHandler {
 
     fn description(&self) -> &'static str {
         "根据小说基础信息与上下文生成或改写单项元数据。"
+    }
+
+    async fn build_prompt_params(
+        &self,
+        ctx: &AgentContext,
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        Ok(Some(serde_json::to_value(
+            ctx.parse::<MetaGeneratorInput>()?,
+        )?))
     }
 
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String> {
@@ -60,15 +69,20 @@ impl AgentHandler for MetaGeneratorHandler {
         };
 
         let requirement_text = input.requirement.trim();
+        let requirement_text = if requirement_text.is_empty() {
+            "（无额外要求）"
+        } else {
+            requirement_text
+        };
 
         Ok(format!(
-            "{}\n\n当前要生成的元数据：\n- 名称：{}\n- 描述：{}\n\n其他已生成元数据：\n{}\n\n补充要求：\n{}\n\n{}\n\n请直接输出最终正文内容。",
+            "小说基础信息：\n{}\n\n当前要生成的元数据：\n- 名称：{}\n- 描述：{}\n\n其他已生成元数据：\n{}\n\n任务说明：\n{}\n\n补充要求：\n{}\n\n请直接输出最终正文内容，不要附加说明、版本对比或分析。",
             input.novel_context,
             input.property_name,
             input.property_description.unwrap_or_default(),
             input.meta_context.unwrap_or_else(|| "（暂无）".to_string()),
-            if requirement_text.is_empty() { "（无额外要求）" } else { requirement_text },
             action_text,
+            requirement_text,
         ))
     }
 }

@@ -4,10 +4,11 @@
 
 use crate::ai::agent::traits::{AgentContext, AgentHandler};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 /// 通用聊天输入参数
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct GeneralChatInput {
     /// 用户消息
     message: String,
@@ -18,7 +19,7 @@ struct GeneralChatInput {
 }
 
 /// 聊天消息
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct ChatMessage {
     role: String,
     content: String,
@@ -39,6 +40,12 @@ impl AgentHandler for GeneralChatHandler {
 
     fn description(&self) -> &'static str {
         "一个通用的 AI 助手，可以回答各种问题、进行对话和提供建议"
+    }
+
+    async fn build_prompt_params(&self, ctx: &AgentContext) -> anyhow::Result<Option<Value>> {
+        Ok(Some(serde_json::to_value(
+            ctx.parse::<GeneralChatInput>()?,
+        )?))
     }
 
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String> {

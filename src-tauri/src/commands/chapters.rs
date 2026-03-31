@@ -1,4 +1,5 @@
 use super::AppState;
+use crate::ai::agent::handlers::ChapterContentInput;
 use crate::ai::agent::service::AgentService;
 use crate::entity::agent_config::AgentCodes;
 use crate::entity::chapters;
@@ -213,16 +214,24 @@ pub async fn ai_generate_chapter_stream(
     let mode_instruction =
         build_chapter_mode_instruction(&mode, current_content.as_deref().unwrap_or(""));
 
-    let input = serde_json::json!({
-        "novel_id": novel_id,
-        "novel_context": novel_context,
-        "meta_context": if meta_context.is_empty() { None::<String> } else { Some(meta_context) },
-        "related_timeline_context": related_timeline_context,
-        "previous_chapters_context": if previous_chapters_context.is_empty() { None::<String> } else { Some(previous_chapters_context) },
-        "chapter_context": chapter_context,
-        "requirement": requirement,
-        "mode_instruction": mode_instruction,
-    });
+    let input = ChapterContentInput {
+        novel_context,
+        meta_context: if meta_context.is_empty() {
+            None
+        } else {
+            Some(meta_context)
+        },
+        related_timeline_context,
+        previous_chapters_context: if previous_chapters_context.is_empty() {
+            None
+        } else {
+            Some(previous_chapters_context)
+        },
+        chapter_context,
+        requirement,
+        mode_instruction,
+    };
+    let input = serde_json::to_value(&input).map_err(|e| e.to_string())?;
 
     let (tx, mut rx) = mpsc::unbounded_channel::<String>();
     let app_handle = app.clone();

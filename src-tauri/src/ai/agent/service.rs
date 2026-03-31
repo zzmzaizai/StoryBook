@@ -5,7 +5,9 @@
 use crate::ai::agent::factory::AgentFactory;
 use crate::ai::agent::traits::AgentResult;
 use crate::entity::agent_config::AgentCodes;
+use schemars::JsonSchema;
 use sea_orm::DatabaseConnection;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -50,14 +52,18 @@ impl AgentService {
         AgentFactory::new().invoke(db, agent_code, input).await
     }
 
-    pub async fn invoke_with_timeout(
+    pub async fn invoke_structured_with_timeout<T>(
         db: &DatabaseConnection,
         agent_code: &str,
         input: Value,
         timeout_secs: Option<u64>,
-    ) -> anyhow::Result<AgentResult> {
+        retries: u64,
+    ) -> anyhow::Result<T>
+    where
+        T: JsonSchema + DeserializeOwned + Serialize + Send + Sync + 'static,
+    {
         AgentFactory::new()
-            .invoke_with_timeout(db, agent_code, input, timeout_secs)
+            .invoke_structured_with_timeout(db, agent_code, input, timeout_secs, retries)
             .await
     }
 

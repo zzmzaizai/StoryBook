@@ -5,9 +5,12 @@
 use crate::ai::agent::registry::AgentRegistry;
 use crate::ai::agent::traits::{AgentContext, AgentExecutionContext, AgentHandler, AgentResult};
 use crate::ai::llm::service::LlmService;
+use crate::ai::prompts::{load_prompt_config, merge_additional_params, PromptConfig};
 use crate::entity::agent_config;
 use crate::repository::AgentConfigRepository;
+use schemars::JsonSchema;
 use sea_orm::DatabaseConnection;
+use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
@@ -15,13 +18,6 @@ use tokio::sync::mpsc::UnboundedSender;
 pub struct AgentFactory {
     registry: AgentRegistry,
 }
-
-const NOVEL_INFO_GENERATOR_JSON_GUARD: &str = r#"你必须只返回一个合法 JSON 对象，并满足以下要求：
-- 不要输出 markdown 代码块
-- 不要输出解释说明、前言、后记
-- 不要输出 JSON 之外的任何文字
-- 所有字段必须使用双引号包裹的标准 JSON
-- 字段必须包含：title, description, style, target_audience, length_type, estimated_chapter_count, estimated_total_word_count, estimated_words_per_chapter, protagonist_name, protagonist_description, core_conflict, world_setting"#;
 
 impl AgentFactory {
     pub fn new() -> Self {
@@ -66,6 +62,44 @@ impl AgentFactory {
             provider: llm_config.provider.clone(),
             model: llm_config.model.clone(),
         })
+    }
+
+    pub async fn invoke_structured_with_timeout<T>(
+        &self,
+        db: &DatabaseConnection,
+        agent_code: &str,
+        input: Value,
+        timeout_secs: Option<u64>,
+        retries: u64,
+    ) -> anyhow::Result<T>
+    where
+        T: JsonSchema + DeserializeOwned + Serialize + Send + Sync + 'static,
+    {
+        use crate::ai::llm::executor::LlmStructuredExecutor;
+
+        let settings_context =
+            crate::ai::agent::settings_context::load_settings_context_from_input(db, &input)
+                .await?;
+        let agent_config = self.load_agent_config(db, agent_code).await?;
+        let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
+        let handler = self.get_required_handler(agent_code)?;
+        let exec_ctx = self
+            .build_exec_ctx(agent_code, &agent_config, settings_context)
+            .await?;
+        let ctx = AgentContext::new(input);
+        let user_prompt = handler.resolve_user_prompt(&exec_ctx, &ctx).await?;
+        let system_prompt = exec_ctx.resolve_prompt();
+        let executor = LlmStructuredExecutor::from_config(&llm_config)?;
+
+        executor
+            .extract_with_timeout(
+                &system_prompt,
+                &user_prompt,
+                timeout_secs,
+                retries,
+                exec_ctx.extra_params.clone(),
+            )
+            .await
     }
 
     pub async fn invoke_with_llm(
@@ -130,25 +164,18 @@ impl AgentFactory {
         agent_config: &agent_config::Model,
         settings_context: Option<String>,
     ) -> anyhow::Result<AgentExecutionContext> {
-        let system_prompt = if agent_config.use_system_prompt {
-            crate::ai::prompts::load_prompt(agent_code).await?
+        let prompt_config = if agent_config.use_system_prompt {
+            load_prompt_config(agent_code).await?
         } else {
-            String::new()
+            PromptConfig {
+                system_prompt: String::new(),
+                user_template: None,
+                output_format: None,
+                extra: Default::default(),
+            }
         };
 
-        let system_prompt = if agent_code == agent_config::AgentCodes::NOVEL_INFO_GENERATOR {
-            if system_prompt.trim().is_empty() {
-                NOVEL_INFO_GENERATOR_JSON_GUARD.to_string()
-            } else {
-                format!(
-                    "{}\n\n{}",
-                    system_prompt.trim(),
-                    NOVEL_INFO_GENERATOR_JSON_GUARD
-                )
-            }
-        } else {
-            system_prompt
-        };
+        let system_prompt = prompt_config.render_system_prompt();
 
         let system_prompt = if let Some(settings_context) = settings_context {
             if system_prompt.trim().is_empty() {
@@ -160,10 +187,16 @@ impl AgentFactory {
             system_prompt
         };
 
+        let extra_params = merge_additional_params(
+            prompt_config.extra.additional_params_value(),
+            agent_config.extra_config.clone(),
+        );
+
         Ok(AgentExecutionContext {
             system_prompt,
             custom_prompt: agent_config.custom_prompt.clone(),
-            extra_params: agent_config.extra_config.clone(),
+            prompt_config,
+            extra_params,
         })
     }
 

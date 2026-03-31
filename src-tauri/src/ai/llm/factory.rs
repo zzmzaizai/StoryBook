@@ -16,7 +16,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 pub struct LlmFactory;
 
-const DEFAULT_COMPLETION_TIMEOUT_SECS: u64 = 600;
+pub(crate) const DEFAULT_COMPLETION_TIMEOUT_SECS: u64 = 600;
 
 impl LlmFactory {
     pub fn create_runtime_config(config: &llm_config::Model) -> LlmRuntimeConfig {
@@ -77,7 +77,7 @@ impl OpenAiCompatibleClient {
         }
     }
 
-    fn build_client_with_key(
+    pub(crate) fn build_client_with_key(
         &self,
         api_key: &str,
         timeout_secs: Option<u64>,
@@ -109,7 +109,7 @@ impl AnthropicClient {
         }
     }
 
-    fn build_client_with_key(
+    pub(crate) fn build_client_with_key(
         &self,
         api_key: &str,
         timeout_secs: Option<u64>,
@@ -141,7 +141,7 @@ impl GeminiClient {
         }
     }
 
-    fn build_client_with_key(
+    pub(crate) fn build_client_with_key(
         &self,
         api_key: &str,
         timeout_secs: Option<u64>,
@@ -173,7 +173,7 @@ impl OllamaClient {
         }
     }
 
-    fn build_client(&self, timeout_secs: Option<u64>) -> anyhow::Result<ollama::Client> {
+    pub(crate) fn build_client(&self, timeout_secs: Option<u64>) -> anyhow::Result<ollama::Client> {
         let mut builder = ollama::Client::builder().api_key(Nothing);
 
         if let Some(timeout_secs) = timeout_secs {
@@ -190,7 +190,7 @@ impl OllamaClient {
     }
 }
 
-fn build_http_client(timeout_secs: u64) -> anyhow::Result<reqwest::Client> {
+pub(crate) fn build_http_client(timeout_secs: u64) -> anyhow::Result<reqwest::Client> {
     reqwest::Client::builder()
         .timeout(Duration::from_secs(timeout_secs))
         .build()
@@ -215,10 +215,13 @@ where
     if let Some(max_tokens) = params.max_tokens.or(max_tokens) {
         builder = builder.max_tokens(max_tokens as u64);
     }
+    if let Some(additional_params) = params.additional_params.clone() {
+        builder = builder.additional_params(additional_params);
+    }
     builder
 }
 
-fn should_retry_with_another_key(error: &anyhow::Error) -> bool {
+pub(crate) fn should_retry_with_another_key(error: &anyhow::Error) -> bool {
     let message = error.to_string().to_lowercase();
     message.contains("401")
         || message.contains("unauthorized")
@@ -365,7 +368,11 @@ macro_rules! impl_keyed_rig_client {
 #[async_trait::async_trait]
 impl LlmClient for OllamaClient {
     async fn complete(&self, params: LlmCompletionParams) -> anyhow::Result<LlmCompletionResult> {
-        let client = self.build_client(params.timeout_secs.or(Some(DEFAULT_COMPLETION_TIMEOUT_SECS)))?;
+        let client = self.build_client(
+            params
+                .timeout_secs
+                .or(Some(DEFAULT_COMPLETION_TIMEOUT_SECS)),
+        )?;
         let builder = client.agent(&self.config.model);
         let builder = apply_common_builder_options(
             builder,

@@ -1,16 +1,21 @@
 use super::AppState;
-use crate::ai::agent::service::AgentService;
+use crate::ai::agent::handlers::ChapterTimelineInput;
+use crate::ai::policy::timeline_generation_options;
+use crate::ai::structured::generate_structured;
 use crate::constants::{ChapterMetaConstants, MetaPropertyDto};
 use crate::entity::agent_config::AgentCodes;
 use crate::entity::novel_chapter_timeline;
 use crate::repository::TimelineUpdateParams;
+use schemars::JsonSchema;
 use tauri::State;
 
-const TIMELINE_AI_TIMEOUT_SECS: u64 = 900;
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, JsonSchema)]
 pub struct GeneratedTimelinePayload {
+    #[schemars(description = "时间线标题，必须准确概括当前章节区间的主线推进和阶段特征")]
     pub title: String,
+    #[schemars(
+        description = "时间线正文，使用 Markdown 组织内容，服务于当前章节范围的继续创作，体现核心目标、剧情推进、冲突与人物、结尾钩子"
+    )]
     pub content: String,
 }
 
@@ -130,6 +135,7 @@ pub async fn ai_generate_timeline(
     end_chapter_number: Option<i32>,
     requirement: String,
 ) -> Result<GeneratedTimelinePayload, String> {
+    let db = &state.db;
     let novel = state
         .novels()
         .find_by_id(novel_id)
@@ -223,47 +229,25 @@ pub async fn ai_generate_timeline(
 
     let requirement_text = requirement.trim();
 
-    let raw = AgentService::invoke_with_timeout(
-        &state.db,
+    let input = ChapterTimelineInput {
+        novel_context,
+        metas_context,
+        previous_timelines,
+        chapter_start: chapter_start as u32,
+        chapter_end: chapter_end as u32,
+        current_context,
+        requirement: (!requirement_text.is_empty()).then(|| requirement_text.to_string()),
+    };
+    let structured_input = serde_json::to_value(&input).map_err(|e| e.to_string())?;
+
+    generate_structured(
+        db,
         AgentCodes::CHAPTER_TIMELINE,
-        serde_json::json!({
-            "novel_id": novel_id,
-            "outline": novel_context,
-            "chapter_start": chapter_start,
-            "chapter_end": chapter_end,
-            "current_arc_goal": format!(
-                "当前正在编辑的时间线章节范围：第 {} 到第 {} 章。你输出的标题和正文必须服务于这一段剧情，不能越界到其他章节。\n\n小说元数据上下文（必须优先服从）：\n{}\n\n其他已生成好的小说时间线（最多往前20条）：\n{}\n\n补充要求：\n{}\n\n{}\n\n请严格输出 JSON：{{\"title\":\"时间线标题\",\"content\":\"时间线正文\"}}",
-                chapter_start,
-                chapter_end,
-                if metas_context.is_empty() { "（暂无）" } else { &metas_context },
-                if previous_timelines.is_empty() { "（暂无）" } else { &previous_timelines },
-                if requirement_text.is_empty() { "（无额外要求）" } else { requirement_text },
-                current_context,
-            )
-        }),
-        Some(TIMELINE_AI_TIMEOUT_SECS),
+        structured_input,
+        timeline_generation_options(),
     )
-        .await
-        .map_err(|e| e.to_string())?
-        .content;
-
-    let cleaned_content = raw
-        .trim()
-        .trim_start_matches("```json")
-        .trim_start_matches("```")
-        .trim_end_matches("```")
-        .trim()
-        .to_string();
-    let normalized_content = normalize_json_like_content(&cleaned_content);
-    let json_content =
-        extract_json_object(&normalized_content).ok_or_else(|| "AI 未返回合法 JSON".to_string())?;
-
-    serde_json::from_str::<GeneratedTimelinePayload>(&json_content).map_err(|e| {
-        format!(
-            "AI 返回的 JSON 解析失败: {}。原始内容: {}",
-            e, cleaned_content
-        )
-    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 fn build_previous_timeline_context(
@@ -300,19 +284,4 @@ fn build_previous_timeline_context(
         })
         .collect::<Vec<_>>()
         .join("\n")
-}
-
-fn extract_json_object(content: &str) -> Option<String> {
-    let start = content.find('{')?;
-    let end = content.rfind('}')?;
-    if end < start {
-        return None;
-    }
-    Some(content[start..=end].to_string())
-}
-
-fn normalize_json_like_content(content: &str) -> String {
-    content
-        .replace('，', ",")
-        .replace('：', ":")
 }

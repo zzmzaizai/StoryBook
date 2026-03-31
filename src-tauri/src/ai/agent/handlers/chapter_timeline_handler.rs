@@ -4,15 +4,18 @@
 
 use crate::ai::agent::traits::{AgentContext, AgentHandler};
 use async_trait::async_trait;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// 章节时间线输入参数
-#[derive(Debug, Deserialize)]
-struct ChapterTimelineInput {
-    outline: String,
-    chapter_start: u32,
-    chapter_end: u32,
-    current_arc_goal: Option<String>,
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ChapterTimelineInput {
+    pub novel_context: String,
+    pub metas_context: String,
+    pub previous_timelines: String,
+    pub chapter_start: u32,
+    pub chapter_end: u32,
+    pub current_context: String,
+    pub requirement: Option<String>,
 }
 
 /// 时间线正文 Agent Handler
@@ -32,27 +35,64 @@ impl AgentHandler for ChapterTimelineHandler {
         "根据小说大纲和当前章节范围，生成时间线标题与正文"
     }
 
+    async fn build_prompt_params(
+        &self,
+        ctx: &AgentContext,
+    ) -> anyhow::Result<Option<serde_json::Value>> {
+        Ok(Some(serde_json::to_value(
+            ctx.parse::<ChapterTimelineInput>()?,
+        )?))
+    }
+
     async fn build_user_prompt(&self, ctx: AgentContext) -> anyhow::Result<String> {
-        let input: ChapterTimelineInput = serde_json::from_value(ctx.input)?;
+        let input: ChapterTimelineInput = ctx.parse()?;
+        let metas_context = if input.metas_context.trim().is_empty() {
+            "（暂无）"
+        } else {
+            input.metas_context.trim()
+        };
+        let previous_timelines = if input.previous_timelines.trim().is_empty() {
+            "（暂无）"
+        } else {
+            input.previous_timelines.trim()
+        };
+        let requirement = input
+            .requirement
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .unwrap_or("（无额外要求）");
 
         let prompt = format!(
-            r#"请基于以下小说大纲，为第 {} 到第 {} 章生成一个时间线方案。
+            r#"当前正在编辑的时间线章节范围：第 {} 到第 {} 章。
 
-小说大纲：
+小说基础信息：
 {}
 
-当前篇章目标：
+小说元数据上下文：
 {}
 
-请注意：你现在编辑的是第 {} 到第 {} 章这一段时间线，输出必须严格服务于这个章节范围。
-请只输出适合作家继续创作的时间线正文，不要解释，不要写多余前言。
-正文应包含这一段章节范围内的核心推进、关键事件、冲突演进、重要人物作用和节奏安排，并与已给上下文保持一致。"#,
+其他已生成好的小说时间线（最多往前20条）：
+{}
+
+补充要求：
+{}
+
+当前任务：
+{}
+
+请围绕当前章节范围产出时间线结果。
+- 标题必须准确概括这一段剧情推进。
+- 正文必须服务于作者继续写作，使用 Markdown 组织内容。
+- 正文需要体现核心目标、关键推进、冲突变化、人物作用和结尾钩子。
+- 不要越界写到其他章节，也不要脱离已有元数据和前文连续性。"#,
             input.chapter_start,
             input.chapter_end,
-            input.outline,
-            input.current_arc_goal.unwrap_or_default()
-            ,input.chapter_start,
-            input.chapter_end
+            input.novel_context,
+            metas_context,
+            previous_timelines,
+            requirement,
+            input.current_context,
         );
 
         Ok(prompt)
