@@ -298,7 +298,13 @@ export const api = {
 
   listAgentDefinitions: () => cachedInvoke('list_agent_definitions', {}, 5000),
   getAgentDefinition: (agentCode) => cachedInvoke('get_agent_definition', { agentCode }, 5000),
-  saveAgentRuntimeConfig: (payload) => invokeCommand('save_agent_runtime_config', { req: payload }).then(result => {
+  saveAgentRuntimeConfig: (payload) => invokeCommand('save_agent_runtime_config', {
+    req: {
+      agent_code: payload.agentCode,
+      llm_config_id: payload.llmConfigId ?? null,
+      extra_config: payload.extraConfig ?? null,
+    }
+  }).then(result => {
     invalidate('list_agent_definitions', 'get_agent_definition')
     return result
   }),
