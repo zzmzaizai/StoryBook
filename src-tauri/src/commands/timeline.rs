@@ -1,22 +1,30 @@
 use super::AppState;
-use crate::ai::agent::handlers::ChapterTimelineInput;
+use crate::ai::agent::handlers::{ChapterTimelineInput, GeneratedTimelinePayload};
+use crate::ai::agent::service::AgentService;
+use crate::ai::events::{
+    emit_generation_done, emit_generation_error, emit_phase_end, emit_phase_start,
+};
+use crate::ai::hooks::AiHookContext;
 use crate::ai::policy::timeline_generation_options;
-use crate::ai::structured::generate_structured;
+use crate::ai::tools::timeline::{ReadNovelMetaTool, ReadPreviousTimelinesTool};
 use crate::constants::{ChapterMetaConstants, MetaPropertyDto};
 use crate::entity::agent_config::AgentCodes;
 use crate::entity::novel_chapter_timeline;
 use crate::repository::TimelineUpdateParams;
-use schemars::JsonSchema;
-use tauri::State;
+use rig::tool::ToolDyn;
+use tauri::{AppHandle, State};
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, JsonSchema)]
-pub struct GeneratedTimelinePayload {
-    #[schemars(description = "时间线标题，必须准确概括当前章节区间的主线推进和阶段特征")]
-    pub title: String,
-    #[schemars(
-        description = "时间线正文，使用 Markdown 组织内容，服务于当前章节范围的继续创作，体现核心目标、剧情推进、冲突与人物、结尾钩子"
-    )]
-    pub content: String,
+fn build_timeline_meta_catalog() -> String {
+    ChapterMetaConstants::get_all_properties()
+        .into_iter()
+        .map(|item| {
+            format!(
+                "- [{}] {}（{}）：{}",
+                item.priority_level, item.property_name, item.group_name, item.property_description
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[tauri::command]
@@ -125,9 +133,11 @@ pub fn get_chapter_meta_properties() -> Vec<MetaPropertyDto> {
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn ai_generate_timeline(
+    app: AppHandle,
     state: State<'_, AppState>,
+    request_id: Option<String>,
     novel_id: i32,
-    timeline_id: Option<i32>,
+    _timeline_id: Option<i32>,
     current_title: Option<String>,
     action: String,
     current_content: Option<String>,
@@ -135,6 +145,19 @@ pub async fn ai_generate_timeline(
     end_chapter_number: Option<i32>,
     requirement: String,
 ) -> Result<GeneratedTimelinePayload, String> {
+    let request_id =
+        request_id.unwrap_or_else(|| format!("timeline-{}", crate::ai::events::now_timestamp_ms()));
+    let options = timeline_generation_options();
+    let event_namespace = "timeline";
+    emit_phase_start(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::CHAPTER_TIMELINE,
+        "preparing_context",
+        Some("正在整理时间线生成输入".to_string()),
+    );
+
     let db = &state.db;
     let novel = state
         .novels()
@@ -142,34 +165,6 @@ pub async fn ai_generate_timeline(
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "小说不存在".to_string())?;
-    let metas = state
-        .meta()
-        .find_by_novel(novel_id)
-        .await
-        .map_err(|e| e.to_string())?;
-    let timelines = state
-        .timelines()
-        .find_by_novel(novel_id)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let previous_timelines =
-        build_previous_timeline_context(&timelines, timeline_id, start_chapter_number);
-
-    let metas_context = metas
-        .iter()
-        .filter_map(|m| {
-            m.property_value.as_ref().and_then(|value| {
-                let trimmed = value.trim();
-                if trimmed.is_empty() {
-                    None
-                } else {
-                    Some(format!("- {}：{}", m.property_name, trimmed))
-                }
-            })
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
 
     let novel_context = format!(
         "小说基础信息：\n- 标题：{}\n- 简介：{}\n- 风格：{}\n- 目标读者：{}\n- 篇幅：{}\n- 原始需求：{}",
@@ -231,8 +226,9 @@ pub async fn ai_generate_timeline(
 
     let input = ChapterTimelineInput {
         novel_context,
-        metas_context,
-        previous_timelines,
+        available_meta_properties: build_timeline_meta_catalog(),
+        metas_context: "如需补充世界观、设定、人物或约束，请调用工具读取小说元数据。".to_string(),
+        previous_timelines: "如需保持剧情连续性，请调用工具读取已有时间线。".to_string(),
         chapter_start: chapter_start as u32,
         chapter_end: chapter_end as u32,
         current_context,
@@ -240,48 +236,102 @@ pub async fn ai_generate_timeline(
     };
     let structured_input = serde_json::to_value(&input).map_err(|e| e.to_string())?;
 
-    generate_structured(
+    emit_phase_end(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::CHAPTER_TIMELINE,
+        "preparing_context",
+        Some("输入准备完成".to_string()),
+    );
+    emit_phase_start(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::CHAPTER_TIMELINE,
+        "tool_reasoning",
+        Some("AI 正在按需读取上下文并生成时间线".to_string()),
+    );
+
+    let db_for_tools = state.db.clone();
+    let cache = crate::ai::tools::shared::ToolRequestCache::default();
+    let build_tools = move || -> Vec<Box<dyn ToolDyn>> {
+        vec![
+            Box::new(ReadNovelMetaTool::new(
+                db_for_tools.clone(),
+                novel_id,
+                cache.clone(),
+            )),
+            Box::new(ReadPreviousTimelinesTool::new(
+                db_for_tools.clone(),
+                novel_id,
+                cache.clone(),
+            )),
+        ]
+    };
+
+    let result = AgentService::invoke_structured_with_observation(
         db,
         AgentCodes::CHAPTER_TIMELINE,
         structured_input,
-        timeline_generation_options(),
+        options.timeout_secs,
+        options.retries,
+        6,
+        build_tools,
+        AiHookContext {
+            app: app.clone(),
+            event_namespace: event_namespace.to_string(),
+            request_id: request_id.clone(),
+            agent_code: AgentCodes::CHAPTER_TIMELINE.to_string(),
+            phase: "tool_reasoning".to_string(),
+        },
     )
-    .await
-    .map_err(|e| e.to_string())
-}
+    .await;
 
-fn build_previous_timeline_context(
-    timelines: &[novel_chapter_timeline::Model],
-    current_timeline_id: Option<i32>,
-    current_start: Option<i32>,
-) -> String {
-    let mut items: Vec<_> = timelines
-        .iter()
-        .filter(|item| Some(item.id) != current_timeline_id)
-        .filter(|item| match (item.start_chapter_number, current_start) {
-            (Some(start), Some(current)) => start < current,
-            _ => true,
-        })
-        .collect();
-
-    items.sort_by_key(|item| item.start_chapter_number.unwrap_or(0));
-
-    items
-        .into_iter()
-        .rev()
-        .take(20)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .map(|item| {
-            format!(
-                "- {}（{}-{}章）：{}",
-                item.title,
-                item.start_chapter_number.unwrap_or(0),
-                item.end_chapter_number.unwrap_or(0),
-                item.content.as_deref().unwrap_or("")
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    match result {
+        Ok(payload) => {
+            emit_phase_end(
+                &app,
+                event_namespace,
+                &request_id,
+                AgentCodes::CHAPTER_TIMELINE,
+                "tool_reasoning",
+                Some("时间线生成完成".to_string()),
+            );
+            emit_phase_start(
+                &app,
+                event_namespace,
+                &request_id,
+                AgentCodes::CHAPTER_TIMELINE,
+                "finalizing_output",
+                Some("正在整理最终结果".to_string()),
+            );
+            emit_phase_end(
+                &app,
+                event_namespace,
+                &request_id,
+                AgentCodes::CHAPTER_TIMELINE,
+                "finalizing_output",
+                Some("已返回标题与正文".to_string()),
+            );
+            emit_generation_done(
+                &app,
+                event_namespace,
+                &request_id,
+                AgentCodes::CHAPTER_TIMELINE,
+                Some("时间线已生成".to_string()),
+            );
+            Ok(payload)
+        }
+        Err(err) => {
+            emit_generation_error(
+                &app,
+                event_namespace,
+                &request_id,
+                AgentCodes::CHAPTER_TIMELINE,
+                err.to_string(),
+            );
+            Err(err.to_string())
+        }
+    }
 }

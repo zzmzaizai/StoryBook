@@ -6,7 +6,10 @@
 //! - 提示词配置：每个 Agent 独立的默认提示词文件
 
 pub mod agent;
+pub mod events;
+pub mod hooks;
 pub mod llm;
 pub mod policy;
 pub mod prompts;
 pub mod structured;
+pub mod tools;

@@ -4,10 +4,14 @@
 
 use crate::ai::agent::registry::AgentRegistry;
 use crate::ai::agent::traits::{AgentContext, AgentExecutionContext, AgentHandler, AgentResult};
+use crate::ai::hooks::{AiHookContext, ObservedToolHook};
 use crate::ai::llm::service::LlmService;
+use crate::ai::llm::tool_stream_executor::LlmToolStreamExecutor;
+use crate::ai::llm::typed_executor::LlmTypedExecutor;
 use crate::ai::prompts::{load_prompt_config, merge_additional_params, PromptConfig};
 use crate::entity::agent_config;
 use crate::repository::AgentConfigRepository;
+use rig::tool::ToolDyn;
 use schemars::JsonSchema;
 use sea_orm::DatabaseConnection;
 use serde::{de::DeserializeOwned, Serialize};
@@ -102,6 +106,50 @@ impl AgentFactory {
             .await
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub async fn invoke_structured_with_observation<T, F>(
+        &self,
+        db: &DatabaseConnection,
+        agent_code: &str,
+        input: Value,
+        timeout_secs: Option<u64>,
+        retries: u64,
+        max_turns: usize,
+        build_tools: F,
+        hook_context: AiHookContext,
+    ) -> anyhow::Result<T>
+    where
+        T: JsonSchema + DeserializeOwned + Serialize + Send + Sync + 'static,
+        F: Fn() -> Vec<Box<dyn ToolDyn>>,
+    {
+        let settings_context =
+            crate::ai::agent::settings_context::load_settings_context_from_input(db, &input)
+                .await?;
+        let agent_config = self.load_agent_config(db, agent_code).await?;
+        let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
+        let handler = self.get_required_handler(agent_code)?;
+        let exec_ctx = self
+            .build_exec_ctx(agent_code, &agent_config, settings_context)
+            .await?;
+        let ctx = AgentContext::new(input);
+        let user_prompt = handler.resolve_user_prompt(&exec_ctx, &ctx).await?;
+        let system_prompt = exec_ctx.resolve_prompt();
+        let executor = LlmTypedExecutor::from_config(&llm_config)?;
+
+        executor
+            .prompt_structured_with_tools(
+                &system_prompt,
+                &user_prompt,
+                timeout_secs,
+                retries,
+                max_turns,
+                exec_ctx.extra_params.clone(),
+                &build_tools,
+                ObservedToolHook::new(hook_context),
+            )
+            .await
+    }
+
     pub async fn invoke_with_llm(
         &self,
         db: &DatabaseConnection,
@@ -148,6 +196,57 @@ impl AgentFactory {
         let ctx = AgentContext::new(input);
         let content = handler
             .execute_stream(&llm_config, exec_ctx, ctx, tx)
+            .await?;
+
+        Ok(AgentResult {
+            content,
+            llm_config_id: llm_config.id,
+            provider: llm_config.provider.clone(),
+            model: llm_config.model.clone(),
+        })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn invoke_stream_with_observation<F>(
+        &self,
+        db: &DatabaseConnection,
+        agent_code: &str,
+        input: Value,
+        timeout_secs: Option<u64>,
+        retries: u64,
+        max_turns: usize,
+        build_tools: F,
+        hook_context: AiHookContext,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<AgentResult>
+    where
+        F: Fn() -> Vec<Box<dyn ToolDyn>>,
+    {
+        let settings_context =
+            crate::ai::agent::settings_context::load_settings_context_from_input(db, &input)
+                .await?;
+        let agent_config = self.load_agent_config(db, agent_code).await?;
+        let llm_config = LlmService::get_llm_for_agent(db, agent_config.llm_config_id).await?;
+        let handler = self.get_required_handler(agent_code)?;
+        let exec_ctx = self
+            .build_exec_ctx(agent_code, &agent_config, settings_context)
+            .await?;
+        let ctx = AgentContext::new(input);
+        let user_prompt = handler.resolve_user_prompt(&exec_ctx, &ctx).await?;
+        let system_prompt = exec_ctx.resolve_prompt();
+        let executor = LlmToolStreamExecutor::from_config(&llm_config)?;
+        let content = executor
+            .stream_with_tools(
+                &system_prompt,
+                &user_prompt,
+                timeout_secs,
+                retries,
+                max_turns,
+                exec_ctx.extra_params.clone(),
+                &build_tools,
+                ObservedToolHook::new(hook_context),
+                tx,
+            )
             .await?;
 
         Ok(AgentResult {

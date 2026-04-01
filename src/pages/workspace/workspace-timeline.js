@@ -1,10 +1,13 @@
 import { api } from '../../api/tauri.js'
+import { listen } from '@tauri-apps/api/event'
 import { icon } from '../../lib/icons.js'
 import { toastSuccess, toastError } from '../../lib/toast.js'
 import { confirm } from '../../lib/modal.js'
 import { createMarkdownEditor } from '../../lib/markdown-editor.js'
 import { createPagedList } from '../../lib/virtual-list.js'
 import { openAiGenerateModal } from '../../components/ai-generate-modal.js'
+import { getAiPhaseLabel, humanizeAiToolArgs } from '../../lib/ai-execution-labels.js'
+import { applyAiPhaseUpdate, applyAiToolEvent } from '../../lib/ai-execution-state.js'
 import '../../style/virtual-list.css'
 
 let timelineList = []
@@ -12,6 +15,9 @@ let editingTimeline = null
 let timelineContentEditor = null
 let timelineListComponent = null
 let timelineAiGenerating = false
+let activeTimelineAiRequestId = null
+let timelineAiUnlisteners = []
+let activeTimelineAiModal = null
 
 const TIMELINE_AI_ACTIONS = [
   { value: 'generate', label: '生成' },
@@ -310,7 +316,7 @@ function renderEditor(content, novelInfo) {
 function openTimelineAiModal(novelInfo, editorContent) {
   const currentContent = timelineContentEditor ? timelineContentEditor.getValue() : ''
   const defaultAction = getTimelineAiDefaultAction(currentContent)
-  openAiGenerateModal({
+  const modal = openAiGenerateModal({
     title: 'AI生成时间线',
     currentContent,
     currentContextTitle: '你可以生成、优化、重写、扩展或精简当前时间线。补充要求是可选项。',
@@ -319,11 +325,16 @@ function openTimelineAiModal(novelInfo, editorContent) {
     defaultMode: defaultAction,
     requirementPlaceholder: '例如：节奏更快、强化主角动机、让结尾留下更强钩子',
     getConfirmText: getTimelineAiConfirmText,
-    onSubmit: async ({ mode, requirement }) => {
+    onSubmit: async ({ mode, requirement, modal: instance }) => {
+      const requestId = `timeline-${Date.now()}`
       try {
+        await ensureTimelineAiListeners()
+        activeTimelineAiRequestId = requestId
         timelineAiGenerating = true
         updateTimelineAiButtonState()
+        instance.startExecution()
         const result = await api.aiGenerateTimeline({
+          requestId,
           novelId: novelInfo.id,
           timelineId: editingTimeline?.id ?? null,
           currentTitle: editorContent.querySelector('#timeline-title')?.value || '',
@@ -336,16 +347,60 @@ function openTimelineAiModal(novelInfo, editorContent) {
 
         editorContent.querySelector('#timeline-title').value = result.title || ''
         timelineContentEditor?.setValue(result.content || '')
+        activeTimelineAiRequestId = null
         timelineAiGenerating = false
         updateTimelineAiButtonState()
         toastSuccess('AI生成完成')
       } catch (err) {
+        activeTimelineAiRequestId = null
         timelineAiGenerating = false
         updateTimelineAiButtonState()
+        instance.finishExecution('error', `AI生成失败：${err.message || err}`)
         toastError('AI生成失败: ' + err)
       }
     }
   })
+
+  activeTimelineAiModal = modal
+
+  return modal
+}
+
+function updateTimelineModalPhase(payload, status) {
+  applyAiPhaseUpdate(activeTimelineAiModal, activeTimelineAiRequestId, payload, status)
+}
+
+function appendTimelineToolEvent(payload, isResult = false) {
+  applyAiToolEvent(activeTimelineAiModal, activeTimelineAiRequestId, payload, isResult)
+}
+
+async function ensureTimelineAiListeners() {
+  if (timelineAiUnlisteners.length > 0) return
+
+  timelineAiUnlisteners = [
+    await listen('timeline-ai-phase-start', (event) => {
+      updateTimelineModalPhase(event.payload, 'running')
+    }),
+    await listen('timeline-ai-phase-end', (event) => {
+      updateTimelineModalPhase(event.payload, 'finished')
+    }),
+    await listen('timeline-ai-tool-call-start', (event) => {
+      appendTimelineToolEvent(event.payload, false)
+    }),
+    await listen('timeline-ai-tool-call-result', (event) => {
+      appendTimelineToolEvent(event.payload, true)
+    }),
+    await listen('timeline-ai-generation-done', (event) => {
+      const payload = event.payload
+      if (payload?.request_id !== activeTimelineAiRequestId) return
+      activeTimelineAiModal?.finishExecution('success', payload?.message || '时间线已生成')
+    }),
+    await listen('timeline-ai-generation-error', (event) => {
+      const payload = event.payload
+      if (payload?.request_id !== activeTimelineAiRequestId) return
+      activeTimelineAiModal?.finishExecution('error', payload?.error || '未知错误')
+    }),
+  ]
 }
 
 export function cleanup() {
@@ -357,6 +412,14 @@ export function cleanup() {
     timelineListComponent.destroy()
     timelineListComponent = null
   }
+  timelineAiUnlisteners.forEach((unlisten) => {
+    try {
+      unlisten()
+    } catch (_) {}
+  })
+  timelineAiUnlisteners = []
+  activeTimelineAiRequestId = null
+  activeTimelineAiModal = null
   timelineAiGenerating = false
   editingTimeline = null
   timelineList = []

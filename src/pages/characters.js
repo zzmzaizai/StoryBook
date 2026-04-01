@@ -7,6 +7,9 @@ import { confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
 import { openAiGenerateModal } from '../components/ai-generate-modal.js'
+import { listen } from '@tauri-apps/api/event'
+import { getAiPhaseLabel, humanizeAiToolArgs } from '../lib/ai-execution-labels.js'
+import { applyAiPhaseUpdate, applyAiToolEvent } from '../lib/ai-execution-state.js'
 import '../style/virtual-list.css'
 
 let searchKeyword = ''
@@ -15,6 +18,9 @@ let isCreating = false
 let charactersList = []
 let characterListComponent = null
 let personalityEditorInstance = null
+let characterAiUnlisteners = []
+let activeCharacterAiRequestId = null
+let activeCharacterAiModal = null
 
 const CHARACTER_AI_MODES = [
   { value: 'create', label: '新建角色' },
@@ -37,6 +43,7 @@ export async function render() {
   el.className = 'page'
 
   const novelId = store.currentNovelId
+  await ensureCharacterAiListeners()
 
   if (!novelId) {
     el.innerHTML = `
@@ -428,7 +435,7 @@ async function renderCharacterEditor(root) {
 }
 
 function openCharacterAiModal(editorEl, character) {
-  openAiGenerateModal({
+  const modal = openAiGenerateModal({
     title: 'AI生成角色',
     currentContent: personalityEditorInstance ? personalityEditorInstance.getValue() : '',
     currentContextTitle: character ? '将基于当前角色继续处理。' : '当前角色内容为空，可直接生成。',
@@ -438,9 +445,14 @@ function openCharacterAiModal(editorEl, character) {
     defaultMode: character ? 'rewrite' : 'create',
     requirementPlaceholder: '例如：更有危险气质、增加反差萌、强化野心和控制欲',
     getConfirmText: getCharacterAiConfirmText,
-    onSubmit: async ({ mode, requirement }) => {
+    onSubmit: async ({ mode, requirement, modal: instance }) => {
+      const requestId = `character_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
       try {
+        activeCharacterAiRequestId = requestId
+        activeCharacterAiModal = instance
+        instance.startExecution()
         const result = await api.aiGenerateCharacter({
+          requestId,
           novelId: store.currentNovelId,
           characterId: character?.id ?? null,
           currentName: editorEl.querySelector('#character-name')?.value?.trim() || '',
@@ -461,12 +473,57 @@ function openCharacterAiModal(editorEl, character) {
         if (editorEl.querySelector('#character-gender')) editorEl.querySelector('#character-gender').value = `${result.gender ?? 3}`
         if (editorEl.querySelector('#character-type')) editorEl.querySelector('#character-type').value = `${result.character_type ?? 1}`
         personalityEditorInstance?.setValue(result.personality || '')
+        activeCharacterAiRequestId = null
+        activeCharacterAiModal?.finishExecution('success', '角色已生成')
+        activeCharacterAiModal = null
         toastSuccess('AI已生成角色内容，请检查后点击保存')
       } catch (err) {
+        activeCharacterAiRequestId = null
+        activeCharacterAiModal?.finishExecution('error', err.message || String(err))
+        activeCharacterAiModal = null
         toastError('AI生成失败: ' + err)
       }
     },
   })
+
+  activeCharacterAiModal = modal
+}
+
+function updateCharacterModalPhase(payload, status) {
+  applyAiPhaseUpdate(activeCharacterAiModal, activeCharacterAiRequestId, payload, status)
+}
+
+function appendCharacterToolEvent(payload, isResult = false) {
+  applyAiToolEvent(activeCharacterAiModal, activeCharacterAiRequestId, payload, isResult)
+}
+
+async function ensureCharacterAiListeners() {
+  if (characterAiUnlisteners.length > 0) return
+
+  characterAiUnlisteners = [
+    await listen('character-ai-phase-start', (event) => {
+      updateCharacterModalPhase(event.payload, 'running')
+    }),
+    await listen('character-ai-phase-end', (event) => {
+      updateCharacterModalPhase(event.payload, 'finished')
+    }),
+    await listen('character-ai-tool-call-start', (event) => {
+      appendCharacterToolEvent(event.payload, false)
+    }),
+    await listen('character-ai-tool-call-result', (event) => {
+      appendCharacterToolEvent(event.payload, true)
+    }),
+    await listen('character-ai-generation-done', (event) => {
+      const payload = event.payload
+      if (payload?.request_id !== activeCharacterAiRequestId) return
+      activeCharacterAiModal?.finishExecution('success', payload?.message || '角色已生成')
+    }),
+    await listen('character-ai-generation-error', (event) => {
+      const payload = event.payload
+      if (payload?.request_id !== activeCharacterAiRequestId) return
+      activeCharacterAiModal?.finishExecution('error', payload?.error || '未知错误')
+    }),
+  ]
 }
 
 async function handleDeleteCharacter(id, root) {
@@ -504,6 +561,14 @@ export function cleanup() {
   selectedCharacterId = null
   isCreating = false
   charactersList = []
+  activeCharacterAiRequestId = null
+  activeCharacterAiModal = null
+  characterAiUnlisteners.forEach((unlisten) => {
+    try {
+      unlisten()
+    } catch (_) {}
+  })
+  characterAiUnlisteners = []
 }
 
 function destroyPersonalityEditor() {

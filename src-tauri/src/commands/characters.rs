@@ -1,31 +1,29 @@
 use super::AppState;
-use crate::ai::agent::handlers::CharacterDesignInput;
+use crate::ai::agent::handlers::{CharacterDesignInput, GeneratedCharacterPayload};
+use crate::ai::agent::service::AgentService;
+use crate::ai::events::{
+    emit_generation_done, emit_generation_error, emit_phase_end, emit_phase_start,
+};
+use crate::ai::hooks::AiHookContext;
 use crate::ai::policy::character_generation_options;
-use crate::ai::structured::generate_structured;
+use crate::ai::tools::character::{ReadCharacterMetaTool, ReadExistingCharactersTool};
 use crate::entity::agent_config::AgentCodes;
 use crate::entity::characters;
 use crate::repository::CharacterUpdateParams;
-use schemars::JsonSchema;
-use tauri::State;
+use rig::tool::ToolDyn;
+use tauri::{AppHandle, State};
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, JsonSchema)]
-pub struct GeneratedCharacterPayload {
-    #[schemars(description = "角色名称，避免与已有角色重复")]
-    pub name: String,
-    #[schemars(description = "昵称或常用称呼；如不适合可留空字符串")]
-    pub nickname: String,
-    #[schemars(description = "年龄描述；不确定时可用大致年龄段")]
-    pub age: String,
-    #[schemars(description = "角色属性代码，1主角/2女主角/3男主角/4反派/5配角/6路人")]
-    pub role_attribute: i32,
-    #[schemars(description = "性别代码，1男性/2女性/3中性")]
-    pub gender: i32,
-    #[schemars(description = "角色类型代码，1人类/2非人类")]
-    pub character_type: i32,
-    #[schemars(
-        description = "Markdown 形式的人设正文，体现性格、动机、矛盾点、剧情作用和关系张力"
-    )]
-    pub personality: String,
+fn build_character_meta_catalog() -> String {
+    crate::constants::NovelMetaConstants::get_all_properties()
+        .into_iter()
+        .map(|item| {
+            format!(
+                "- [{}] {}（{}）：{}",
+                item.priority_level, item.property_name, item.group_name, item.property_description
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[tauri::command]
@@ -127,7 +125,9 @@ pub async fn delete_character(state: State<'_, AppState>, id: i32) -> Result<(),
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn ai_generate_character(
+    app: AppHandle,
     state: State<'_, AppState>,
+    request_id: Option<String>,
     novel_id: i32,
     character_id: Option<i32>,
     current_name: Option<String>,
@@ -140,53 +140,24 @@ pub async fn ai_generate_character(
     mode: String,
     requirement: String,
 ) -> Result<GeneratedCharacterPayload, String> {
+    let request_id = request_id
+        .unwrap_or_else(|| format!("character-{}", crate::ai::events::now_timestamp_ms()));
+    let event_namespace = "character";
+    emit_phase_start(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::CHARACTER_DESIGN,
+        "preparing_context",
+        Some("正在整理角色生成输入".to_string()),
+    );
+
     let novel = state
         .novels()
         .find_by_id(novel_id)
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "小说不存在".to_string())?;
-    let metas = state
-        .meta()
-        .find_by_novel(novel_id)
-        .await
-        .map_err(|e| e.to_string())?;
-    let characters = state
-        .characters()
-        .find_all_by_novel(novel_id)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let meta_context = metas
-        .iter()
-        .filter_map(|m| {
-            m.property_value.as_ref().and_then(|value| {
-                let trimmed = value.trim();
-                if trimmed.is_empty() {
-                    None
-                } else {
-                    Some(format!("- {}：{}", m.property_name, trimmed))
-                }
-            })
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    let existing_characters_context = characters
-        .iter()
-        .filter(|item| Some(item.id) != character_id)
-        .map(|item| {
-            format!(
-                "- {}｜{}｜{}｜{}｜{}",
-                item.name,
-                role_attribute_label(item.role_attribute),
-                gender_label(item.gender),
-                character_type_label(item.character_type),
-                summarize_text(item.personality.as_deref().unwrap_or(""), 80)
-            )
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
 
     let current_character_context = format!(
         "当前角色信息：\n- 名称：{}\n- 昵称：{}\n- 年龄：{}\n- 角色属性：{}\n- 性别：{}\n- 角色类型：{}\n- 性格特点：{}",
@@ -211,41 +182,105 @@ pub async fn ai_generate_character(
 
     let input = CharacterDesignInput {
         novel_context,
-        meta_context,
-        existing_characters_context,
+        available_meta_properties: build_character_meta_catalog(),
+        meta_context: "如需补充世界观、阵营、能力体系，请调用工具读取小说元数据。".to_string(),
+        existing_characters_context: "如需避免角色重复，请调用工具读取已有角色。".to_string(),
         current_character_context,
         role_type: mode,
         requirement: (!requirement.trim().is_empty()).then_some(requirement),
     };
     let structured_input = serde_json::to_value(&input).map_err(|e| e.to_string())?;
 
-    let mut payload: GeneratedCharacterPayload = generate_structured(
+    emit_phase_end(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::CHARACTER_DESIGN,
+        "preparing_context",
+        Some("输入准备完成".to_string()),
+    );
+    emit_phase_start(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::CHARACTER_DESIGN,
+        "tool_reasoning",
+        Some("AI 正在读取设定并生成角色".to_string()),
+    );
+
+    let options = character_generation_options();
+    let db_for_tools = state.db.clone();
+    let cache = crate::ai::tools::shared::ToolRequestCache::default();
+    let build_tools = move || -> Vec<Box<dyn ToolDyn>> {
+        vec![
+            Box::new(ReadCharacterMetaTool::new(
+                db_for_tools.clone(),
+                novel_id,
+                cache.clone(),
+            )),
+            Box::new(ReadExistingCharactersTool::new(
+                db_for_tools.clone(),
+                novel_id,
+                character_id,
+                cache.clone(),
+            )),
+        ]
+    };
+
+    let result: Result<GeneratedCharacterPayload, String> = AgentService::invoke_structured_with_observation(
         &state.db,
         AgentCodes::CHARACTER_DESIGN,
         structured_input,
-        character_generation_options(),
+        options.timeout_secs,
+        options.retries,
+        6,
+        build_tools,
+        AiHookContext {
+            app: app.clone(),
+            event_namespace: event_namespace.to_string(),
+            request_id: request_id.clone(),
+            agent_code: AgentCodes::CHARACTER_DESIGN.to_string(),
+            phase: "tool_reasoning".to_string(),
+        },
     )
     .await
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| e.to_string());
+
+    let mut payload = match result {
+        Ok(payload) => payload,
+        Err(err) => {
+            emit_generation_error(
+                &app,
+                event_namespace,
+                &request_id,
+                AgentCodes::CHARACTER_DESIGN,
+                err.clone(),
+            );
+            return Err(err);
+        }
+    };
 
     payload.role_attribute = normalize_role_attribute(payload.role_attribute);
     payload.gender = normalize_gender(payload.gender);
     payload.character_type = normalize_character_type(payload.character_type);
+
+    emit_phase_end(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::CHARACTER_DESIGN,
+        "tool_reasoning",
+        Some("角色内容已生成".to_string()),
+    );
+    emit_generation_done(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::CHARACTER_DESIGN,
+        Some("角色已生成".to_string()),
+    );
+
     Ok(payload)
-}
-
-fn summarize_text(content: &str, max_chars: usize) -> String {
-    let trimmed = content.trim();
-    if trimmed.is_empty() {
-        return "暂无明显人设描述".to_string();
-    }
-
-    let summary = trimmed.chars().take(max_chars).collect::<String>();
-    if trimmed.chars().count() > max_chars {
-        format!("{}...", summary)
-    } else {
-        summary
-    }
 }
 
 fn role_attribute_label(value: i32) -> &'static str {

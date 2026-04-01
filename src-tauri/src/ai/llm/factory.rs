@@ -197,7 +197,7 @@ pub(crate) fn build_http_client(timeout_secs: u64) -> anyhow::Result<reqwest::Cl
         .map_err(|e| anyhow::anyhow!("创建 HTTP client 失败: {}", e))
 }
 
-fn apply_common_builder_options<M>(
+pub(crate) fn apply_common_builder_options<M>(
     mut builder: rig::agent::AgentBuilder<M>,
     params: &LlmCompletionParams,
     temperature: Option<f32>,

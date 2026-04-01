@@ -4,18 +4,31 @@
 
 use crate::ai::agent::traits::{AgentContext, AgentHandler};
 use async_trait::async_trait;
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// 章节时间线输入参数
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct ChapterTimelineInput {
     pub novel_context: String,
+    pub available_meta_properties: String,
     pub metas_context: String,
     pub previous_timelines: String,
     pub chapter_start: u32,
     pub chapter_end: u32,
     pub current_context: String,
     pub requirement: Option<String>,
+}
+
+/// AI 生成的时间线结构化结果
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct GeneratedTimelinePayload {
+    #[schemars(description = "时间线标题，必须准确概括当前章节区间的主线推进和阶段特征")]
+    pub title: String,
+    #[schemars(
+        description = "时间线正文，使用 Markdown 组织内容，服务于当前章节范围的继续创作，体现核心目标、剧情推进、冲突与人物、结尾钩子"
+    )]
+    pub content: String,
 }
 
 /// 时间线正文 Agent Handler
@@ -69,6 +82,9 @@ impl AgentHandler for ChapterTimelineHandler {
 小说基础信息：
 {}
 
+可用元数据清单：
+{}
+
 小说元数据上下文：
 {}
 
@@ -82,13 +98,15 @@ impl AgentHandler for ChapterTimelineHandler {
 {}
 
 请围绕当前章节范围产出时间线结果。
+- 最终只能返回两个结构化字段：title 和 content。
 - 标题必须准确概括这一段剧情推进。
 - 正文必须服务于作者继续写作，使用 Markdown 组织内容。
-- 正文需要体现核心目标、关键推进、冲突变化、人物作用和结尾钩子。
+- 如果需要体现核心目标、关键推进、冲突变化、人物作用和结尾钩子，请把它们写进 content 的 Markdown 正文，不要输出成额外字段。
 - 不要越界写到其他章节，也不要脱离已有元数据和前文连续性。"#,
             input.chapter_start,
             input.chapter_end,
             input.novel_context,
+            input.available_meta_properties,
             metas_context,
             previous_timelines,
             requirement,

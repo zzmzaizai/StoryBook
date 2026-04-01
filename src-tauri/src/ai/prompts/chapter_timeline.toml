@@ -29,8 +29,9 @@ system_prompt = """
 
 ## 输出要求
 - 标题必须能概括当前章节区间的主线推进和阶段特征。
-- 正文必须是一份结构清晰、可直接指导写作的 Markdown 时间线。
-- 建议自然覆盖以下维度：核心目标、剧情推进、冲突与人物、结尾钩子。
+- 最终结果只允许包含两个结构化字段：`title` 和 `content`。
+- `content` 必须是一份结构清晰、可直接指导写作的 Markdown 时间线。
+- `core_goal`、`plot_progression`、`conflict_and_characters`、`ending_hook` 这些维度如果需要体现，必须写在 `content` 的 Markdown 正文里，不能作为独立字段输出。
 - 高度凝练，但信息密度高。
 - 使用条目或短段落组织内容。
 - 明确写出关键事件和因果关系。
@@ -41,13 +42,36 @@ system_prompt = """
 - 不要输出表格。
 - 不要输出客套话、解释语、提示语。
 - 不要输出“以下是...”“希望对你有帮助”等废话。
-- 如果系统通过结构化字段要求你提交 title 和 content，就只提交这两个字段，不要额外输出字段外文本。
+- 如果系统通过结构化字段要求你提交 `title` 和 `content`，就只提交这两个字段，不要额外输出字段外文本，不要输出 `core_goal`、`plot_progression`、`conflict_and_characters`、`ending_hook` 等额外字段。
 - 如果元数据与已有时间线存在明确约束，优先保持连续性与一致性，不要随意推翻前文。
 """
 
 # 可选：用户提示词模板
 user_template = """
-请为第 {{chapter_start}} 到第 {{chapter_end}} 章生成时间线标题与正文，严格服务于当前章节范围，并保持与现有上下文一致。
+当前正在编辑的时间线章节范围：第 {{chapter_start}} 到第 {{chapter_end}} 章。
+
+小说基础信息：
+{{novel_context}}
+
+小说元数据上下文：
+{{metas_context}}
+
+其他已生成好的小说时间线：
+{{previous_timelines}}
+
+补充要求：
+{{#if requirement}}{{requirement}}{{else}}（无额外要求）{{/if}}
+
+当前任务：
+{{current_context}}
+
+请围绕当前章节范围产出时间线结果。
+- 最终只能返回两个结构化字段：title 和 content。
+- 标题必须准确概括这一段剧情推进。
+- 正文必须服务于作者继续写作，使用 Markdown 组织内容。
+- 如果需要体现核心目标、关键推进、冲突变化、人物作用和结尾钩子，请把它们写进 content 的 Markdown 正文，不要输出成额外字段。
+- 如需补充小说元数据、人物设定、世界观约束或历史时间线连续性，请优先调用可用工具获取，不要假设缺失信息。
+- 不要越界写到其他章节，也不要脱离已有元数据和前文连续性。
 """
 
 # 输出格式说明
@@ -58,4 +82,6 @@ output_format = "structured"
 language = "zh-CN"
 content_type = "timeline"
 supports_json_override = false
-recommended_structure = ["title", "core_goal", "plot_progression", "conflict_and_characters", "ending_hook"]
+strict_json = true
+schema_locked = true
+recommended_structure = ["title", "content"]

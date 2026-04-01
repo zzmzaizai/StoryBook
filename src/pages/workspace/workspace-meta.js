@@ -8,6 +8,8 @@ import { createMarkdownEditor } from '../../lib/markdown-editor.js'
 import { createTabs } from '../../lib/tabs.js'
 import { createPagedList } from '../../lib/virtual-list.js'
 import { openAiGenerateModal } from '../../components/ai-generate-modal.js'
+import { getAiPhaseLabel, humanizeAiToolArgs } from '../../lib/ai-execution-labels.js'
+import { applyAiPhaseUpdate, applyAiToolEvent } from '../../lib/ai-execution-state.js'
 import '../../style/virtual-list.css'
 
 let activeMetaTab = 'added'
@@ -22,6 +24,7 @@ let metaAiUnlisteners = []
 let activeMetaAiRequestId = null
 let metaAiGenerating = false
 let metaAiOriginalContent = ''
+let activeMetaAiModal = null
 let activeMetaPriorityFilter = 'required'
 
 const META_AI_ACTIONS = [
@@ -484,7 +487,7 @@ function renderEditor(content, novelInfo) {
 async function openMetaAiModal(novelInfo) {
   const currentContent = metaEditorInstance ? metaEditorInstance.getValue() : ''
   const defaultAction = getMetaAiDefaultAction(currentContent)
-  openAiGenerateModal({
+  const modal = openAiGenerateModal({
     title: `AI生成 - ${editingMeta.property_name}`,
     currentContent,
     currentContextTitle: '补充要求现在是可选项。你可以生成、优化、重写、扩展或精简当前元数据内容。',
@@ -493,14 +496,16 @@ async function openMetaAiModal(novelInfo) {
     defaultMode: defaultAction,
     requirementPlaceholder: '例如：更黑暗一点、加入更多权谋细节、语气更克制',
     getConfirmText: getMetaAiConfirmText,
-    onSubmit: async ({ mode, requirement }) => {
+    onSubmit: async ({ mode, requirement, modal: instance }) => {
       const requestId = `meta_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
       activeMetaAiRequestId = requestId
       const currentEditorContent = metaEditorInstance ? metaEditorInstance.getValue() : ''
       metaAiOriginalContent = currentEditorContent
       try {
+        activeMetaAiModal = instance
         metaAiGenerating = true
         updateMetaAiButtonState()
+        instance.startExecution()
         if (metaEditorInstance) {
           metaEditorInstance.setValue('')
         }
@@ -516,7 +521,9 @@ async function openMetaAiModal(novelInfo) {
       } catch (err) {
         metaAiGenerating = false
         activeMetaAiRequestId = null
+        activeMetaAiModal = null
         updateMetaAiButtonState()
+        instance.finishExecution('error', `AI生成失败：${err.message || err}`)
         if (metaEditorInstance) {
           metaEditorInstance.setValue(metaAiOriginalContent)
         }
@@ -524,12 +531,34 @@ async function openMetaAiModal(novelInfo) {
       }
     }
   })
+
+  activeMetaAiModal = modal
+}
+
+function updateMetaModalPhase(payload, status) {
+  applyAiPhaseUpdate(activeMetaAiModal, activeMetaAiRequestId, payload, status)
+}
+
+function appendMetaToolEvent(payload, isResult = false) {
+  applyAiToolEvent(activeMetaAiModal, activeMetaAiRequestId, payload, isResult)
 }
 
 async function ensureMetaAiListeners() {
   if (metaAiUnlisteners.length > 0) return
 
   metaAiUnlisteners.push(
+    await listen('meta-ai-phase-start', (event) => {
+      updateMetaModalPhase(event.payload, 'running')
+    }),
+    await listen('meta-ai-phase-end', (event) => {
+      updateMetaModalPhase(event.payload, 'finished')
+    }),
+    await listen('meta-ai-tool-call-start', (event) => {
+      appendMetaToolEvent(event.payload, false)
+    }),
+    await listen('meta-ai-tool-call-result', (event) => {
+      appendMetaToolEvent(event.payload, true)
+    }),
     await listen('meta-ai-stream-chunk', (event) => {
       const payload = event.payload
       if (!metaEditorInstance || !payload?.delta || payload.request_id !== activeMetaAiRequestId) return
@@ -542,6 +571,8 @@ async function ensureMetaAiListeners() {
       activeMetaAiRequestId = null
       metaAiGenerating = false
       metaAiOriginalContent = ''
+      activeMetaAiModal?.finishExecution('success', '元数据已生成')
+      activeMetaAiModal = null
       updateMetaAiButtonState()
       toastSuccess('AI生成完成')
     }),
@@ -554,6 +585,8 @@ async function ensureMetaAiListeners() {
         metaEditorInstance.setValue(metaAiOriginalContent)
       }
       metaAiOriginalContent = ''
+      activeMetaAiModal?.finishExecution('error', payload?.error || '未知错误')
+      activeMetaAiModal = null
       updateMetaAiButtonState()
       toastError('AI生成失败: ' + (payload?.error || '未知错误'))
     })
@@ -582,6 +615,7 @@ export function cleanup() {
   activeMetaAiRequestId = null
   metaAiGenerating = false
   metaAiOriginalContent = ''
+  activeMetaAiModal = null
   metaAiUnlisteners.forEach(fn => fn())
   metaAiUnlisteners = []
 }

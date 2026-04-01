@@ -28,6 +28,26 @@ system_prompt = """
 
 user_template = """
 请基于当前小说上下文生成一个角色结果，并确保与已有角色和设定保持区分与一致。
+
+小说基础信息：
+{{novel_context}}
+
+小说设定上下文：
+{{meta_context}}
+
+已有角色摘要：
+{{existing_characters_context}}
+
+当前角色信息：
+{{current_character_context}}
+
+角色定位：
+{{role_type}}
+
+补充要求：
+{{#if requirement}}{{requirement}}{{else}}（无额外要求）{{/if}}
+
+如果需要补充小说设定或已有角色信息，请优先调用工具读取，不要自行猜测。
 """
 
 output_format = "structured"

@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct MetaGeneratorInput {
     pub novel_context: String,
+    pub available_meta_properties: Option<String>,
     pub property_name: String,
     pub property_description: Option<String>,
     pub meta_context: Option<String>,
@@ -76,8 +77,11 @@ impl AgentHandler for MetaGeneratorHandler {
         };
 
         Ok(format!(
-            "小说基础信息：\n{}\n\n当前要生成的元数据：\n- 名称：{}\n- 描述：{}\n\n其他已生成元数据：\n{}\n\n任务说明：\n{}\n\n补充要求：\n{}\n\n请直接输出最终正文内容，不要附加说明、版本对比或分析。",
+            "小说基础信息：\n{}\n\n可用元数据清单：\n{}\n\n当前要生成的元数据：\n- 名称：{}\n- 描述：{}\n\n其他已生成元数据：\n{}\n\n任务说明：\n{}\n\n补充要求：\n{}\n\n如果现有输入不足以保证设定一致，请优先调用工具读取其他元数据或角色信息。优先按元数据名称精确查询。请直接输出最终正文内容，不要附加说明、版本对比或分析。",
             input.novel_context,
+            input
+                .available_meta_properties
+                .unwrap_or_else(|| "（未提供）".to_string()),
             input.property_name,
             input.property_description.unwrap_or_default(),
             input.meta_context.unwrap_or_else(|| "（暂无）".to_string()),

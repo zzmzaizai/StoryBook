@@ -1,11 +1,30 @@
 use super::AppState;
 use crate::ai::agent::handlers::MetaGeneratorInput;
 use crate::ai::agent::service::AgentService;
+use crate::ai::events::{
+    emit_generation_done, emit_generation_error, emit_phase_end, emit_phase_start,
+};
+use crate::ai::hooks::AiHookContext;
+use crate::ai::tools::meta::{ReadCharacterContextTool, ReadMetaContextTool};
 use crate::constants::{MetaPropertyDto, NovelMetaConstants};
 use crate::entity::agent_config::AgentCodes;
 use crate::entity::novel_meta;
+use rig::tool::ToolDyn;
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::mpsc;
+
+fn build_meta_property_catalog() -> String {
+    NovelMetaConstants::get_all_properties()
+        .into_iter()
+        .map(|item| {
+            format!(
+                "- [{}] {}（{}）：{}",
+                item.priority_level, item.property_name, item.group_name, item.property_description
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MetaAiStreamChunk {
@@ -151,33 +170,22 @@ pub async fn ai_generate_meta_stream(
     current_content: Option<String>,
     requirement: String,
 ) -> Result<(), String> {
+    let event_namespace = "meta";
+    emit_phase_start(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::META_GENERATOR,
+        "preparing_context",
+        Some("正在整理元数据输入".to_string()),
+    );
+
     let novel = state
         .novels()
         .find_by_id(novel_id)
         .await
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "小说不存在".to_string())?;
-    let metas = state
-        .meta()
-        .find_by_novel(novel_id)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let meta_context = metas
-        .iter()
-        .filter(|m| m.property_name != property_name)
-        .filter_map(|m| {
-            m.property_value.as_ref().and_then(|value| {
-                let trimmed = value.trim();
-                if trimmed.is_empty() {
-                    None
-                } else {
-                    Some(format!("- {}：{}", m.property_name, trimmed))
-                }
-            })
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
 
     let novel_context = format!(
         "小说基础信息：\n- 标题：{}\n- 简介：{}\n- 风格：{}\n- 目标读者：{}\n- 篇幅：{}\n- 原始需求：{}",
@@ -191,18 +199,32 @@ pub async fn ai_generate_meta_stream(
 
     let input = MetaGeneratorInput {
         novel_context,
-        property_name,
+        available_meta_properties: Some(build_meta_property_catalog()),
+        property_name: property_name.clone(),
         property_description,
         action: Some(action),
-        meta_context: if meta_context.is_empty() {
-            None
-        } else {
-            Some(meta_context)
-        },
+        meta_context: Some("如需参考其他元数据，请调用工具读取。".to_string()),
         current_content,
         requirement,
     };
     let input = serde_json::to_value(&input).map_err(|e| e.to_string())?;
+
+    emit_phase_end(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::META_GENERATOR,
+        "preparing_context",
+        Some("输入准备完成".to_string()),
+    );
+    emit_phase_start(
+        &app,
+        event_namespace,
+        &request_id,
+        AgentCodes::META_GENERATOR,
+        "tool_reasoning",
+        Some("AI 正在读取设定并生成正文".to_string()),
+    );
 
     let (tx, mut rx) = mpsc::unbounded_channel::<String>();
     let app_handle = app.clone();
@@ -219,8 +241,59 @@ pub async fn ai_generate_meta_stream(
         }
     });
 
-    match AgentService::invoke_stream(&state.db, AgentCodes::META_GENERATOR, input, tx).await {
+    let db_for_tools = state.db.clone();
+    let property_name_for_tools = property_name.clone();
+    let cache = crate::ai::tools::shared::ToolRequestCache::default();
+    let build_tools = move || -> Vec<Box<dyn ToolDyn>> {
+        vec![
+            Box::new(ReadMetaContextTool::new(
+                db_for_tools.clone(),
+                novel_id,
+                property_name_for_tools.clone(),
+                cache.clone(),
+            )),
+            Box::new(ReadCharacterContextTool::new(
+                db_for_tools.clone(),
+                novel_id,
+                cache.clone(),
+            )),
+        ]
+    };
+
+    match AgentService::invoke_stream_with_observation(
+        &state.db,
+        AgentCodes::META_GENERATOR,
+        input,
+        None,
+        1,
+        6,
+        build_tools,
+        AiHookContext {
+            app: app.clone(),
+            event_namespace: event_namespace.to_string(),
+            request_id: request_id.clone(),
+            agent_code: AgentCodes::META_GENERATOR.to_string(),
+            phase: "tool_reasoning".to_string(),
+        },
+        tx,
+    )
+    .await {
         Ok(result) => {
+            emit_phase_end(
+                &app,
+                event_namespace,
+                &request_id,
+                AgentCodes::META_GENERATOR,
+                "tool_reasoning",
+                Some("元数据正文已生成".to_string()),
+            );
+            emit_generation_done(
+                &app,
+                event_namespace,
+                &request_id,
+                AgentCodes::META_GENERATOR,
+                Some("元数据已生成".to_string()),
+            );
             app.emit(
                 "meta-ai-stream-done",
                 MetaAiStreamDone {
@@ -232,6 +305,13 @@ pub async fn ai_generate_meta_stream(
             Ok(())
         }
         Err(err) => {
+            emit_generation_error(
+                &app,
+                event_namespace,
+                &request_id,
+                AgentCodes::META_GENERATOR,
+                err.to_string(),
+            );
             app.emit(
                 "meta-ai-stream-error",
                 MetaAiStreamError {

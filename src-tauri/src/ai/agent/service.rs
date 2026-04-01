@@ -4,7 +4,9 @@
 
 use crate::ai::agent::factory::AgentFactory;
 use crate::ai::agent::traits::AgentResult;
+use crate::ai::hooks::AiHookContext;
 use crate::entity::agent_config::AgentCodes;
+use rig::tool::ToolDyn;
 use schemars::JsonSchema;
 use sea_orm::DatabaseConnection;
 use serde::{de::DeserializeOwned, Serialize};
@@ -78,6 +80,35 @@ impl AgentService {
             .await
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub async fn invoke_structured_with_observation<T, F>(
+        db: &DatabaseConnection,
+        agent_code: &str,
+        input: Value,
+        timeout_secs: Option<u64>,
+        retries: u64,
+        max_turns: usize,
+        build_tools: F,
+        hook_context: AiHookContext,
+    ) -> anyhow::Result<T>
+    where
+        T: JsonSchema + DeserializeOwned + Serialize + Send + Sync + 'static,
+        F: Fn() -> Vec<Box<dyn ToolDyn>>,
+    {
+        AgentFactory::new()
+            .invoke_structured_with_observation(
+                db,
+                agent_code,
+                input,
+                timeout_secs,
+                retries,
+                max_turns,
+                build_tools,
+                hook_context,
+            )
+            .await
+    }
+
     pub async fn invoke_stream(
         db: &DatabaseConnection,
         agent_code: &str,
@@ -86,6 +117,36 @@ impl AgentService {
     ) -> anyhow::Result<AgentResult> {
         AgentFactory::new()
             .invoke_stream(db, agent_code, input, tx)
+            .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn invoke_stream_with_observation<F>(
+        db: &DatabaseConnection,
+        agent_code: &str,
+        input: Value,
+        timeout_secs: Option<u64>,
+        retries: u64,
+        max_turns: usize,
+        build_tools: F,
+        hook_context: AiHookContext,
+        tx: UnboundedSender<String>,
+    ) -> anyhow::Result<AgentResult>
+    where
+        F: Fn() -> Vec<Box<dyn ToolDyn>>,
+    {
+        AgentFactory::new()
+            .invoke_stream_with_observation(
+                db,
+                agent_code,
+                input,
+                timeout_secs,
+                retries,
+                max_turns,
+                build_tools,
+                hook_context,
+                tx,
+            )
             .await
     }
 

@@ -11,8 +11,12 @@ mod novel_info_generator_handler;
 mod novel_outline_handler;
 
 pub use chapter_content_handler::{ChapterContentHandler, ChapterContentInput};
-pub use chapter_timeline_handler::{ChapterTimelineHandler, ChapterTimelineInput};
-pub use character_design_handler::{CharacterDesignHandler, CharacterDesignInput};
+pub use chapter_timeline_handler::{
+    ChapterTimelineHandler, ChapterTimelineInput, GeneratedTimelinePayload,
+};
+pub use character_design_handler::{
+    CharacterDesignHandler, CharacterDesignInput, GeneratedCharacterPayload,
+};
 pub use general_chat_handler::GeneralChatHandler;
 pub use meta_generator_handler::{MetaGeneratorHandler, MetaGeneratorInput};
 pub use novel_info_generator_handler::{

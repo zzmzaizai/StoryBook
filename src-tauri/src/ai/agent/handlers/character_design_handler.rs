@@ -11,11 +11,32 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Deserialize, Serialize, JsonSchema)]
 pub struct CharacterDesignInput {
     pub novel_context: String,
+    pub available_meta_properties: String,
     pub meta_context: String,
     pub existing_characters_context: String,
     pub current_character_context: String,
     pub role_type: String,
     pub requirement: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct GeneratedCharacterPayload {
+    #[schemars(description = "角色名称，避免与已有角色重复")]
+    pub name: String,
+    #[schemars(description = "昵称或常用称呼；如不适合可留空字符串")]
+    pub nickname: String,
+    #[schemars(description = "年龄描述；不确定时可用大致年龄段")]
+    pub age: String,
+    #[schemars(description = "角色属性代码，1主角/2女主角/3男主角/4反派/5配角/6路人")]
+    pub role_attribute: i32,
+    #[schemars(description = "性别代码，1男性/2女性/3中性")]
+    pub gender: i32,
+    #[schemars(description = "角色类型代码，1人类/2非人类")]
+    pub character_type: i32,
+    #[schemars(
+        description = "Markdown 形式的人设正文，体现性格、动机、矛盾点、剧情作用和关系张力"
+    )]
+    pub personality: String,
 }
 
 /// 角色设计 Agent Handler
@@ -72,6 +93,9 @@ impl AgentHandler for CharacterDesignHandler {
 已生成元数据：
 {}
 
+可用元数据清单：
+{}
+
 已有角色摘要（避免重复）：
 {}
 
@@ -91,6 +115,7 @@ impl AgentHandler for CharacterDesignHandler {
 - 不要把结果写到字段之外。"#,
             input.novel_context,
             meta_context,
+            input.available_meta_properties,
             existing_characters_context,
             input.current_character_context,
             input.role_type,

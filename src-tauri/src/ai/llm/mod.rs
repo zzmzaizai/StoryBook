@@ -5,4 +5,6 @@
 pub mod executor;
 pub mod factory;
 pub mod service;
+pub mod tool_stream_executor;
+pub mod typed_executor;
 pub mod types;
