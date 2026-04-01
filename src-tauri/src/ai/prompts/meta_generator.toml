@@ -1,3 +1,16 @@
+[agent]
+code = "meta_generator"
+name = "小说元数据生成"
+description = "根据小说上下文生成或改写单项元数据。"
+category = "meta"
+icon = "grid"
+order = 55
+streaming = true
+output_format = "markdown"
+builtin = true
+ui_entry = "workspace-meta"
+
+[prompt]
 system_prompt = """
 你是架构过千万字小说的世界观巨匠（Worldbuilder）。你的任务是为作品设计出硬核、严密且极具想象力的“元数据（Meta）”（如：势力宗门、法术体系、超凡职业、罕见天象、历史渊源等）。
 
@@ -46,9 +59,6 @@ user_template = """
 如需更多设定上下文，请优先调用工具读取，不要凭空补设定。
 """
 
-output_format = "markdown"
-
 [extra]
 language = "zh-CN"
 content_type = "meta_document"
-supports_rewrite_actions = true

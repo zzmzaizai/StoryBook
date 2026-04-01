@@ -8,7 +8,7 @@ use crate::ai::hooks::{AiHookContext, ObservedToolHook};
 use crate::ai::llm::service::LlmService;
 use crate::ai::llm::tool_stream_executor::LlmToolStreamExecutor;
 use crate::ai::llm::typed_executor::LlmTypedExecutor;
-use crate::ai::prompts::{load_prompt_config, merge_additional_params, PromptConfig};
+use crate::ai::prompts::{load_prompt_config, merge_additional_params};
 use crate::entity::agent_config;
 use crate::repository::AgentConfigRepository;
 use rig::tool::ToolDyn;
@@ -60,12 +60,7 @@ impl AgentFactory {
             .execute_with_timeout(&llm_config, exec_ctx, ctx, timeout_secs)
             .await?;
 
-        Ok(AgentResult {
-            content,
-            llm_config_id: llm_config.id,
-            provider: llm_config.provider.clone(),
-            model: llm_config.model.clone(),
-        })
+        Ok(AgentResult { content })
     }
 
     pub async fn invoke_structured_with_timeout<T>(
@@ -150,33 +145,6 @@ impl AgentFactory {
             .await
     }
 
-    pub async fn invoke_with_llm(
-        &self,
-        db: &DatabaseConnection,
-        agent_code: &str,
-        llm_config_id: i32,
-        input: Value,
-    ) -> anyhow::Result<AgentResult> {
-        let settings_context =
-            crate::ai::agent::settings_context::load_settings_context_from_input(db, &input)
-                .await?;
-        let agent_config = self.load_agent_config(db, agent_code).await?;
-        let llm_config = LlmService::get_llm_by_id(db, llm_config_id).await?;
-        let handler = self.get_required_handler(agent_code)?;
-        let exec_ctx = self
-            .build_exec_ctx(agent_code, &agent_config, settings_context)
-            .await?;
-        let ctx = AgentContext::new(input);
-        let content = handler.execute(&llm_config, exec_ctx, ctx).await?;
-
-        Ok(AgentResult {
-            content,
-            llm_config_id: llm_config.id,
-            provider: llm_config.provider.clone(),
-            model: llm_config.model.clone(),
-        })
-    }
-
     pub async fn invoke_stream(
         &self,
         db: &DatabaseConnection,
@@ -198,12 +166,7 @@ impl AgentFactory {
             .execute_stream(&llm_config, exec_ctx, ctx, tx)
             .await?;
 
-        Ok(AgentResult {
-            content,
-            llm_config_id: llm_config.id,
-            provider: llm_config.provider.clone(),
-            model: llm_config.model.clone(),
-        })
+        Ok(AgentResult { content })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -249,12 +212,7 @@ impl AgentFactory {
             )
             .await?;
 
-        Ok(AgentResult {
-            content,
-            llm_config_id: llm_config.id,
-            provider: llm_config.provider.clone(),
-            model: llm_config.model.clone(),
-        })
+        Ok(AgentResult { content })
     }
 
     async fn build_exec_ctx(
@@ -263,18 +221,9 @@ impl AgentFactory {
         agent_config: &agent_config::Model,
         settings_context: Option<String>,
     ) -> anyhow::Result<AgentExecutionContext> {
-        let prompt_config = if agent_config.use_system_prompt {
-            load_prompt_config(agent_code).await?
-        } else {
-            PromptConfig {
-                system_prompt: String::new(),
-                user_template: None,
-                output_format: None,
-                extra: Default::default(),
-            }
-        };
+        let prompt_config = load_prompt_config(agent_code).await?;
 
-        let system_prompt = prompt_config.render_system_prompt();
+        let system_prompt = prompt_config.system_prompt.clone();
 
         let system_prompt = if let Some(settings_context) = settings_context {
             if system_prompt.trim().is_empty() {
@@ -293,7 +242,6 @@ impl AgentFactory {
 
         Ok(AgentExecutionContext {
             system_prompt,
-            custom_prompt: agent_config.custom_prompt.clone(),
             prompt_config,
             extra_params,
         })
@@ -305,9 +253,18 @@ impl AgentFactory {
         agent_code: &str,
     ) -> anyhow::Result<agent_config::Model> {
         let repo = AgentConfigRepository::new(Arc::new(db.clone()));
-        repo.find_by_agent_code(agent_code)
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Agent 配置不存在: {}", agent_code))
+        if let Some(config) = repo.find_by_agent_code(agent_code).await? {
+            return Ok(config);
+        }
+
+        Ok(agent_config::Model {
+            id: 0,
+            agent_code: agent_code.to_string(),
+            llm_config_id: None,
+            extra_config: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+        })
     }
 
     fn get_required_handler(&self, agent_code: &str) -> anyhow::Result<Arc<dyn AgentHandler>> {

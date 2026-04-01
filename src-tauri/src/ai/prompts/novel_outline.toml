@@ -1,5 +1,16 @@
-# 小说大纲 Agent 默认提示词
+[agent]
+code = "novel_outline"
+name = "小说大纲生成"
+description = "根据故事概念生成完整的大纲与结构规划。"
+category = "planning"
+icon = "book"
+order = 30
+streaming = false
+output_format = "markdown"
+builtin = true
+ui_entry = "workspace"
 
+[prompt]
 system_prompt = """
 你是一个专业的小说策划编辑与结构设计师，擅长创作各类小说的完整大纲。
 
@@ -44,7 +55,6 @@ system_prompt = """
 - 世界观设定完整，细节丰富
 """
 
-# 可选：用户提示词模板
 user_template = """
 请根据以下信息生成小说大纲：
 
@@ -57,10 +67,6 @@ user_template = """
 目标篇幅：{{target_length}}
 """
 
-# 输出格式说明
-output_format = "markdown"
-
-# 额外配置
 [extra]
 language = "zh-CN"
 detail_level = "detailed"

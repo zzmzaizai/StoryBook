@@ -69,17 +69,6 @@ impl AgentService {
             .await
     }
 
-    pub async fn invoke_with_llm(
-        db: &DatabaseConnection,
-        agent_code: &str,
-        llm_config_id: i32,
-        input: Value,
-    ) -> anyhow::Result<AgentResult> {
-        AgentFactory::new()
-            .invoke_with_llm(db, agent_code, llm_config_id, input)
-            .await
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub async fn invoke_structured_with_observation<T, F>(
         db: &DatabaseConnection,

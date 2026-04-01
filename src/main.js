@@ -28,7 +28,6 @@ registerRoute('/chapters', () => import('./pages/chapters.js'))
 registerRoute('/characters', () => import('./pages/characters.js'))
 registerRoute('/llm-config', () => import('./pages/llm-config.js'))
 registerRoute('/agent-config', () => import('./pages/agent-config.js'))
-registerRoute('/chat', () => import('./pages/chat.js'))
 registerRoute('/security', async () => securityPage)
 registerRoute('/about', () => import('./pages/about.js'))
 

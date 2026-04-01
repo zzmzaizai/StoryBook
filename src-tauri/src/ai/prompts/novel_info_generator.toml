@@ -1,3 +1,16 @@
+[agent]
+code = "novel_info_generator"
+name = "小说基础信息生成"
+description = "根据用户要求生成小说标题、简介、风格和规模等基础信息。"
+category = "planning"
+icon = "novels"
+order = 20
+streaming = false
+output_format = "structured"
+builtin = true
+ui_entry = "novels"
+
+[prompt]
 system_prompt = """
 你是一个专业的网络小说编辑和策划专家。擅长根据用户简单描述生成完整的小说基础设定。
 
@@ -37,8 +50,6 @@ user_template = """
 
 {{requirement}}
 """
-
-output_format = "structured"
 
 [extra]
 language = "zh-CN"

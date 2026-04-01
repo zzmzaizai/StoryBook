@@ -16,7 +16,6 @@ pub use novel_settings::NovelSettingsRepository;
 pub use novels::NovelRepository;
 pub use timeline::TimelineRepository;
 
-pub use agent_config::{AgentConfigCreateParams, AgentConfigUpdateParams};
 pub use chapters::ChapterUpdateParams;
 pub use characters::CharacterUpdateParams;
 pub use llm_config::{LlmConfigCreateParams, LlmConfigUpdateParams};

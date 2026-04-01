@@ -93,22 +93,10 @@ pub fn run() {
             commands::enable_llm_config,
             commands::disable_llm_config,
             // Agent Config commands
-            commands::list_agent_configs,
-            commands::get_agent_config,
-            commands::get_agent_config_by_code,
-            commands::create_agent_config,
-            commands::update_agent_config,
-            commands::delete_agent_config,
-            commands::bind_llm_to_agent,
-            commands::set_agent_custom_prompt,
-            commands::reset_builtin_agent_config,
-            commands::get_agent_prompt_details,
-            commands::init_default_agent_configs,
-            commands::get_agent_types,
-            // Chat commands
-            commands::chat_with_agent,
-            commands::chat_with_agent_and_llm,
-            commands::chat_with_agent_stream,
+            commands::list_agent_definitions,
+            commands::get_agent_definition,
+            commands::save_agent_runtime_config,
+            commands::reset_agent_runtime_config,
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

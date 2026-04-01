@@ -42,7 +42,6 @@ impl AgentContext {
 #[derive(Debug, Clone)]
 pub struct AgentExecutionContext {
     pub system_prompt: String,
-    pub custom_prompt: Option<String>,
     pub prompt_config: PromptConfig,
     pub extra_params: Option<Value>,
 }
@@ -52,11 +51,9 @@ impl AgentExecutionContext {
     pub fn new(system_prompt: String) -> Self {
         Self {
             system_prompt,
-            custom_prompt: None,
             prompt_config: PromptConfig {
                 system_prompt: String::new(),
                 user_template: None,
-                output_format: None,
                 extra: Default::default(),
             },
             extra_params: None,
@@ -64,10 +61,7 @@ impl AgentExecutionContext {
     }
 
     pub fn resolve_prompt(&self) -> String {
-        match &self.custom_prompt {
-            Some(custom) if !custom.trim().is_empty() => custom.trim().to_string(),
-            _ => self.system_prompt.clone(),
-        }
+        self.system_prompt.clone()
     }
 }
 
@@ -96,15 +90,6 @@ pub trait AgentHandler: Send + Sync {
         }
 
         self.build_user_prompt(ctx.clone()).await
-    }
-
-    async fn execute(
-        &self,
-        llm: &llm_config::Model,
-        exec_ctx: AgentExecutionContext,
-        ctx: AgentContext,
-    ) -> anyhow::Result<String> {
-        self.execute_with_timeout(llm, exec_ctx, ctx, None).await
     }
 
     async fn execute_with_timeout(
@@ -155,7 +140,4 @@ pub trait AgentHandler: Send + Sync {
 #[derive(Debug, Clone)]
 pub struct AgentResult {
     pub content: String,
-    pub llm_config_id: i32,
-    pub provider: String,
-    pub model: String,
 }

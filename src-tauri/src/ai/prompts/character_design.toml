@@ -1,5 +1,16 @@
-# 角色设计 Agent 默认提示词
+[agent]
+code = "character_design"
+name = "角色设计"
+description = "根据小说上下文生成或改写角色档案。"
+category = "character"
+icon = "characters"
+order = 50
+streaming = false
+output_format = "structured"
+builtin = true
+ui_entry = "characters"
 
+[prompt]
 system_prompt = """
 你是一个专业的小说角色设计师，擅长创作立体、真实、有吸引力且能推动剧情的小说角色。
 
@@ -50,9 +61,6 @@ user_template = """
 如果需要补充小说设定或已有角色信息，请优先调用工具读取，不要自行猜测。
 """
 
-output_format = "structured"
-
 [extra]
 language = "zh-CN"
 detail_level = "detailed"
-supports_relationship_hint = false

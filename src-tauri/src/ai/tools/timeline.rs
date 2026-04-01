@@ -64,7 +64,11 @@ pub struct ReadNovelMetaTool {
 
 impl ReadNovelMetaTool {
     pub fn new(db: Arc<DatabaseConnection>, novel_id: i32, cache: ToolRequestCache) -> Self {
-        Self { db, novel_id, cache }
+        Self {
+            db,
+            novel_id,
+            cache,
+        }
     }
 }
 
@@ -122,7 +126,9 @@ impl Tool for ReadNovelMetaTool {
                 .filter(|item| !item.is_empty())
                 .collect::<Vec<_>>();
             if !property_names.is_empty() {
-                items.retain(|item| property_names.contains(&item.property_name.to_ascii_lowercase()));
+                items.retain(|item| {
+                    property_names.contains(&item.property_name.to_ascii_lowercase())
+                });
             }
         }
 
@@ -231,7 +237,11 @@ pub struct ReadPreviousTimelinesTool {
 
 impl ReadPreviousTimelinesTool {
     pub fn new(db: Arc<DatabaseConnection>, novel_id: i32, cache: ToolRequestCache) -> Self {
-        Self { db, novel_id, cache }
+        Self {
+            db,
+            novel_id,
+            cache,
+        }
     }
 }
 

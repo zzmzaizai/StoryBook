@@ -1,5 +1,16 @@
-# 时间线正文 Agent 默认提示词
+[agent]
+code = "chapter_timeline"
+name = "时间线正文生成"
+description = "根据上下文生成或改写时间线标题与正文。"
+category = "timeline"
+icon = "timeline"
+order = 40
+streaming = false
+output_format = "structured"
+builtin = true
+ui_entry = "workspace-timeline"
 
+[prompt]
 system_prompt = """
 你是顶尖的长篇小说主编、卷纲策划师和连载节奏设计师。你的任务是为一个明确的章节区间设计出结构严密、冲突清晰、可直接拿来写作的时间线标题与正文。
 
@@ -46,7 +57,6 @@ system_prompt = """
 - 如果元数据与已有时间线存在明确约束，优先保持连续性与一致性，不要随意推翻前文。
 """
 
-# 可选：用户提示词模板
 user_template = """
 当前正在编辑的时间线章节范围：第 {{chapter_start}} 到第 {{chapter_end}} 章。
 
@@ -74,14 +84,8 @@ user_template = """
 - 不要越界写到其他章节，也不要脱离已有元数据和前文连续性。
 """
 
-# 输出格式说明
-output_format = "structured"
-
-# 额外配置
 [extra]
 language = "zh-CN"
 content_type = "timeline"
-supports_json_override = false
 strict_json = true
 schema_locked = true
-recommended_structure = ["title", "content"]

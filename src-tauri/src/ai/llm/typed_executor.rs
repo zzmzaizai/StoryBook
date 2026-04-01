@@ -211,7 +211,9 @@ impl LlmTypedExecutor {
 
         for _ in 0..max_attempts {
             let mut tools = build_tools();
-            tools.push(Box::new(SubmitTool::<T> { _marker: PhantomData }));
+            tools.push(Box::new(SubmitTool::<T> {
+                _marker: PhantomData,
+            }));
             let builder = apply_common_builder_options(
                 client.agent(&self.config.model),
                 &params,

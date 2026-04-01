@@ -128,7 +128,9 @@ impl Tool for ReadMetaContextTool {
                 .filter(|item| !item.is_empty())
                 .collect::<Vec<_>>();
             if !property_names.is_empty() {
-                items.retain(|item| property_names.contains(&item.property_name.to_ascii_lowercase()));
+                items.retain(|item| {
+                    property_names.contains(&item.property_name.to_ascii_lowercase())
+                });
             }
         }
 
@@ -233,7 +235,11 @@ pub struct ReadCharacterContextTool {
 
 impl ReadCharacterContextTool {
     pub fn new(db: Arc<DatabaseConnection>, novel_id: i32, cache: ToolRequestCache) -> Self {
-        Self { db, novel_id, cache }
+        Self {
+            db,
+            novel_id,
+            cache,
+        }
     }
 }
 

@@ -305,12 +305,7 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
         CREATE TABLE IF NOT EXISTS agent_config (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             agent_code TEXT NOT NULL UNIQUE,
-            name TEXT NOT NULL,
-            description TEXT,
             llm_config_id INTEGER,
-            custom_prompt TEXT,
-            use_system_prompt INTEGER DEFAULT 1,
-            enabled INTEGER DEFAULT 1,
             extra_config TEXT,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
@@ -322,9 +317,6 @@ pub async fn init_db(storage: &StorageManager) -> Result<DatabaseConnection, sea
 
     // 初始化种子数据
     init_seed_data(&db).await?;
-
-    // 初始化默认 Agent 配置
-    init_agent_configs(&db).await?;
 
     Ok(db)
 }
@@ -590,61 +582,6 @@ async fn init_seed_data(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
             };
             character.insert(db).await?;
         }
-    }
-
-    Ok(())
-}
-
-/// 初始化默认 Agent 配置
-///
-/// 如果 agent_config 表为空，则插入默认的 Agent 配置。
-/// 包括小说大纲生成、时间线正文生成、角色设计等 Agent。
-///
-/// # 参数
-///
-/// - `db`: 数据库连接
-///
-/// # 默认 Agent 列表
-///
-/// | Agent Code | 名称 | 说明 |
-/// |------------|------|------|
-/// | novel_outline | 小说大纲生成 | 生成小说的整体大纲 |
-/// | chapter_timeline | 时间线正文生成 | 生成时间线标题与正文 |
-/// | character_design | 角色设计 | 设计小说角色 |
-/// | chapter_content | 章节内容生成 | 生成章节内容 |
-/// | chapter_polish | 章节润色优化 | 润色和优化章节 |
-async fn init_agent_configs(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
-    use crate::entity::agent_config::ActiveModel as ActiveAgentConfig;
-    use crate::entity::agent_config::AgentCodes;
-    use crate::entity::agent_config::Entity as AgentConfig;
-
-    // 检查是否已有数据，避免重复插入
-    let count: u64 = AgentConfig::find().count(db).await?;
-    if count > 0 {
-        return Ok(());
-    }
-
-    // 获取当前时间戳
-    let now = Utc::now().format("%Y-%m-%d %H:%M:%S").to_string();
-
-    // 插入默认 Agent 配置
-    for code in AgentCodes::all() {
-        let name = AgentCodes::get_default_name(code).to_string();
-
-        let agent = ActiveAgentConfig {
-            id: sea_orm::ActiveValue::NotSet,
-            agent_code: Set(code.to_string()),
-            name: Set(name),
-            description: Set(None),
-            llm_config_id: Set(None),
-            custom_prompt: Set(None),
-            use_system_prompt: Set(true),
-            enabled: Set(true),
-            extra_config: Set(None),
-            created_at: Set(now.clone()),
-            updated_at: Set(now.clone()),
-        };
-        agent.insert(db).await?;
     }
 
     Ok(())

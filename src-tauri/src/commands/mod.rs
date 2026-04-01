@@ -1,7 +1,6 @@
 pub mod agent_config;
 pub mod chapters;
 pub mod characters;
-pub mod chat;
 pub mod llm_config;
 pub mod meta;
 pub mod novel_settings;
@@ -11,7 +10,6 @@ pub mod timeline;
 pub use agent_config::*;
 pub use chapters::*;
 pub use characters::*;
-pub use chat::*;
 pub use llm_config::*;
 pub use meta::*;
 pub use novel_settings::*;

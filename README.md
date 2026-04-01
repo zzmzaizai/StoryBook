@@ -47,7 +47,7 @@ The current codebase focuses on a practical writing workflow:
 
 ### Chapter and Character Management
 
-- Chapter CRUD with Vditor-based Markdown editing
+- Chapter CRUD with a custom CodeMirror-based Markdown editor
 - Character CRUD with role, gender, and personality fields
 - Word count tracking stored on the chapter side
 
@@ -62,14 +62,19 @@ The current codebase focuses on a practical writing workflow:
 ### LLM and Agent System
 
 - Manage LLM configurations in-app
-- Manage Agent configurations in-app
-- Support default LLM selection and Agent-specific binding
+- Manage Agent runtime bindings in-app
+- Agent definitions, names, descriptions, and prompts are loaded from `src-tauri/src/ai/prompts/*.toml`
+- Agent runtime config only stores `agent_code`, optional `llm_config_id`, and optional `extra_config`
+- If an Agent has no runtime config row, it still works and falls back to the default LLM
 - Built-in Agents currently include:
   - `general_chat`
   - `novel_info_generator`
   - `novel_outline`
   - `chapter_timeline`
   - `character_design`
+  - `meta_generator`
+  - `chapter_content`
+  - `chapter_polish`
 
 ### Security and Local Storage
 
@@ -122,7 +127,8 @@ Current built-in style enum values:
 
 - Vanilla JavaScript
 - Vite
-- Vditor
+- CodeMirror 6
+- markdown-it
 - Tauri API v2
 
 ### Backend

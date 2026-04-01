@@ -14,6 +14,60 @@ use crate::repository::TimelineUpdateParams;
 use rig::tool::ToolDyn;
 use tauri::{AppHandle, State};
 
+fn summarize_text(content: &str, max_chars: usize) -> String {
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return "（暂无内容）".to_string();
+    }
+
+    let summary = trimmed.chars().take(max_chars).collect::<String>();
+    if trimmed.chars().count() > max_chars {
+        format!("{}...", summary)
+    } else {
+        summary
+    }
+}
+
+fn build_meta_context_summary(items: &[crate::entity::novel_meta::Model]) -> String {
+    items
+        .iter()
+        .filter_map(|item| {
+            let value = item.property_value.as_deref()?.trim();
+            if value.is_empty() {
+                None
+            } else {
+                Some(format!(
+                    "- {}：{}",
+                    item.property_name,
+                    summarize_text(value, 180)
+                ))
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn build_previous_timelines_summary(
+    items: &[crate::entity::novel_chapter_timeline::Model],
+    chapter_start: i32,
+) -> String {
+    items
+        .iter()
+        .filter(|item| item.start_chapter_number.unwrap_or(i32::MAX) < chapter_start)
+        .take(20)
+        .map(|item| {
+            format!(
+                "- {}（{}-{}）：{}",
+                item.title,
+                item.start_chapter_number.unwrap_or(0),
+                item.end_chapter_number.unwrap_or(0),
+                summarize_text(item.content.as_deref().unwrap_or(""), 200)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
 fn build_timeline_meta_catalog() -> String {
     ChapterMetaConstants::get_all_properties()
         .into_iter()
@@ -176,9 +230,23 @@ pub async fn ai_generate_timeline(
         novel.original_description.as_deref().unwrap_or("")
     );
 
-    let current_trimmed = current_content.as_deref().unwrap_or("").trim();
     let chapter_start = start_chapter_number.unwrap_or(1);
     let chapter_end = end_chapter_number.unwrap_or(10);
+
+    let metas = state
+        .meta()
+        .find_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let timelines = state
+        .timelines()
+        .find_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let metas_context = build_meta_context_summary(&metas);
+    let previous_timelines = build_previous_timelines_summary(&timelines, chapter_start);
+
+    let current_trimmed = current_content.as_deref().unwrap_or("").trim();
     let current_context = match action.as_str() {
         "improve" if !current_trimmed.is_empty() => format!(
             "当前任务：你正在编辑第 {} 到第 {} 章的时间线。请优化现有时间线，在保留核心剧情方向的前提下提升逻辑、节奏与可执行性，并确保内容与小说元数据上下文一致。\n- 标题：{}\n- 正文：{}",
@@ -227,8 +295,16 @@ pub async fn ai_generate_timeline(
     let input = ChapterTimelineInput {
         novel_context,
         available_meta_properties: build_timeline_meta_catalog(),
-        metas_context: "如需补充世界观、设定、人物或约束，请调用工具读取小说元数据。".to_string(),
-        previous_timelines: "如需保持剧情连续性，请调用工具读取已有时间线。".to_string(),
+        metas_context: if metas_context.is_empty() {
+            "（暂无小说元数据上下文）".to_string()
+        } else {
+            metas_context
+        },
+        previous_timelines: if previous_timelines.is_empty() {
+            "（暂无之前时间线）".to_string()
+        } else {
+            previous_timelines
+        },
         chapter_start: chapter_start as u32,
         chapter_end: chapter_end as u32,
         current_context,

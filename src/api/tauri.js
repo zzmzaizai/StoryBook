@@ -167,6 +167,9 @@ export const ENUMS = {
 }
 
 export const api = {
+  listLlmConfigs: () => cachedInvoke('list_llm_configs', {}, 5000),
+  getLlmConfig: (id) => cachedInvoke('get_llm_config', { id }, 5000),
+  getDefaultLlmConfig: () => cachedInvoke('get_default_llm_config', {}, 5000),
   createNovel: (title) => invokeCommand('create_novel', { title }),
   listNovels: (page = 0, pageSize = 12) => cachedInvoke('list_novels', { page, pageSize }, 5000),
   countNovels: () => cachedInvoke('count_novels', {}, 5000),
@@ -292,4 +295,15 @@ export const api = {
     return result
   }),
   getNovelMetaProperties: () => cachedInvoke('get_novel_meta_properties', {}, 60000),
+
+  listAgentDefinitions: () => cachedInvoke('list_agent_definitions', {}, 5000),
+  getAgentDefinition: (agentCode) => cachedInvoke('get_agent_definition', { agentCode }, 5000),
+  saveAgentRuntimeConfig: (payload) => invokeCommand('save_agent_runtime_config', { req: payload }).then(result => {
+    invalidate('list_agent_definitions', 'get_agent_definition')
+    return result
+  }),
+  resetAgentRuntimeConfig: (agentCode) => invokeCommand('reset_agent_runtime_config', { agentCode }).then(result => {
+    invalidate('list_agent_definitions', 'get_agent_definition')
+    return result
+  }),
 }

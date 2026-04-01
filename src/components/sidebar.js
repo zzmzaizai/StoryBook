@@ -22,7 +22,6 @@ const NAV_ITEMS_BASE = [
   {
     section: 'AI配置',
     items: [
-      { route: '/chat', label: 'AI对话', icon: 'message' },
       { route: '/llm-config', label: 'LLM设置', icon: 'settings' },
       { route: '/agent-config', label: '代理配置', icon: 'ai' },
     ]

@@ -26,6 +26,73 @@ fn build_character_meta_catalog() -> String {
         .join("\n")
 }
 
+async fn build_meta_context_summary(state: &AppState, novel_id: i32) -> Result<String, String> {
+    let items = state
+        .meta()
+        .find_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(items
+        .into_iter()
+        .filter_map(|item| {
+            let value = item.property_value?.trim().to_string();
+            if value.is_empty() {
+                None
+            } else {
+                Some(format!(
+                    "- {}：{}",
+                    item.property_name,
+                    summarize_text(&value, 160)
+                ))
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n"))
+}
+
+async fn build_existing_characters_summary(
+    state: &AppState,
+    novel_id: i32,
+    character_id: Option<i32>,
+) -> Result<String, String> {
+    let items = state
+        .characters()
+        .find_all_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(items
+        .into_iter()
+        .filter(|item| Some(item.id) != character_id)
+        .map(|item| {
+            format!(
+                "- {}｜{}｜{}｜{}｜{}",
+                item.name,
+                role_attribute_label(item.role_attribute),
+                gender_label(item.gender),
+                character_type_label(item.character_type),
+                summarize_text(item.personality.as_deref().unwrap_or(""), 80)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n"))
+}
+
+fn summarize_text(content: &str, max_chars: usize) -> String {
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return "暂无明显描述".to_string();
+    }
+
+    let summary = trimmed.chars().take(max_chars).collect::<String>();
+    if trimmed.chars().count() > max_chars {
+        format!("{}...", summary)
+    } else {
+        summary
+    }
+}
+
 #[tauri::command]
 pub async fn create_character(
     state: State<'_, AppState>,
@@ -180,11 +247,23 @@ pub async fn ai_generate_character(
         novel.original_description.as_deref().unwrap_or("")
     );
 
+    let meta_context = build_meta_context_summary(&state, novel_id).await?;
+    let existing_characters_context =
+        build_existing_characters_summary(&state, novel_id, character_id).await?;
+
     let input = CharacterDesignInput {
         novel_context,
         available_meta_properties: build_character_meta_catalog(),
-        meta_context: "如需补充世界观、阵营、能力体系，请调用工具读取小说元数据。".to_string(),
-        existing_characters_context: "如需避免角色重复，请调用工具读取已有角色。".to_string(),
+        meta_context: if meta_context.is_empty() {
+            "（暂无小说设定上下文）".to_string()
+        } else {
+            meta_context
+        },
+        existing_characters_context: if existing_characters_context.is_empty() {
+            "（暂无其他角色）".to_string()
+        } else {
+            existing_characters_context
+        },
         current_character_context,
         role_type: mode,
         requirement: (!requirement.trim().is_empty()).then_some(requirement),
@@ -227,24 +306,25 @@ pub async fn ai_generate_character(
         ]
     };
 
-    let result: Result<GeneratedCharacterPayload, String> = AgentService::invoke_structured_with_observation(
-        &state.db,
-        AgentCodes::CHARACTER_DESIGN,
-        structured_input,
-        options.timeout_secs,
-        options.retries,
-        6,
-        build_tools,
-        AiHookContext {
-            app: app.clone(),
-            event_namespace: event_namespace.to_string(),
-            request_id: request_id.clone(),
-            agent_code: AgentCodes::CHARACTER_DESIGN.to_string(),
-            phase: "tool_reasoning".to_string(),
-        },
-    )
-    .await
-    .map_err(|e| e.to_string());
+    let result: Result<GeneratedCharacterPayload, String> =
+        AgentService::invoke_structured_with_observation(
+            &state.db,
+            AgentCodes::CHARACTER_DESIGN,
+            structured_input,
+            options.timeout_secs,
+            options.retries,
+            6,
+            build_tools,
+            AiHookContext {
+                app: app.clone(),
+                event_namespace: event_namespace.to_string(),
+                request_id: request_id.clone(),
+                agent_code: AgentCodes::CHARACTER_DESIGN.to_string(),
+                phase: "tool_reasoning".to_string(),
+            },
+        )
+        .await
+        .map_err(|e| e.to_string());
 
     let mut payload = match result {
         Ok(payload) => payload,

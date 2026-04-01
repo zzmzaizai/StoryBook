@@ -48,7 +48,7 @@ StoryBook 是一款面向小说创作的本地桌面应用，目标是把小说�
 ### 章节与角色
 
 - 章节 CRUD
-- 基于 Vditor 的 Markdown 编辑
+- 基于自定义 CodeMirror Markdown 编辑器的正文编辑
 - 角色 CRUD
 - 角色属性、性别、性格等字段维护
 
@@ -63,14 +63,19 @@ StoryBook 是一款面向小说创作的本地桌面应用，目标是把小说�
 ### LLM 与 Agent 系统
 
 - 可视化管理 LLM 配置
-- 可视化管理 Agent 配置
-- 支持默认 LLM 与 Agent 绑定指定 LLM
+- 可视化管理 Agent 运行时绑定配置
+- Agent 的名称、描述、类型和提示词全部来自 `src-tauri/src/ai/prompts/*.toml`
+- Agent 运行时配置仅保存 `agent_code`、可选 `llm_config_id` 与可选 `extra_config`
+- 若某个 Agent 在数据库中没有配置记录，系统会自动回退到默认 LLM
 - 当前内置 Agent 包括：
   - `general_chat`
   - `novel_info_generator`
   - `novel_outline`
   - `chapter_timeline`
   - `character_design`
+  - `meta_generator`
+  - `chapter_content`
+  - `chapter_polish`
 
 ### 安全与本地存储
 
@@ -123,7 +128,8 @@ StoryBook 是一款面向小说创作的本地桌面应用，目标是把小说�
 
 - Vanilla JavaScript
 - Vite
-- Vditor
+- CodeMirror 6
+- markdown-it
 - Tauri API v2
 
 ### 后端

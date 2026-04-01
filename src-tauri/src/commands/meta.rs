@@ -26,6 +26,40 @@ fn build_meta_property_catalog() -> String {
         .join("\n")
 }
 
+fn build_existing_meta_summary(items: &[novel_meta::Model], current_property_name: &str) -> String {
+    items
+        .iter()
+        .filter(|item| item.property_name != current_property_name)
+        .filter_map(|item| {
+            let value = item.property_value.as_deref()?.trim();
+            if value.is_empty() {
+                None
+            } else {
+                Some(format!(
+                    "- {}：{}",
+                    item.property_name,
+                    summarize_text(value, 180)
+                ))
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn summarize_text(content: &str, max_chars: usize) -> String {
+    let trimmed = content.trim();
+    if trimmed.is_empty() {
+        return "（暂无内容）".to_string();
+    }
+
+    let summary = trimmed.chars().take(max_chars).collect::<String>();
+    if trimmed.chars().count() > max_chars {
+        format!("{}...", summary)
+    } else {
+        summary
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct MetaAiStreamChunk {
     pub request_id: String,
@@ -197,13 +231,24 @@ pub async fn ai_generate_meta_stream(
         novel.original_description.as_deref().unwrap_or("")
     );
 
+    let metas = state
+        .meta()
+        .find_by_novel(novel_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    let meta_context = build_existing_meta_summary(&metas, &property_name);
+
     let input = MetaGeneratorInput {
         novel_context,
         available_meta_properties: Some(build_meta_property_catalog()),
         property_name: property_name.clone(),
         property_description,
         action: Some(action),
-        meta_context: Some("如需参考其他元数据，请调用工具读取。".to_string()),
+        meta_context: Some(if meta_context.is_empty() {
+            "（暂无其他已生成元数据）".to_string()
+        } else {
+            meta_context
+        }),
         current_content,
         requirement,
     };
@@ -277,7 +322,8 @@ pub async fn ai_generate_meta_stream(
         },
         tx,
     )
-    .await {
+    .await
+    {
         Ok(result) => {
             emit_phase_end(
                 &app,

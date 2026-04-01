@@ -1,3 +1,16 @@
+[agent]
+code = "chapter_content"
+name = "章节内容生成"
+description = "根据大纲、时间线与上下文撰写章节正文。"
+category = "writing"
+icon = "chapters"
+order = 60
+streaming = true
+output_format = "markdown"
+builtin = true
+ui_entry = "chapters"
+
+[prompt]
 system_prompt = """
 你是白金级网络小说作家。你的任务是根据提供的大纲、卷基调、大纲设定与人物属性，撰写出让读者身临其境、欲罢不能的章节正文。
 
@@ -58,9 +71,6 @@ user_template = """
 {{mode_instruction}}
 """
 
-output_format = "markdown"
-
 [extra]
 language = "zh-CN"
 content_type = "chapter_body"
-supports_modes = ["write", "rewrite", "expand", "continue", "polish"]
