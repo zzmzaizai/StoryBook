@@ -5,7 +5,6 @@ import { toastSuccess, toastError } from '../lib/toast.js'
 import { confirm } from '../lib/modal.js'
 import { createMarkdownEditor } from '../lib/markdown-editor.js'
 import { createPagedList } from '../lib/virtual-list.js'
-import { openAiGenerateModal } from '../components/ai-generate-modal.js'
 import { applyAiPhaseUpdate, applyAiToolEvent } from '../lib/ai-execution-state.js'
 import '../style/virtual-list.css'
 
@@ -309,7 +308,8 @@ function renderEditor(content, novelInfo) {
   })
 }
 
-function openTimelineAiModal(novelInfo, editorContent) {
+async function openTimelineAiModal(novelInfo, editorContent) {
+  const { openAiGenerateModal } = await import('../components/ai-generate-modal.js')
   const currentContent = timelineContentEditor ? timelineContentEditor.getValue() : ''
   const defaultAction = getTimelineAiDefaultAction(currentContent)
   const modal = openAiGenerateModal({

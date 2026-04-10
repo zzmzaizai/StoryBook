@@ -5,7 +5,6 @@ import { createMarkdownEditor } from '../lib/markdown-editor.js'
 import { confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
-import { openAiGenerateModal } from '../components/ai-generate-modal.js'
 import { listen } from '@tauri-apps/api/event'
 import { applyAiPhaseUpdate, applyAiToolEvent } from '../lib/ai-execution-state.js'
 import { createNovelPageShell, loadCurrentNovelInfo, renderNovelSelectionState } from './novel-page.js'
@@ -413,7 +412,8 @@ async function renderCharacterEditor(root) {
   })
 }
 
-function openCharacterAiModal(editorEl, character) {
+async function openCharacterAiModal(editorEl, character) {
+  const { openAiGenerateModal } = await import('../components/ai-generate-modal.js')
   const modal = openAiGenerateModal({
     title: 'AI生成角色',
     currentContent: personalityEditorInstance ? personalityEditorInstance.getValue() : '',

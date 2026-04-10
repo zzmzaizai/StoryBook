@@ -363,7 +363,7 @@ function renderFontSizeControls() {
   return `
     <div class="preview-font-size-control">
       <button type="button" class="preview-font-size-control__btn" data-font-step="decrease" ${readingFontScale <= 14 ? 'disabled' : ''}>${icon('minus-circle', 16)}</button>
-      <span class="preview-font-size-control__value">${readingFontScale}px</span>
+      <span class="preview-font-size-control__value">${readingFontScale}</span>
       <button type="button" class="preview-font-size-control__btn" data-font-step="increase" ${readingFontScale >= 22 ? 'disabled' : ''}>${icon('plus-circle', 16)}</button>
     </div>
   `

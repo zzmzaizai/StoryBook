@@ -4,6 +4,7 @@ export const store = {
   currentNovelName: null,
   currentNovel: null,
   currentChapterId: null,
+  currentChapterDetailTab: 'editor',
   currentCharacterId: null,
   theme: 'dark',
 };

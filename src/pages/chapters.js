@@ -5,19 +5,26 @@ import { createMarkdownEditor, destroyEditor } from '../lib/markdown-editor.js'
 import { confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
-import { openAiGenerateModal } from '../components/ai-generate-modal.js'
 import { listen } from '@tauri-apps/api/event'
+import { createSimpleTabs } from '../lib/tabs.js'
 import { createNovelPageShell, loadCurrentNovelInfo, renderNovelSelectionState } from './novel-page.js'
+import { getChapterPipelineStatus, getChapterPipelineStatusLabel } from './chapters/chapter-pipeline-data.js'
+import { buildChapterProcessModel } from './chapters/chapter-process-data.js'
+import { renderChapterProcessView } from './chapters/chapter-process-view.js'
 import '../style/editor.css'
+import '../style/tabs.css'
 import '../style/virtual-list.css'
 
 let searchKeyword = ''
+let chapterPipelineFilter = 'all'
 let selectedChapterId = null
 let isCreating = false
 let editorInstance = null
 let chapterListComponent = null
 let chapterAiUnlisteners = []
 let activeChapterAiRequestId = null
+let chapterDetailTab = 'editor'
+let chapterDetailTabsComponent = null
 
 const CHAPTER_AI_MODES = [
   { value: 'create', label: '新写本章' },
@@ -68,29 +75,40 @@ export async function render() {
           </div>
         </div>
 
+        <div class="chapter-pipeline-filters">
+          ${renderChapterPipelineFilters()}
+        </div>
+
         <div id="chapter-list-mount" class="chapter-list-mount"></div>
       </div>
 
       <div class="card chapter-editor-card">
+        <div id="chapter-detail-tabs-mount"></div>
         <div id="chapter-editor"></div>
       </div>
     </div>
   `
+
+  renderChapterDetailTabs(el)
 
   const listMount = content.querySelector('#chapter-list-mount')
   chapterListComponent = createPagedList({
     containerId: 'chapter-list',
     pageSize: 20,
     loadMore: async (page, pageSize) => {
-      const result = await api.listChapters(store.currentNovelId, page, pageSize)
+      const result = await api.listChapters(store.currentNovelId, 0, 100)
+      const allItems = Array.isArray(result.items) ? result.items : []
+      const filteredItems = allItems.filter(item => matchesChapterFilters(item))
+      const start = page * pageSize
+      const pageItems = filteredItems.slice(start, start + pageSize)
       // 更新总数显示
       const countEl = el.querySelector('#chapter-count')
       if (countEl) {
-        countEl.textContent = `共 ${result.total_count} 章`
+        countEl.textContent = `共 ${filteredItems.length} 章`
       }
       return {
-        items: result.items,
-        hasMore: result.has_more
+        items: pageItems,
+        hasMore: start + pageSize < filteredItems.length
       }
     },
     renderItem: (item) => {
@@ -105,12 +123,16 @@ export async function render() {
         </div>
         <div class="chapter-item-body">
           <div class="chapter-item-header">
-            <div class="chapter-item-title">${item.chapter_name || '未命名章节'}</div>
+            <div class="chapter-item-title-wrap">
+              <div class="chapter-item-title">${item.chapter_name || '未命名章节'}</div>
+              <span class="chapter-process-state-dot chapter-process-state-dot--${getChapterPipelineStatus(item)}" title="${getChapterPipelineStatusLabel(item)}"></span>
+            </div>
           </div>
           <div class="chapter-item-meta">
             <div class="chapter-item-meta-main">
               <span class="badge badge-sm ${getStatusBadgeClass(item.status)}">${ENUMS.NovelChapterStatus[item.status] || '起草'}</span>
               <span class="chapter-item-words">${formatWordCount(item.word_count)}</span>
+              <span class="chapter-process-state-label">${getChapterPipelineStatusLabel(item)}</span>
             </div>
             <button class="list-item-delete-btn" data-action="delete" data-id="${item.id}" title="删除">
               ${icon('delete', 14)}
@@ -140,7 +162,10 @@ export async function render() {
       }
 
       destroyCurrentEditor()
-      renderChapterEditor(el)
+      renderChapterDetailTabs(el)
+      renderChapterEditor(el).catch((error) => {
+        console.error('切换章节失败:', error)
+      })
     },
     emptyText: '暂无章节'
   })
@@ -150,7 +175,11 @@ export async function render() {
     destroyCurrentEditor()
     isCreating = true
     selectedChapterId = null
-    renderChapterEditor(el)
+    chapterDetailTab = 'editor'
+    renderChapterDetailTabs(el)
+    renderChapterEditor(el).catch((error) => {
+      console.error('渲染章节编辑器失败:', error)
+    })
   })
 
   content.querySelector('#search-chapter')?.addEventListener('input', (e) => {
@@ -158,10 +187,20 @@ export async function render() {
     chapterListComponent.refresh()
   })
 
+  content.querySelectorAll('[data-pipeline-filter]').forEach((button) => {
+    button.addEventListener('click', () => {
+      chapterPipelineFilter = button.dataset.pipelineFilter || 'all'
+      chapterListComponent.refresh()
+      syncChapterPipelineFilterButtons(content)
+    })
+  })
+
   setTimeout(async () => {
     if (!selectedChapterId && !isCreating) {
       isCreating = true
-      renderChapterEditor(el)
+      renderChapterEditor(el).catch((error) => {
+        console.error('初始化章节面板失败:', error)
+      })
     }
   }, 100)
 
@@ -177,6 +216,13 @@ function destroyCurrentEditor() {
 
 async function renderChapterEditor(root) {
   const editorEl = root.querySelector('#chapter-editor')
+
+  if (chapterDetailTab === 'process') {
+    const chapter = selectedChapterId ? await api.getChapter(selectedChapterId) : null
+    editorEl.innerHTML = renderChapterProcessView(buildChapterProcessModel(chapter))
+    bindChapterProcessActions(editorEl)
+    return
+  }
 
   if (isCreating) {
     const nextChapter = await getNextChapterNumber()
@@ -247,10 +293,13 @@ async function renderChapterEditor(root) {
 
         await api.saveChapter(newChapter.id, chapterNumber, chapterName, content, status)
 
-        isCreating = true
-        selectedChapterId = null
+        isCreating = false
+        selectedChapterId = newChapter.id
+        store.currentChapterId = newChapter.id
+        store.currentChapterDetailTab = 'editor'
         destroyCurrentEditor()
         chapterListComponent.refresh()
+        renderChapterDetailTabs(root)
         renderChapterEditor(root)
         toastSuccess('章节创建成功！')
       } catch (e) {
@@ -367,6 +416,7 @@ async function renderChapterEditor(root) {
 
       toastSuccess('保存成功！')
       chapterListComponent.refresh()
+      store.currentChapterId = chapter.id
     } catch (e) {
       console.error('保存章节失败:', e)
       toastError('保存失败: ' + e)
@@ -382,7 +432,8 @@ async function renderChapterEditor(root) {
   })
 }
 
-function openChapterAiModal(editorEl, chapterInfo) {
+async function openChapterAiModal(editorEl, chapterInfo) {
+  const { openAiGenerateModal } = await import('../components/ai-generate-modal.js')
   openAiGenerateModal({
     title: 'AI生成章节',
     currentContent: editorInstance ? editorInstance.getValue() : '',
@@ -459,6 +510,7 @@ async function handleDeleteChapter(id, root) {
 
       if (selectedChapterId === id) {
         selectedChapterId = null
+        store.currentChapterId = null
         destroyCurrentEditor()
         renderChapterEditor(root)
       }
@@ -492,6 +544,35 @@ function formatWordCount(count) {
   return `${count}字`
 }
 
+function matchesChapterFilters(chapter) {
+  const normalizedKeyword = searchKeyword.trim().toLowerCase()
+  const title = String(chapter.chapter_name || '').toLowerCase()
+  const status = getChapterPipelineStatus(chapter)
+  const matchesKeyword = !normalizedKeyword || title.includes(normalizedKeyword) || String(chapter.chapter_number || '').includes(normalizedKeyword)
+  const matchesStatus = chapterPipelineFilter === 'all' || status === chapterPipelineFilter
+  return matchesKeyword && matchesStatus
+}
+
+function renderChapterPipelineFilters() {
+  const filters = [
+    { key: 'all', label: '全部' },
+    { key: 'running', label: '进行中' },
+    { key: 'review', label: '待确认' },
+    { key: 'paused', label: '暂停' },
+    { key: 'completed', label: '已完成' },
+    { key: 'error', label: '异常' },
+  ]
+  return filters.map((filter) => `
+    <button type="button" class="chapter-pipeline-filter-chip${chapterPipelineFilter === filter.key ? ' active' : ''}" data-pipeline-filter="${filter.key}">${filter.label}</button>
+  `).join('')
+}
+
+function syncChapterPipelineFilterButtons(root) {
+  root.querySelectorAll('[data-pipeline-filter]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.pipelineFilter === chapterPipelineFilter)
+  })
+}
+
 export function cleanup() {
   destroyCurrentEditor()
   chapterAiUnlisteners.forEach((unlisten) => {
@@ -505,11 +586,63 @@ export function cleanup() {
     chapterListComponent.destroy()
     chapterListComponent = null
   }
+  if (chapterDetailTabsComponent) {
+    chapterDetailTabsComponent.destroy()
+    chapterDetailTabsComponent = null
+  }
   searchKeyword = ''
+  chapterPipelineFilter = 'all'
   selectedChapterId = null
   isCreating = false
+  chapterDetailTab = 'editor'
+  store.currentChapterDetailTab = 'editor'
 }
 
 async function getNextChapterNumber() {
   return api.getNextChapterNumber(store.currentNovelId)
+}
+
+function bindChapterProcessActions(root) {
+  root.querySelectorAll('[data-process-action]').forEach((button) => {
+    button.addEventListener('click', () => {
+      if (button.dataset.processAction === 'logs') return
+      const actionLabel = button.textContent?.trim() || '当前操作'
+      toastSuccess(`${actionLabel} 的真实执行控制后续再接入，当前先完成流程监控 UI。`)
+    })
+  })
+}
+
+function renderChapterDetailTabs(root) {
+  const mount = root.querySelector('#chapter-detail-tabs-mount')
+  if (!mount) return
+
+  if (chapterDetailTabsComponent) {
+    chapterDetailTabsComponent.destroy()
+    chapterDetailTabsComponent = null
+  }
+
+  mount.innerHTML = ''
+
+  if (isCreating || !selectedChapterId) {
+    chapterDetailTab = 'editor'
+    return
+  }
+
+  chapterDetailTabsComponent = createSimpleTabs({
+    containerId: 'chapter-detail-tabs',
+    tabs: [
+      { key: 'editor', label: '编辑', icon: icon('edit', 16) },
+      { key: 'process', label: '流水线', icon: icon('pipeline', 16) },
+    ],
+    activeKey: chapterDetailTab,
+    onChange: (key) => {
+      chapterDetailTab = key
+      destroyCurrentEditor()
+      renderChapterEditor(root).catch((error) => {
+        console.error('渲染章节面板失败:', error)
+      })
+    },
+  })
+
+  mount.appendChild(chapterDetailTabsComponent.element)
 }
