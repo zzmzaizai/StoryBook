@@ -129,14 +129,14 @@ export async function render() {
       
       return div
     },
-    onItemClick: (item, index, el) => {
+    onItemClick: (item, index, itemEl) => {
       selectedChapterId = item.id
       isCreating = false
 
-      const listContainer = el.closest('.paged-list-content')
+      const listContainer = itemEl.closest('.paged-list-content')
       if (listContainer) {
         listContainer.querySelectorAll('.chapter-list-item').forEach(i => i.classList.remove('active'))
-        el.querySelector('.chapter-list-item')?.classList.add('active')
+        itemEl.querySelector('.chapter-list-item')?.classList.add('active')
       }
 
       destroyCurrentEditor()

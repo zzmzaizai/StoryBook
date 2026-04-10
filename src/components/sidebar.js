@@ -39,6 +39,7 @@ const FOCUS_NOVEL_ITEMS = [
   { route: '/timeline', label: '时间线', icon: 'timeline' },
   { route: '/characters', label: '角色', icon: 'characters' },
   { route: '/chapters', label: '章节', icon: 'chapters' },
+  { route: '/preview', label: '预览', icon: 'eye' },
 ]
 
 let _delegated = false

@@ -113,7 +113,6 @@
 
 .workspace-basic-hero__origin {
   margin: 8px 0 0;
-  max-width: 900px;
   color: var(--text-secondary);
   line-height: 1.6;
   font-size: var(--font-size-sm);
