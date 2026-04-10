@@ -1,14 +1,13 @@
-import { api } from '../../api/tauri.js'
+import { api } from '../api/tauri.js'
 import { listen } from '@tauri-apps/api/event'
-import { icon } from '../../lib/icons.js'
-import { toastSuccess, toastError } from '../../lib/toast.js'
-import { confirm } from '../../lib/modal.js'
-import { createMarkdownEditor } from '../../lib/markdown-editor.js'
-import { createPagedList } from '../../lib/virtual-list.js'
-import { openAiGenerateModal } from '../../components/ai-generate-modal.js'
-import { getAiPhaseLabel, humanizeAiToolArgs } from '../../lib/ai-execution-labels.js'
-import { applyAiPhaseUpdate, applyAiToolEvent } from '../../lib/ai-execution-state.js'
-import '../../style/virtual-list.css'
+import { icon } from '../lib/icons.js'
+import { toastSuccess, toastError } from '../lib/toast.js'
+import { confirm } from '../lib/modal.js'
+import { createMarkdownEditor } from '../lib/markdown-editor.js'
+import { createPagedList } from '../lib/virtual-list.js'
+import { openAiGenerateModal } from '../components/ai-generate-modal.js'
+import { applyAiPhaseUpdate, applyAiToolEvent } from '../lib/ai-execution-state.js'
+import '../style/virtual-list.css'
 
 let timelineList = []
 let editingTimeline = null
@@ -90,7 +89,6 @@ export async function render(content, novelInfo) {
     </div>
   `
 
-  // 创建分页列表
   const listMount = content.querySelector('#timeline-list-mount')
   timelineListComponent = createPagedList({
     containerId: 'timeline-list',
@@ -162,13 +160,11 @@ export async function render(content, novelInfo) {
   })
   listMount.appendChild(timelineListComponent.element)
 
-  // 添加按钮
   content.querySelector('#add-timeline-btn')?.addEventListener('click', async () => {
     try {
       let startChapter = 1
       let endChapter = 10
 
-      // 获取当前列表中的最大章节
       const allTimelines = await api.listTimelines(novelInfo.id)
       if (allTimelines.length > 0) {
         const maxEndChapter = Math.max(...allTimelines.map(t => t.end_chapter_number || 0))

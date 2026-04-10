@@ -23,6 +23,13 @@
   border-radius: 999px;
 }
 
+.novel-page-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* 基础信息布局 */
 .basic-layout {
   display: grid;

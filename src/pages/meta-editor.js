@@ -1,16 +1,14 @@
-import { api } from '../../api/tauri.js'
-import { icon } from '../../lib/icons.js'
-import { toastSuccess, toastError } from '../../lib/toast.js'
-import { confirm } from '../../lib/modal.js'
-import { Modal } from '../../lib/modal.js'
+import { api } from '../api/tauri.js'
+import { icon } from '../lib/icons.js'
+import { toastSuccess, toastError } from '../lib/toast.js'
+import { confirm } from '../lib/modal.js'
 import { listen } from '@tauri-apps/api/event'
-import { createMarkdownEditor } from '../../lib/markdown-editor.js'
-import { createTabs } from '../../lib/tabs.js'
-import { createPagedList } from '../../lib/virtual-list.js'
-import { openAiGenerateModal } from '../../components/ai-generate-modal.js'
-import { getAiPhaseLabel, humanizeAiToolArgs } from '../../lib/ai-execution-labels.js'
-import { applyAiPhaseUpdate, applyAiToolEvent } from '../../lib/ai-execution-state.js'
-import '../../style/virtual-list.css'
+import { createMarkdownEditor } from '../lib/markdown-editor.js'
+import { createTabs } from '../lib/tabs.js'
+import { createPagedList } from '../lib/virtual-list.js'
+import { openAiGenerateModal } from '../components/ai-generate-modal.js'
+import { applyAiPhaseUpdate, applyAiToolEvent } from '../lib/ai-execution-state.js'
+import '../style/virtual-list.css'
 
 let activeMetaTab = 'added'
 let editingMeta = null
@@ -173,7 +171,6 @@ export async function render(content, novelInfo) {
     </div>
   `
 
-  // 创建 Tabs 组件
   const tabsMount = content.querySelector('#meta-tabs-mount')
   metaTabsComponent = createTabs({
     containerId: 'meta-tabs',
@@ -189,7 +186,6 @@ export async function render(content, novelInfo) {
   })
   tabsMount.appendChild(metaTabsComponent.element)
 
-  // 渲染列表
   renderMetaList(content, novelInfo)
 
   if (editingMeta) {
@@ -200,14 +196,12 @@ export async function render(content, novelInfo) {
 function renderMetaList(content, novelInfo) {
   const listMount = content.querySelector('#meta-list-mount')
 
-  // 销毁旧组件
   if (metaListComponent) {
     metaListComponent.destroy()
     metaListComponent = null
   }
 
   if (activeMetaTab === 'added') {
-    // 已添加的元数据 - 使用分页加载
     const allAddedMeta = metaDataList
       .map(meta => ({ meta, propDef: metaProperties.find(p => p.property_name === meta.property_name) }))
       .filter(item => item.propDef)
@@ -296,7 +290,6 @@ function renderMetaList(content, novelInfo) {
       emptyText: '暂无元数据'
     })
   } else {
-    // 可添加的元数据 - 一次性加载（数量通常较少）
     const allUnaddedProps = metaProperties.filter(p => !metaDataList.find(m => m.property_name === p.property_name))
     const filteredUnaddedProps = filterMetaPropertiesByPriority(allUnaddedProps, activeMetaPriorityFilter)
     listMount.innerHTML = buildMetaPriorityToolbar(filteredUnaddedProps, activeMetaPriorityFilter)
@@ -310,7 +303,7 @@ function renderMetaList(content, novelInfo) {
         const end = start + pageSize
         const items = filteredUnaddedProps.slice(start, end)
         return {
-          items: items,
+          items,
           hasMore: end < filteredUnaddedProps.length
         }
       },

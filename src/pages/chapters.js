@@ -1,6 +1,5 @@
 import { api, ENUMS } from '../api/tauri.js'
 import { store } from '../state/store.js'
-import { navigate } from '../router.js'
 import { icon } from '../lib/icons.js'
 import { createMarkdownEditor, destroyEditor } from '../lib/markdown-editor.js'
 import { confirm } from '../lib/modal.js'
@@ -8,6 +7,7 @@ import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
 import { openAiGenerateModal } from '../components/ai-generate-modal.js'
 import { listen } from '@tauri-apps/api/event'
+import { createNovelPageShell, loadCurrentNovelInfo, renderNovelSelectionState } from './novel-page.js'
 import '../style/editor.css'
 import '../style/virtual-list.css'
 
@@ -15,7 +15,6 @@ let searchKeyword = ''
 let selectedChapterId = null
 let isCreating = false
 let editorInstance = null
-let chaptersList = []
 let chapterListComponent = null
 let chapterAiUnlisteners = []
 let activeChapterAiRequestId = null
@@ -40,36 +39,20 @@ function getChapterAiConfirmText(mode) {
 
 export async function render() {
   await ensureChapterAiListeners()
-  const el = document.createElement('div')
-  el.className = 'page'
+  const novelInfo = await loadCurrentNovelInfo()
 
-  const novelId = store.currentNovelId
-
-  if (!novelId) {
-    el.innerHTML = `
-      <div class="page-header">
-        <h1 class="page-title">章节管理</h1>
-        <p class="page-subtitle">编辑小说章节</p>
-      </div>
-      <div class="empty-state">
-        <div class="empty-state-icon">${icon('chapters', 20)}</div>
-        <div class="empty-state-title">未选择小说</div>
-        <div class="empty-state-desc">请先从小说列表选择一部小说</div>
-        <button class="btn btn-primary mt-lg" id="go-novels">选择小说</button>
-      </div>
-    `
-    el.querySelector('#go-novels')?.addEventListener('click', () => {
-      navigate('/novels')
+  if (!novelInfo) {
+    const el = document.createElement('div')
+    el.className = 'page'
+    return renderNovelSelectionState(el, {
+      title: '章节',
+      subtitle: '编辑小说章节与正文内容',
+      iconName: 'chapters',
     })
-    return el
   }
 
-  el.innerHTML = `
-    <div class="page-header">
-      <h1 class="page-title">章节</h1>
-      <p class="page-subtitle">正在管理"${store.currentNovelName || '未知'}"小说章节内容</p>
-    </div>
-
+  const { el, content } = createNovelPageShell('章节', `正在管理"${novelInfo.title}"小说章节内容`)
+  content.innerHTML = `
     <div class="chapters-layout">
       <div class="card chapter-list-card">
         <div class="chapter-list-header">
@@ -94,8 +77,7 @@ export async function render() {
     </div>
   `
 
-  // 创建分页列表
-  const listMount = el.querySelector('#chapter-list-mount')
+  const listMount = content.querySelector('#chapter-list-mount')
   chapterListComponent = createPagedList({
     containerId: 'chapter-list',
     pageSize: 20,
@@ -141,7 +123,7 @@ export async function render() {
       if (deleteBtn) {
         deleteBtn.addEventListener('click', async (e) => {
           e.stopPropagation()
-          await handleDeleteChapter(item.id, document.querySelector('.page'))
+          await handleDeleteChapter(item.id, el)
         })
       }
       
@@ -158,26 +140,24 @@ export async function render() {
       }
 
       destroyCurrentEditor()
-      renderChapterEditor(document.querySelector('.page'))
+      renderChapterEditor(el)
     },
     emptyText: '暂无章节'
   })
   listMount.appendChild(chapterListComponent.element)
 
-  el.querySelector('#create-chapter-btn')?.addEventListener('click', () => {
+  content.querySelector('#create-chapter-btn')?.addEventListener('click', () => {
     destroyCurrentEditor()
     isCreating = true
     selectedChapterId = null
     renderChapterEditor(el)
   })
 
-  el.querySelector('#search-chapter')?.addEventListener('input', (e) => {
+  content.querySelector('#search-chapter')?.addEventListener('input', (e) => {
     searchKeyword = e.target.value
-    // 搜索功能需要重新加载并过滤
     chapterListComponent.refresh()
   })
 
-  // 初始加载时如果有数据，选中第一个
   setTimeout(async () => {
     if (!selectedChapterId && !isCreating) {
       isCreating = true
@@ -528,7 +508,6 @@ export function cleanup() {
   searchKeyword = ''
   selectedChapterId = null
   isCreating = false
-  chaptersList = []
 }
 
 async function getNextChapterNumber() {

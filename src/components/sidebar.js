@@ -4,8 +4,6 @@ import { icon } from '../lib/icons.js'
 import { version as APP_VERSION } from '../../package.json'
 import { store } from '../state/store.js'
 
-const FOCUS_NOVEL_ROUTES = ['/workspace', '/chapters', '/characters']
-
 const NAV_ITEMS_BASE = [
   {
     section: '概览',
@@ -37,8 +35,10 @@ const NAV_ITEMS_BASE = [
 
 const FOCUS_NOVEL_ITEMS = [
   { route: '/workspace', label: '工作台', icon: 'workspace' },
-  { route: '/chapters', label: '章节', icon: 'chapters' },
+  { route: '/meta', label: '元数据', icon: 'meta' },
+  { route: '/timeline', label: '时间线', icon: 'timeline' },
   { route: '/characters', label: '角色', icon: 'characters' },
+  { route: '/chapters', label: '章节', icon: 'chapters' },
 ]
 
 let _delegated = false

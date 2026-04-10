@@ -1,6 +1,5 @@
 import { api, ENUMS } from '../api/tauri.js'
 import { store } from '../state/store.js'
-import { navigate } from '../router.js'
 import { icon } from '../lib/icons.js'
 import { createMarkdownEditor } from '../lib/markdown-editor.js'
 import { confirm } from '../lib/modal.js'
@@ -8,14 +7,13 @@ import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
 import { openAiGenerateModal } from '../components/ai-generate-modal.js'
 import { listen } from '@tauri-apps/api/event'
-import { getAiPhaseLabel, humanizeAiToolArgs } from '../lib/ai-execution-labels.js'
 import { applyAiPhaseUpdate, applyAiToolEvent } from '../lib/ai-execution-state.js'
+import { createNovelPageShell, loadCurrentNovelInfo, renderNovelSelectionState } from './novel-page.js'
 import '../style/virtual-list.css'
 
 let searchKeyword = ''
 let selectedCharacterId = null
 let isCreating = false
-let charactersList = []
 let characterListComponent = null
 let personalityEditorInstance = null
 let characterAiUnlisteners = []
@@ -39,37 +37,21 @@ function getCharacterAiConfirmText(mode) {
 }
 
 export async function render() {
-  const el = document.createElement('div')
-  el.className = 'page'
-
-  const novelId = store.currentNovelId
   await ensureCharacterAiListeners()
+  const novelInfo = await loadCurrentNovelInfo()
 
-  if (!novelId) {
-    el.innerHTML = `
-      <div class="page-header">
-        <h1 class="page-title">角色管理</h1>
-        <p class="page-subtitle">管理小说角色</p>
-      </div>
-      <div class="empty-state">
-        <div class="empty-state-icon">${icon('characters', 20)}</div>
-        <div class="empty-state-title">未选择小说</div>
-        <div class="empty-state-desc">请先从小说列表选择一部小说</div>
-        <button class="btn btn-primary mt-lg" id="go-novels">选择小说</button>
-      </div>
-    `
-    el.querySelector('#go-novels')?.addEventListener('click', () => {
-      navigate('/novels')
+  if (!novelInfo) {
+    const el = document.createElement('div')
+    el.className = 'page'
+    return renderNovelSelectionState(el, {
+      title: '角色',
+      subtitle: '管理小说角色与人物设定',
+      iconName: 'characters',
     })
-    return el
   }
 
-  el.innerHTML = `
-    <div class="page-header">
-      <h1 class="page-title">角色</h1>
-      <p class="page-subtitle">正在管理"${store.currentNovelName || '未知'}"小说角色内容</p>
-    </div>
-
+  const { el, content } = createNovelPageShell('角色', `正在管理"${novelInfo.title}"小说角色内容`)
+  content.innerHTML = `
     <div class="characters-layout">
       <div class="card character-list-card">
         <div class="character-list-header">
@@ -94,8 +76,7 @@ export async function render() {
     </div>
   `
 
-  // 创建分页列表
-  const listMount = el.querySelector('#character-list-mount')
+  const listMount = content.querySelector('#character-list-mount')
   characterListComponent = createPagedList({
     containerId: 'character-list',
     pageSize: 20,
@@ -142,7 +123,7 @@ export async function render() {
       if (deleteBtn) {
         deleteBtn.addEventListener('click', async (e) => {
           e.stopPropagation()
-          await handleDeleteCharacter(item.id, document.querySelector('.page'))
+          await handleDeleteCharacter(item.id, el)
         })
       }
       
@@ -158,25 +139,23 @@ export async function render() {
         el.querySelector('.character-list-item')?.classList.add('active')
       }
 
-      renderCharacterEditor(document.querySelector('.page'))
+      renderCharacterEditor(el)
     },
     emptyText: '暂无角色'
   })
   listMount.appendChild(characterListComponent.element)
 
-  el.querySelector('#create-character-btn')?.addEventListener('click', () => {
+  content.querySelector('#create-character-btn')?.addEventListener('click', () => {
     isCreating = true
     selectedCharacterId = null
     renderCharacterEditor(el)
   })
 
-  el.querySelector('#search-character')?.addEventListener('input', (e) => {
+  content.querySelector('#search-character')?.addEventListener('input', (e) => {
     searchKeyword = e.target.value
-    // 搜索功能需要重新加载
     characterListComponent.refresh()
   })
 
-  // 初始加载时如果有数据，选中第一个
   setTimeout(async () => {
     if (!selectedCharacterId && !isCreating) {
       const result = await api.listCharacters(store.currentNovelId, 0, 1)
@@ -546,11 +525,6 @@ async function handleDeleteCharacter(id, root) {
   }
 }
 
-function getAvatarColor(id) {
-  const colors = ['#3B82F6', '#8B5CF6', '#EC4899', '#EF4444', '#F97316', '#EAB308', '#22C55E', '#10B981', '#06B6D4', '#6366F1']
-  return colors[id % colors.length]
-}
-
 export function cleanup() {
   destroyPersonalityEditor()
   if (characterListComponent) {
@@ -560,7 +534,6 @@ export function cleanup() {
   searchKeyword = ''
   selectedCharacterId = null
   isCreating = false
-  charactersList = []
   activeCharacterAiRequestId = null
   activeCharacterAiModal = null
   characterAiUnlisteners.forEach((unlisten) => {
