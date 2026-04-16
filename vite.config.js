@@ -18,36 +18,5 @@ export default defineConfig({
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     sourcemap: !!process.env.TAURI_DEBUG,
     outDir: 'dist',
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes('/node_modules/@codemirror/')) {
-            return 'codemirror-vendor'
-          }
-
-          if (
-            id.includes('/node_modules/markdown-it/') ||
-            id.includes('/src/lib/markdown-editor.js')
-          ) {
-            return 'markdown-editor'
-          }
-
-          if (
-            id.includes('/src/components/ai-generate-modal.js') ||
-            id.includes('/src/lib/ai-execution-labels.js') ||
-            id.includes('/src/lib/ai-execution-state.js')
-          ) {
-            return 'ai-generate-modal'
-          }
-
-          if (
-            id.includes('/src/lib/modal.js') ||
-            id.includes('/src/components/pipeline-log-modal.js')
-          ) {
-            return 'ui-modal'
-          }
-        },
-      },
-    },
   },
 })

@@ -650,30 +650,6 @@
   color: var(--text-tertiary);
 }
 
-.pipeline-log-modal .modal-container {
-  max-width: min(960px, 92vw) !important;
-  max-height: min(82vh, 900px);
-}
-
-.pipeline-log-modal-content {
-  display: grid;
-  gap: 14px;
-}
-
-.pipeline-log-modal-subtitle {
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.pipeline-log-modal-list {
-  display: grid;
-  gap: 12px;
-}
-
-.pipeline-empty-state--modal {
-  min-height: 220px;
-}
-
 @media (max-width: 576px) {
   .create-novel-form .form-row {
     flex-direction: column;

@@ -5,7 +5,7 @@ import '../style/editor.css'
 import '../style/tabs.css'
 
 import * as basicTab from './workspace/workspace-basic.js'
-import * as pipelineTab from './workspace/workspace-pipeline.js'
+import * as workflowTab from './workspace/workspace-workflow.js'
 
 let activeTab = 'basic'
 let tabsComponent = null
@@ -34,7 +34,7 @@ export async function render() {
     containerId: 'workspace-tabs',
     tabs: [
       { key: 'basic', label: '基础', icon: icon('edit', 16), color: '#6366f1' },
-      { key: 'pipeline', label: '流水线', icon: icon('pipeline', 16), color: '#f59e0b' }
+      { key: 'workflow', label: '流程', icon: icon('workflow', 16), color: '#f59e0b' }
     ],
     activeKey: activeTab,
     onChange: (key) => {
@@ -56,10 +56,8 @@ function renderTabContent(el, novelInfo) {
     case 'basic':
       basicTab.render(content, novelInfo)
       break
-    case 'pipeline':
-      pipelineTab.render(content, novelInfo).catch((error) => {
-        console.error('渲染工作台流水线失败:', error)
-      })
+    case 'workflow':
+      workflowTab.render(content, novelInfo)
       break
   }
 }
@@ -71,5 +69,5 @@ export function cleanup() {
     tabsComponent = null
   }
   basicTab.cleanup()
-  pipelineTab.cleanup()
+  workflowTab.cleanup()
 }
