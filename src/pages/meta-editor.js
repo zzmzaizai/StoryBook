@@ -6,7 +6,6 @@ import { listen } from '@tauri-apps/api/event'
 import { createMarkdownEditor } from '../lib/markdown-editor.js'
 import { createTabs } from '../lib/tabs.js'
 import { createPagedList } from '../lib/virtual-list.js'
-import { openAiGenerateModal } from '../components/ai-generate-modal.js'
 import { applyAiPhaseUpdate, applyAiToolEvent } from '../lib/ai-execution-state.js'
 import '../style/virtual-list.css'
 
@@ -478,6 +477,7 @@ function renderEditor(content, novelInfo) {
 }
 
 async function openMetaAiModal(novelInfo) {
+  const { openAiGenerateModal } = await import('../components/ai-generate-modal.js')
   const currentContent = metaEditorInstance ? metaEditorInstance.getValue() : ''
   const defaultAction = getMetaAiDefaultAction(currentContent)
   const modal = openAiGenerateModal({

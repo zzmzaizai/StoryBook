@@ -5,7 +5,6 @@ import { createMarkdownEditor, destroyEditor } from '../lib/markdown-editor.js'
 import { confirm } from '../lib/modal.js'
 import { toastSuccess, toastError } from '../lib/toast.js'
 import { createPagedList } from '../lib/virtual-list.js'
-import { openAiGenerateModal } from '../components/ai-generate-modal.js'
 import { listen } from '@tauri-apps/api/event'
 import { createNovelPageShell, loadCurrentNovelInfo, renderNovelSelectionState } from './novel-page.js'
 import '../style/editor.css'
@@ -382,7 +381,8 @@ async function renderChapterEditor(root) {
   })
 }
 
-function openChapterAiModal(editorEl, chapterInfo) {
+async function openChapterAiModal(editorEl, chapterInfo) {
+  const { openAiGenerateModal } = await import('../components/ai-generate-modal.js')
   openAiGenerateModal({
     title: 'AI生成章节',
     currentContent: editorInstance ? editorInstance.getValue() : '',
